@@ -23,6 +23,34 @@ export const createOil = async (req , res)=>{
         res.status(500).json({success:false , message: "Server error", error: error.message });
     }
 };
+
+export const updateOil = async (req , res)=>{
+    try {
+        
+        const update = req.body;
+        const updatedOil = await Oil.findOneAndUpdate(
+            { id: req.params.id },
+            update,
+            { new: true }
+        );
+        if(!updatedOil){
+            return res.status(404).json({
+                success: false,
+                message: `No Oil found with this ID: ${id}`,
+            });
+        }
+        return res.status(200).json({
+            success:true,
+            message:"Oil data updated successfully",
+            data:updatedOil
+        })
+    } catch (error) {
+                res.status(500).json({
+            success: false,
+            message: `Error updating product: ${error.message}`,
+        });
+    }
+};
 /*
 {
   "_id": ObjectId("oil_id"),

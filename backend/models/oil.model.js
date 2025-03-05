@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 const oilSchema = new mongoose.Schema({
     id: {
         type:String,
-        required: true
+        required: true,
+        unique: true
     },
     oil_name: {
         type: String,
