@@ -18,9 +18,9 @@ export const createOil = async (req , res)=>{
         });
 
         await newOil.save();//we insert the data here
-        res.status(200).json({success:true , message:"Oil data inserted successfully" , data:newOil});
+        return res.status(200).json({success:true , message:"Oil data inserted successfully" , data:newOil});
     } catch (error) {
-        res.status(500).json({success:false , message: "Server error", error: error.message });
+        return res.status(500).json({success:false , message: "Server error", error: error.message });
     }
 };
 
@@ -45,12 +45,79 @@ export const updateOil = async (req , res)=>{
             data:updatedOil
         })
     } catch (error) {
-                res.status(500).json({
+            return res.status(500).json({
             success: false,
             message: `Error updating product: ${error.message}`,
         });
     }
 };
+
+export const getOils = async (req,res) => {
+    try {
+        const oils = await Oil.find({});
+        if(oils.length === 0){
+            return res.status(404).json({
+                success:false,
+                message:"No data found",
+                data:null
+            });
+        }
+        return res.status(200).json({
+            success:true,
+            message:"Oils data retrieved successfully",
+            data:oils
+
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: `Error getting  oils: ${error.message}`,
+        })
+    }
+};
+
+export const getOilById = async (req,res)=>{
+    try {
+        const id = req.params.id;
+        const oil = await Oil.findOne({id: id});
+        if(!oil){
+            return res.status(404).json({
+                success:false,
+                message:`No oil found with id : ${id}`,
+                data:null
+            });
+        }
+        return res.status(200).json({
+            success:true,
+            message:"Oil found",
+            data:oil
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: `Error finding oil: ${error.message}`,
+        })
+    }
+}
+
+export const deleteOil = async (req , res)=>{
+    const id = req.params.id;
+    try {
+        await Oil.findOneAndDelete({id: id});
+        return res.status(200).json({
+            success:true,
+            message:"Oil deleted",
+            data:null
+        })
+
+    } catch (error) {
+                res.status(404).json({
+                success:false,
+                message:`No oil found with id : ${id}`,
+                data:null
+            });
+    }
+}
 /*
 {
   "_id": ObjectId("oil_id"),
