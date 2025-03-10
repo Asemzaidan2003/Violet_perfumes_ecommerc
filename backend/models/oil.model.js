@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+//dont forget to add a catigory for oils and gender
 const oilSchema = new mongoose.Schema({
     id: {
         type:String,

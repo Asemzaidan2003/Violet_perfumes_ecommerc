@@ -118,6 +118,36 @@ export const deleteOil = async (req , res)=>{
             });
     }
 }
+
+export const calculateCapital = async (req, res) => {
+    try {
+        const oilData = await Oil.find({});
+
+        if (oilData.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No data found",
+                data: null
+            });
+        }
+        const totalQuantity = oilData.reduce((sum , oil)=>sum+oil.oil_quantity , 0)
+        const totalCapital = oilData.reduce((sum , oil)=>sum+oil.oil_quantity*oil.oil_cost,0)
+        res.status(200).json({
+            success: true,
+            message: "Capital calculated successfully",
+            data: {
+                quantity:`total quantity is :${totalQuantity} ML`,
+                capital:`total capital is : ${totalCapital} JD`
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: `Error calculating capital: ${error.message}`
+        });
+    }
+};
 /*
 {
   "_id": ObjectId("oil_id"),
