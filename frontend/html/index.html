@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>شاشة المبيعات</title>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+      }
+      h2 {
+        text-align: center;
+        color: #333;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+      }
+      .products,
+      .cart {
+        flex: 1;
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .product {
+        border-bottom: 1px solid #ddd;
+        padding: 10px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .product img {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-left: 10px;
+      }
+      .product-info {
+        display: flex;
+        align-items: center;
+      }
+      .cart table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .cart th,
+      .cart td {
+        padding: 8px;
+        border-bottom: 1px solid #ccc;
+        text-align: center;
+      }
+      .cart-total {
+        margin-top: 10px;
+        font-weight: bold;
+      }
+      .modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        display: none;
+        min-width: 300px;
+      }
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        z-index: 999;
+      }
+      .btn {
+        padding: 6px 12px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      .btn:hover {
+        background: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../js/navbar.js"></script>
+    <div id="navbar"></div>
+    <h2>نظام المبيعات</h2>
+    <div class="container">
+      <!-- قسم المنتجات -->
+      <div class="products">
+        <h3>البحث عن منتج</h3>
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="اكتب اسم المنتج..."
+          oninput="filterProducts()"
+        />
+        <div id="productList"></div>
+      </div>
+
+      <!-- قسم السلة -->
+      <div class="cart">
+        <h3>سلة المشتريات</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>المنتج</th>
+              <th>الحجم</th>
+              <th>الكمية</th>
+              <th>السعر</th>
+              <th>الإجمالي</th>
+              <th>حذف</th>
+            </tr>
+          </thead>
+          <tbody id="cartTable"></tbody>
+        </table>
+        <div class="cart-total" id="totalPrice">المجموع: 0</div>
+        <button class="btn" id="checkout">إنهاء الطلب</button>
+      </div>
+    </div>
+
+    <!-- نافذة المودال -->
+    <div class="overlay" id="overlay"></div>
+    <div class="modal" id="modal">
+      <h3>إضافة للسلة</h3>
+      <div id="modalContent"></div>
+      <button class="btn" onclick="confirmAddToCart()">إضافة</button>
+      <button class="btn" onclick="closeModal()">إلغاء</button>
+    </div>
+    <script type="module" src="../js/checkOut.js">
+            import { checkout } from "../js/checkOut.js";
+    </script>
+    <script>
+      const baseURL = "http://localhost:5000/api";
+      let products = [];
+      const cart = [];
+      let bottles = [];
+
+      let total_items = 0;
+      let total_amount = 0;
+
+      let selectedProduct = null;
+
+      function getAllProducts() {
+        fetch(`${baseURL}/products`)
+          .then((response) => response.json())
+          .then((data) => {
+            products = data.data;
+            renderProducts(products);
+          })
+          .catch((error) => console.error("Error fetching products:", error));
+      }
+
+      function renderProducts(list) {
+        const container = document.getElementById("productList");
+        container.innerHTML = "";
+        list.forEach((product) => {
+          const div = document.createElement("div");
+          div.className = "product";
+          div.innerHTML = `
+          <div class="product-info">
+            <img src="${product.p_image}" alt="${product.p_name}">
+            <span>${product.p_name}</span>
+          </div>
+          <button class="btn" onclick='openModal("${product._id}")'>أضف</button>
+        `;
+          container.appendChild(div);
+        });
+      }
+
+      function filterProducts() {
+        const search = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+        const filtered = products.filter((p) =>
+          p.p_name.toLowerCase().includes(search)
+        );
+        renderProducts(filtered);
+      }
+
+      function openModal(productId) {
+        selectedProduct = products.find((p) => p._id === productId);
+        const content = document.getElementById("modalContent");
+        content.innerHTML = `
+        <label>اختر الحجم:</label>
+        <select id="sizeSelect">
+          ${selectedProduct.size_list
+            .map(
+              (s) =>
+                `<option value="${s.size}">${s.size} - ${s.price} JOD</option>`
+            )
+            .join("")}
+        </select>
+        <br><br>
+        <label>الكمية:</label>
+        <input type="number" id="quantityInput" value="1" min="1" />
+      `;
+        document.getElementById("modal").style.display = "block";
+        document.getElementById("overlay").style.display = "block";
+      }
+
+      function closeModal() {
+        document.getElementById("modal").style.display = "none";
+        document.getElementById("overlay").style.display = "none";
+        selectedProduct = null;
+      }
+
+      function confirmAddToCart() {
+        const size = document.getElementById("sizeSelect").value;
+        const quantity = parseInt(
+          document.getElementById("quantityInput").value
+        );
+        const price = selectedProduct.size_list.find(
+          (s) => s.size === size
+        ).price;
+
+        cart.push({
+          id: selectedProduct._id,
+          name: selectedProduct.p_name,
+          size,
+          quantity,
+          price,
+          total: price * quantity,
+          oil_id: selectedProduct.oil_id,
+          oil_percentage: selectedProduct.oil_percentage,
+          alcohol_percentage: selectedProduct.alcohol_percentage,
+        });
+        renderCart();
+        closeModal();
+      }
+
+      function updateCartItem(index, field, value) {
+        if (field === "quantity") {
+          cart[index].quantity = parseFloat(value);
+          // تأكد إنك تحدث كمية الزجاجة كمان إذا كانت مختارة
+          if (cart[index].bottle) {
+            cart[index].bottle.quantity = cart[index].quantity;
+          }
+        } else if (field === "price") {
+          cart[index].price = parseFloat(value);
+        } else if (field === "bottle_id") {
+          cart[index].bottle = {
+            bottle_id: value,
+            quantity: cart[index].quantity,
+          };
+        }
+
+        cart[index].total = cart[index].quantity * cart[index].price;
+        renderCart();
+      }
+
+      function getAllBottles() {
+        fetch(`${baseURL}/bottles`)
+          .then((response) => response.json())
+          .then((data) => {
+            bottles = data.data;
+            console.log("Fetched bottles:", bottles);
+          })
+          .catch((error) => console.error("Error fetching bottles:", error));
+      }
+
+      function renderCart() {
+        const table = document.getElementById("cartTable");
+        table.innerHTML = "";
+        total_items = 0;
+        total_amount = 0;
+
+        cart.forEach((item, index) => {
+          total_items += item.quantity;
+          total_amount += item.total;
+
+          // الزجاجات اللي نفس حجم المنتج
+          const bottleOptions = bottles
+            .filter((b) => b.capacity === parseFloat(item.size))
+            .map((b) => {
+              const selected =
+                item.bottle?.bottle_id === b._id ? "selected" : "";
+              return `<option value="${b._id}" ${selected}>${b.name} (المتوفر: ${b.quantity})</option>`;
+            })
+            .join("");
+
+          table.innerHTML += `
+        <tr>
+          <td>${item.name}</td>
+          <td>${item.size}</td>
+          <td>
+            <input type="number" value="${item.quantity}" min="1"
+              onchange="updateCartItem(${index}, 'quantity', this.value)">
+          </td>
+          <td>
+            <input type="number" value="${item.price}" min="0"
+              onchange="updateCartItem(${index}, 'price', this.value)">
+          </td>
+          <td>${item.total.toFixed(2)}</td>
+          <td>
+            <select onchange="updateCartItem(${index}, 'bottle_id', this.value)">
+              <option value="">اختر زجاجة</option>
+              ${bottleOptions}
+            </select>
+          </td>
+          <td><button class="btn" onclick="removeItem(${index})">🗑️</button></td>
+        </tr>
+      `;
+        });
+
+        document.getElementById(
+          "totalPrice"
+        ).innerText = `المجموع: ${total_amount.toFixed(2)} JOD`;
+      }
+
+      function removeItem(index) {
+        cart.splice(index, 1);
+        renderCart();
+      }
+
+      document.getElementById("checkout").onclick = () => {
+        // Validation: check for empty fields in cart
+        let valid = true;
+        let errorMsg = "";
+
+        cart.forEach((item, idx) => {
+          if (!item.size || !item.quantity || !item.price) {
+            valid = false;
+            errorMsg += `يوجد حقل فارغ في المنتج رقم ${idx + 1}\n`;
+          }
+          // Bottle selection validation
+          if (!item.bottle || !item.bottle.bottle_id) {
+            valid = false;
+            errorMsg += `يرجى اختيار زجاجة للمنتج رقم ${idx + 1}\n`;
+          }
+        });
+
+        if (!valid) {
+          alert(
+            errorMsg ||
+              "يرجى تعبئة جميع الحقول واختيار الزجاجة لكل منتج في السلة."
+          );
+          return;
+        }
+
+        checkout({
+          products: cart,
+          total_items,
+          total_price: total_amount,
+        });
+      };
+
+      getAllProducts();
+      getAllBottles();
+    </script>
+  </body>
+</html>

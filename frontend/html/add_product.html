@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>إضافة منتج</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      background-color: #f1f1f1;
+      margin: 0;
+    }
+
+    form {
+      background-color: white;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .size-entry {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .size-entry input {
+      flex: 1;
+    }
+
+    #imagePreview {
+      display: block;
+      max-width: 100%;
+      margin-bottom: 15px;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    /* ✅ تنسيقات المودال */
+    #oilModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+
+    #oilModalContent {
+      background: white;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      border-radius: 10px;
+      position: relative;
+    }
+
+    #oilList li {
+      padding: 8px;
+      border-bottom: 1px solid #ccc;
+      cursor: pointer;
+    }
+
+    #oilList li:hover {
+      background-color: #f1f1f1;
+    }
+
+    #selectedOilName {
+      margin: -10px 0 10px;
+      font-weight: bold;
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar"></div>
+  <form id="productForm">
+
+    <h2>إضافة منتج جديد</h2>
+
+    <label for="p_name">اسم المنتج:</label>
+    <input type="text" id="p_name" required>
+
+    <label for="p_category">الفئة:</label>
+    <input type="text" id="p_category" required>
+
+    <label for="p_offer_percentage">نسبة العرض %:</label>
+    <input type="number" id="p_offer_percentage" value="0">
+
+    <label for="oil_id">ID الزيت:</label>
+    <input type="hidden" id="oil_id" required>
+    <button type="button" onclick="openOilModal()">اختيار زيت</button>
+    <p id="selectedOilName"></p>
+
+    <label>نسب المكونات:</label>
+    <input type="number" step="0.01" id="oil_percentage" placeholder="نسبة الزيت %" required>
+    <input type="number" step="0.01" id="alcohol_percentage" placeholder="نسبة الكحول %" required>
+
+    <label for="status">الحالة:</label>
+    <select id="status">
+      <option value="available">متوفر</option>
+      <option value="out of stock">غير متوفر</option>
+      <option value="discontinued">متوقف</option>
+    </select>
+
+    <label for="p_image">رابط صورة المنتج:</label>
+    <input type="text" id="p_image" placeholder="https://..." required>
+    <img id="imagePreview" src="#" alt="معاينة الصورة" style="display:none;">
+
+    <label>الأحجام والأسعار:</label>
+    <div id="sizesContainer"></div>
+    <button type="button" onclick="addSize()">+ إضافة حجم</button>
+
+    <br><br>
+    <button type="submit">إرسال</button>
+  </form>
+
+  <!-- ✅ مودال اختيار الزيت -->
+  <div id="oilModal">
+    <div id="oilModalContent">
+      <h3>اختيار الزيت</h3>
+      <input type="text" id="searchOil" placeholder="ابحث باسم الزيت..." style="width:100%; padding:8px; margin-bottom:10px;">
+      <ul id="oilList" style="list-style:none; padding:0; max-height:300px; overflow-y:auto;"></ul>
+      <button onclick="closeOilModal()" style="position:absolute; top:10px; left:10px;">X</button>
+    </div>
+  </div>
+  <script script src="../js/navbar.js"></script>
+  <script>
+
+    // ✅ Add size row
+    const sizesContainer = document.getElementById("sizesContainer");
+    function addSize(size = '', price = '') {
+      const div = document.createElement('div');
+      div.className = "size-entry";
+      div.innerHTML = `
+        <input type="text" placeholder="الحجم (مثال: 30ml)" name="size" value="${size}" required>
+        <input type="number" placeholder="السعر" name="price" value="${price}" required>
+        <button type="button" onclick="this.parentElement.remove()">X</button>
+      `;
+      sizesContainer.appendChild(div);
+    }
+
+    // ✅ معاينة الصورة
+    document.getElementById("p_image").addEventListener("input", function () {
+      const url = this.value;
+      const img = document.getElementById("imagePreview");
+      if (url) {
+        img.src = url;
+        img.style.display = "block";
+      } else {
+        img.style.display = "none";
+      }
+    });
+
+    // ✅ إرسال البيانات
+    document.getElementById("productForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const sizeEntries = document.querySelectorAll(".size-entry");
+      const size_list = Array.from(sizeEntries).map(entry => ({
+        size: entry.querySelector("input[name='size']").value,
+        price: parseFloat(entry.querySelector("input[name='price']").value)
+      }));
+
+      const data = {
+        p_name: document.getElementById("p_name").value,
+        p_category: document.getElementById("p_category").value,
+        p_offer_percentage: parseFloat(document.getElementById("p_offer_percentage").value),
+        oil_id: document.getElementById("oil_id").value,
+        oil_percentage: parseFloat(document.getElementById("oil_percentage").value),
+        alcohol_percentage: parseFloat(document.getElementById("alcohol_percentage").value),
+        status: document.getElementById("status").value,
+        p_image: document.getElementById("p_image").value,
+        size_list: size_list
+      };
+      console.log("adding product data : ",data);
+      try {
+        const response = await fetch("http://localhost:5000/api/products", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+          throw new Error(`خطأ في الإرسال: ${response}`);
+        }
+
+        alert("تمت إضافة المنتج بنجاح!");
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        alert("حدث خطأ أثناء الإرسال");
+      }
+    });
+
+    // ✅ مودال الزيت
+    let allOils = [];
+
+    async function openOilModal() {
+      document.getElementById("oilModal").style.display = "block";
+      try {
+        const response = await fetch("http://localhost:5000/api/oils");
+        const json = await response.json();
+        allOils = json.data;
+        console.log(allOils);
+        renderOilList(allOils);
+      } catch (err) {
+        console.log(err)
+        alert("فشل في جلب الزيوت");
+        closeOilModal();
+      }
+    }
+
+    function closeOilModal() {
+      document.getElementById("oilModal").style.display = "none";
+    }
+
+    function renderOilList(oils) {
+      const list = document.getElementById("oilList");
+      list.innerHTML = "";
+      oils.forEach(oil => {
+        const li = document.createElement("li");
+        li.textContent = oil.oil_name;
+        li.addEventListener("click", () => selectOil(oil));
+        list.appendChild(li);
+      });
+    }
+
+    function selectOil(oil) {
+      document.getElementById("oil_id").value = oil.id;
+      document.getElementById("selectedOilName").textContent = `تم اختيار: ${oil.oil_name}`;
+      closeOilModal();
+    }
+
+    document.getElementById("searchOil").addEventListener("input", function () {
+      const searchTerm = this.value.toLowerCase();
+      const filtered = allOils.filter(o => o.oil_name.toLowerCase().includes(searchTerm));
+      renderOilList(filtered);
+    });
+  </script>
+</body>
+</html>

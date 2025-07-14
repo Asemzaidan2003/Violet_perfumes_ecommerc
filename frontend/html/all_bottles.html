@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>عرض جميع الزجاجات</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      background-color: #f4f4f4;
+      margin: 0;
+    }
+
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+
+    input, select {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<script src="../js/navbar.js"></script>
+<body>
+    <div id="navbar"></div>
+  <h2>جميع الزجاجات</h2>
+
+  <div>
+    <label>ابحث بالاسم:</label>
+    <input type="text" id="searchName" placeholder="اسم الزجاجة">
+
+    <label>ابحث بالرقم:</label>
+    <input type="text" id="searchId" placeholder="ID">
+
+    <label>ترتيب حسب:</label>
+    <select id="sortOption">
+      <option value="">-- اختر --</option>
+      <option value="cost">السعر</option>
+      <option value="quantity">الكمية</option>
+    </select>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>الاسم</th>
+        <th>السعة (ml)</th>
+        <th>السعر</th>
+        <th>الكمية</th>
+        <th>تعديل</th>
+      </tr>
+    </thead>
+    <tbody id="bottleTableBody"></tbody>
+  </table>
+
+  <script>
+    const baseURL = 'http://localhost:5000/api/bottles';
+    let allBottles = [];
+
+    async function fetchBottles() {
+      try {
+        const res = await fetch(baseURL);
+        const json = await res.json();
+        allBottles = json.data;
+        console.log("Fetched bottles:", allBottles);
+        renderBottles(allBottles);
+      } catch (err) {
+        console.error("Error fetching bottles:", err);
+      }
+    }
+
+    function renderBottles(list) {
+      const body = document.getElementById("bottleTableBody");
+      body.innerHTML = "";
+
+      list.forEach(bottle => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${bottle.name}</td>
+          <td>${bottle.capacity}</td>
+          <td>${bottle.cost}</td>
+          <td>${bottle.quantity}</td>
+          <td><button onclick="sendBottleId('${bottle._id}')">تعديل</button></td>
+        `;
+        body.appendChild(row);
+      });
+    }
+
+    function filterAndSort() {
+      let filtered = [...allBottles];
+      const name = document.getElementById("searchName").value.toLowerCase();
+      const id = document.getElementById("searchId").value.toLowerCase();
+      const sort = document.getElementById("sortOption").value;
+
+      if (name) {
+        filtered = filtered.filter(b => b.name.toLowerCase().includes(name));
+      }
+
+      if (id) {
+        filtered = filtered.filter(b => b._id && b._id.toLowerCase().includes(id));
+      }
+
+      if (sort === "cost") {
+        filtered.sort((a, b) => a.cost - b.cost);
+      } else if (sort === "quantity") {
+        filtered.sort((a, b) => b.quantity - a.quantity);
+      }
+
+      renderBottles(filtered);
+    }
+    function sendBottleId(id) {
+      window.location.href = `update_bottle.html?id=${id}`;
+    }
+
+    document.getElementById("searchName").addEventListener("input", filterAndSort);
+    document.getElementById("searchId").addEventListener("input", filterAndSort);
+    document.getElementById("sortOption").addEventListener("change", filterAndSort);
+
+    fetchBottles();
+  </script>
+</body>
+</html>

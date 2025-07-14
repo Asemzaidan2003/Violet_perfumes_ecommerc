@@ -119,7 +119,7 @@ export const deleteOil = async (req , res)=>{
     }
 }
 
-export const calculateCapital = async (req, res) => {
+export const calculateOilCapital = async (req, res) => {
     try {
         const oilData = await Oil.find({});
 

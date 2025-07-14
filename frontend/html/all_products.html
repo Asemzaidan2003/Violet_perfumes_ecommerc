@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>قائمة المنتجات</title>
+  <style>
+    body { font-family: Arial; direction: rtl; margin: 0; background: #f5f5f5; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: center; vertical-align: middle; }
+    th { background: #333; color: white; }
+    input, select { padding: 8px; margin: 10px; width: 200px; }
+    button { padding: 6px 12px; background: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    img { width: 60px; height: auto; border-radius: 5px; }
+  </style>
+</head>
+<body>
+    <div id="navbar"></div>
+  <h2>📦 جميع المنتجات</h2>
+
+  <input type="text" id="searchName" placeholder="🔍 ابحث باسم العطر">
+  <input type="text" id="searchCategory" placeholder="🎯 ابحث بالفئة">
+
+
+  <table id="productTable">
+    <thead>
+      <tr>
+        <th>الصورة</th>
+        <th>الاسم</th>
+        <th>الفئة</th>
+        <th>نسب التركيب</th>
+        <th>الحالة</th>
+        <th>الأحجام والأسعار</th>
+        <th>إجراءات</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- يتم ملء المنتجات هنا -->
+    </tbody>
+  </table>
+
+  <script>
+    let productsData = [];
+
+    async function fetchProducts() {
+      try {
+        const res = await fetch("http://localhost:5000/api/products"); // غيّر الرابط حسب السيرفر تبعك
+        const json = await res.json();
+        productsData = json.data;
+        renderTable(productsData);
+      } catch (err) {
+        console.error("فشل جلب المنتجات:", err);
+      }
+    }
+
+    function renderTable(data) {
+      const tbody = document.querySelector("#productTable tbody");
+      tbody.innerHTML = "";
+
+      data.forEach(product => {
+        const tr = document.createElement("tr");
+
+        const sizesHTML = product.size_list.map(size => {
+          return `<div>${size.size}: ${size.price} د.أ</div>`;
+        }).join("");
+
+        tr.innerHTML = `
+          <td><img src="${product.p_image}" alt="${product.p_name}"></td>
+          <td>${product.p_name}</td>
+          <td>${product.p_category}</td>
+          <td>${product.oil_percentage}% زيت / ${product.alcohol_percentage}% كحول</td>
+          <td>${product.status}</td>
+          <td>${sizesHTML}</td>
+          <td>
+            <button onclick="editProduct('${product._id}')">🛠️ تعديل</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById("searchName").addEventListener("input", filterProducts);
+    document.getElementById("searchCategory").addEventListener("input", filterProducts);
+
+    function filterProducts() {
+      const name = document.getElementById("searchName").value.toLowerCase();
+      const category = document.getElementById("searchCategory").value.toLowerCase();
+
+      let filtered = productsData.filter(p =>
+        p.p_name.toLowerCase().includes(name) &&
+        p.p_category.toLowerCase().includes(category)
+      );
+
+      renderTable(filtered);
+    }
+
+    function editProduct(id) {
+      window.location.href = `edit_product.html?id=${encodeURIComponent(id)}`;
+    }
+
+
+    fetchProducts();
+  </script>
+    <script src="../js/navbar.js"></script>
+</body>
+</html>

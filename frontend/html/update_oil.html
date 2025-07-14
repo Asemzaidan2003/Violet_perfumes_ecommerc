@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>تعديل بيانات الزيت</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      background-color: #f9f9f9;
+      margin: 0;
+    }
+
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+
+    form {
+      background-color: #fff;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+  <script src="../js/navbar.js"></script>
+</head>
+<body>
+  <div id="navbar"></div>
+
+  <h2>تعديل بيانات الزيت</h2>
+
+  <form id="editForm">
+    <label for="oil_name">اسم الزيت:</label>
+    <input type="text" id="oil_name" name="oil_name" required />
+
+    <label for="oil_cost">التكلفة:</label>
+    <input type="number" step="0.01" id="oil_cost" name="oil_cost" required />
+
+    <label for="oil_quantity">الكمية:</label>
+    <input type="number" id="oil_quantity" name="oil_quantity" required />
+
+    <label for="status">الحالة:</label>
+    <select id="status" name="status" required>
+      <option value="available">متوفر</option>
+      <option value="out_of_stock">غير متوفر</option>
+    </select>
+
+    <button type="submit">حفظ التعديلات</button>
+  </form>
+
+  <script>
+    const baseURL = 'http://localhost:5000/api/oils';
+    const params = new URLSearchParams(window.location.search);
+    const oilId = params.get("id");
+
+    if (!oilId) {
+      alert("لا يوجد ID في الرابط!");
+      window.location.href = "oils.html";
+    }
+
+    async function loadOilData() {
+      try {
+        const res = await fetch(`${baseURL}/${oilId}`);
+        if (!res.ok) throw new Error('لم يتم العثور على الزيت');
+
+        const oil = await res.json();
+        document.getElementById('oil_name').value = oil.data.oil_name || "";
+        document.getElementById('oil_cost').value = oil.data.oil_cost || 0;
+        document.getElementById('oil_quantity').value = oil.data.oil_quantity || 0;
+        document.getElementById('status').value = oil.data.status || "available";
+      } catch (error) {
+        alert('خطأ في تحميل البيانات');
+        console.error(error);
+      }
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const oil_name = document.getElementById('oil_name').value.trim();
+      const oil_cost = document.getElementById('oil_cost').value;
+      const oil_quantity = document.getElementById('oil_quantity').value;
+      const status = document.getElementById('status').value;
+
+      if (!oil_name || oil_cost === '' || oil_quantity === '' || !status) {
+        return alert("يرجى ملء جميع الحقول قبل الإرسال.");
+      }
+
+      const data = {
+        oil_name,
+        oil_cost: parseFloat(oil_cost),
+        oil_quantity: parseInt(oil_quantity),
+        status
+      };
+
+      try {
+        const res = await fetch(`${baseURL}/${oilId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) throw new Error('فشل في التعديل');
+
+        alert('تم تعديل البيانات بنجاح!');
+        window.location.href = "all_oils.html";
+      } catch (error) {
+        alert('حدث خطأ أثناء التعديل');
+        console.error(error);
+      }
+    });
+
+    loadOilData();
+  </script>
+</body>
+</html>

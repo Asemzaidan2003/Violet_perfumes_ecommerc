@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>قائمة الزيوت</title>
+  <style>
+    body { font-family: Arial; direction: rtl; margin: 0; background: #f5f5f5; }
+    table { width: 100%; border-collapse: collapse; background: white; padding: 20px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+    th { background: #333; color: white; cursor: pointer; }
+    input, select { padding: 8px; margin: 10px; width: 200px; }
+    button {width: 100%; padding: 8px 15px; background: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+  </style>
+
+</head>
+<body>
+<div id="navbar"></div>
+  <h2>🛢️ جميع الزيوت المتوفرة</h2>
+
+  <input type="text" id="searchId" placeholder="ابحث برقم الزيت">
+  <input type="text" id="searchName" placeholder="ابحث باسم الزيت">
+  <select id="sortBy">
+    <option value="">- ترتيب حسب -</option>
+    <option value="quantity_low">الكمية (الأقل الى الأعلى)</option>
+    <option value="cost_low">الكلفة (الأقل الى الأعلى)</option>
+    <option value="quantity_high">الكمية (الأعلى الى الأقل)</option>
+    <option value="cost_high">الكلفة (الأعلى الى الأقل)</option>
+  </select>
+
+  <table id="oilTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>الاسم</th>
+        <th>الكلفة</th>
+        <th>الكمية</th>
+        <th>كلفة الكمية</th>
+        <th>الحالة</th>
+        <th>تعديل</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- سيتم إدخال البيانات هنا -->
+    </tbody>
+  </table>
+    <div id="capital" style="text-align:center; width:100%;"></div>
+  <script>
+    let oilsData = [];
+
+    // جلب البيانات من السيرفر
+    async function fetchOils() {
+      try {
+        const res = await fetch("http://localhost:5000/api/oils");
+        const json = await res.json();
+        oilsData = json.data;
+        renderTable(oilsData);
+        getOilCapital();
+      } catch (err) {
+        console.error("حدث خطأ في جلب البيانات", err);
+      }
+    }
+    async function getOilCapital(){
+        try {
+            const res = await fetch("http://localhost:5000/api/oils/calculate_oil_capital");
+            const json = await res.json();
+            renderOilCapital(json.data);
+        } catch (err) {
+            console.error("حدث خطأ في جلب البيانات", err);
+        }
+    }
+    // عرض البيانات في الجدول
+    function renderTable(data) {
+      const tbody = document.querySelector("#oilTable tbody");
+      tbody.innerHTML = "";
+
+      data.forEach(oil => {
+        const tr = document.createElement("tr");
+        const quantityCost = (oil.oil_cost * oil.oil_quantity).toFixed(2);
+        tr.innerHTML = `
+          <td>${oil.id}</td>
+          <td>${oil.oil_name}</td>
+          <td>${oil.oil_cost.toFixed(2)} JD</td>
+          <td>${oil.oil_quantity} ml</td>
+          <td>${quantityCost} JD</td>
+          <td>${oil.status}</td>
+          <td><button onclick="sendOilId('${oil.id}')">تعديل</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderOilCapital(data) {
+        const capitalDiv = document.getElementById("capital");
+        capitalDiv.innerHTML = `
+            <h3> ${data.quantity}</h3>
+            <h3>${data.capital}</h3>
+        `;
+        document.body.appendChild(capitalDiv);
+    }
+
+    // البحث
+    document.getElementById("searchId").addEventListener("input", filterOils);
+    document.getElementById("searchName").addEventListener("input", filterOils);
+    document.getElementById("sortBy").addEventListener("change", filterOils);
+
+    function filterOils() {
+      const searchId = document.getElementById("searchId").value.toLowerCase();
+      const searchName = document.getElementById("searchName").value.toLowerCase();
+      const sortBy = document.getElementById("sortBy").value;
+
+      let filtered = oilsData.filter(oil =>
+        oil.id.toLowerCase().includes(searchId) &&
+        oil.oil_name.toLowerCase().includes(searchName)
+      );
+
+      if (sortBy === "quantity_low") {
+        filtered.sort((high, low) => high.oil_quantity - low.oil_quantity);
+      } else if (sortBy === "cost_low") {
+        filtered.sort((high, low) => high.oil_cost - low.oil_cost);
+      }
+        else if (sortBy === "quantity_high") {
+            filtered.sort((high, low) => low.oil_quantity - high.oil_quantity);
+        } else if (sortBy === "cost_high") {
+            filtered.sort((high, low) => low.oil_cost - high.oil_cost);
+        }
+
+      renderTable(filtered);
+    }
+
+    // إرسال ID إلى صفحة ثانية
+    function sendOilId(oilId) {
+      // افترض إنك تود فتح صفحة معينة وتمرير ID في الرابط
+      window.location.href = `update_oil.html?id=${encodeURIComponent(oilId)}`;
+    }
+
+    // تحميل الصفحة
+    fetchOils();
+  </script>
+ <script src="../js/navbar.js"></script>
+</body>
+</html>

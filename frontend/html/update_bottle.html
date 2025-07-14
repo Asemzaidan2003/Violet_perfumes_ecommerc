@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ar">
+  <head>
+    <meta charset="UTF-8" />
+    <title>تعديل الزجاجة</title>
+    <style>
+body {
+        font-family: Arial, sans-serif;
+        direction: rtl;
+        background-color: #f9f9f9;
+        margin: 0;
+      }
+
+      h2 {
+        text-align: center;
+        color: #333;
+      }
+
+      form {
+        background-color: #fff;
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #444;
+      }
+
+      input {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      button {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+      }
+
+      button:hover {
+        background-color: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="navbar"></div>
+    <h2>تعديل بيانات الزجاجة</h2>
+
+    <form id="bottleForm">
+      <label for="name">اسم الزجاجة:</label>
+      <input type="text" id="name" name="name" required />
+
+      <label for="capacity">السعة (مل):</label>
+      <input type="number" id="capacity" name="capacity" required />
+
+      <label for="cost">التكلفة (بالدينار):</label>
+      <input type="number" step="0.01" id="cost" name="cost" required />
+
+      <label for="quantity">الكمية المتوفرة:</label>
+      <input type="number" id="quantity" name="quantity" required />
+
+      <button type="submit">حفظ التعديلات</button>
+    </form>
+
+    <script>
+      const baseURL = "http://localhost:5000/api/bottles";
+      const params = new URLSearchParams(window.location.search);
+      const bottleId = params.get("id");
+
+      if (!bottleId) {
+        alert("لا يوجد ID في الرابط!");
+        window.location.href = "all_bottels.html";
+      }
+
+      async function loadBottle() {
+        try {
+          const res = await fetch(`${baseURL}/${bottleId}`);
+          const json = await res.json();
+          const data = json.data;
+
+          document.getElementById("name").value = data.name;
+          document.getElementById("capacity").value = data.capacity;
+          document.getElementById("cost").value = data.cost;
+          document.getElementById("quantity").value = data.quantity;
+        } catch (err) {
+          alert("فشل في تحميل بيانات الزجاجة");
+          console.error(err);
+        }
+      }
+
+      document.getElementById("bottleForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const data = {
+          name: document.getElementById("name").value,
+          capacity: parseInt(document.getElementById("capacity").value),
+          cost: parseFloat(document.getElementById("cost").value),
+          quantity: parseInt(document.getElementById("quantity").value),
+        };
+
+        try {
+          const res = await fetch(`${baseURL}/${bottleId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (!res.ok) throw new Error("فشل التحديث");
+
+          alert("تم تعديل البيانات بنجاح!");
+          window.location.href = "bottles.html";
+        } catch (error) {
+          alert("حدث خطأ أثناء التحديث");
+          console.error(error);
+        }
+      });
+
+      loadBottle();
+    </script>
+    <script src="../js/navbar.js"></script>
+  </body>
+</html>

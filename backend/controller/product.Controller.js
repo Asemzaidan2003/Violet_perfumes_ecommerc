@@ -3,10 +3,20 @@ import Product from "../models/product.model.js";
 // POST Product
 export const createProduct = async (req, res) => {
     try {
-        const { p_name, p_image, size_list, p_category, oil_id, status, p_offer_percentage } = req.body;
+        const {
+          p_name,
+          p_image,
+          size_list,
+          p_category,
+          oil_id,
+          status,
+          p_offer_percentage,
+          oil_percentage,
+          alcohol_percentage,
+        } = req.body;
 
         // Validate required fields (p_offer_percentage and status are optional)
-        if (!p_name || !p_image || !size_list || !p_category || !oil_id) {
+        if (!p_name || !p_image || !size_list || !p_category || !oil_id || !oil_percentage || !alcohol_percentage) {
             return res.status(400).json({success:false , message: "Please provide all required fields" });
         }
 
@@ -24,6 +34,8 @@ export const createProduct = async (req, res) => {
             size_list,
             p_category,
             oil_id,
+            oil_percentage,
+            alcohol_percentage,
             status,
             p_offer_percentage: p_offer_percentage || 0
         });

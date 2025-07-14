@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>إضافة زيت</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      background-color: #f9f9f9;
+      margin: 0;
+    }
+
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+
+    form {
+      background-color: #fff;
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #444;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #218838;
+    }
+  </style>
+  <script src="../js/navbar.js"></script>
+</head>
+<body>
+  <div id="navbar"></div>
+
+  <h2>إضافة زيت جديد</h2>
+
+  <form id="oilForm">
+    <label for="id">رقم الزيت (ID):</label>
+    <input type="text" id="id" name="id">
+
+    <label for="oil_name">اسم الزيت:</label>
+    <input type="text" id="oil_name" name="oil_name">
+
+    <label for="oil_cost">تكلفة الزيت (بالدينار):</label>
+    <input type="number" step="0.01" id="oil_cost" name="oil_cost">
+
+    <label for="oil_quantity">الكمية (مل):</label>
+    <input type="number" id="oil_quantity" name="oil_quantity">
+
+    <label for="status">الحالة:</label>
+    <select id="status" name="status">
+      <option value="available">متوفر</option>
+      <option value="out_of_stock">غير متوفر</option>
+    </select>
+
+    <button type="submit">إرسال</button>
+  </form>
+
+  <script>
+    document.getElementById('oilForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+  
+      const data = {
+        id: document.getElementById('id').value,
+        oil_name: document.getElementById('oil_name').value,
+        oil_cost: parseFloat(document.getElementById('oil_cost').value),
+        oil_quantity: parseInt(document.getElementById('oil_quantity').value),
+        status: document.getElementById('status').value
+      };
+  
+      try {
+        const response = await fetch('http://localhost:5000/api/oils', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+  
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+  
+        const result = await response.json();
+        alert('تم الإرسال بنجاح!');
+        window.location.reload();
+      } catch (error) {
+        alert('حدث خطأ أثناء الإرسال');
+        console.error(error);
+      }
+    });
+  </script>
+
+</body>
+</html>
