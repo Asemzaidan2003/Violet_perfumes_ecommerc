@@ -7,6 +7,7 @@ import oilRouter from './routes/oil.Routs.js';
 import bottleRouter from './routes/bottle.Routs.js';
 import alcoholRouter from './routes/alcohol.Routs.js';
 import orderRouter from './routes/order.Routs.js';
+import customerRouter from './routes/customer.Routs.js'
 import cors from "cors";
 
 
@@ -21,6 +22,7 @@ app.use('/api/oils',oilRouter);
 app.use('/api/bottles',bottleRouter);
 app.use('/api/alcohols',alcoholRouter);
 app.use('/api/orders',orderRouter);
+app.use('/api/customers',customerRouter);
 app.listen(port , () => {
     connectDB();
     console.log(`Server Started at port ${port}!!`)

@@ -111,3 +111,40 @@ export const deleteBottle = async (req, res) => {
         });
     }
 };
+
+export const calculateBottleCapital = async (req, res) => {
+  try {
+    const bottleData = await Bottle.find({});
+
+    if (bottleData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No data found",
+        data: null,
+      });
+    }
+
+    const totalQuantity = bottleData.reduce(
+      (sum, bottle) => sum + bottle.quantity,
+      0
+    );
+    const totalCapital = bottleData.reduce(
+      (sum, bottle) => sum + bottle.quantity * bottle.cost,
+      0
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Capital calculated successfully",
+      data: {
+        quantity: totalQuantity,
+        capital: totalCapital,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: `Error calculating capital: ${error.message}`,
+    });
+  }
+};

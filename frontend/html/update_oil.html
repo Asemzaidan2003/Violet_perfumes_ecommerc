@@ -47,10 +47,17 @@
       border-radius: 5px;
       cursor: pointer;
       width: 100%;
+      margin: 10px;
     }
 
     button:hover {
       background-color: #0056b3;
+    }
+    .danger {
+      background-color: #dc3545;
+    }
+    .danger:hover {
+      background-color: #c82333;
     }
   </style>
   <script src="../js/navbar.js"></script>
@@ -77,6 +84,7 @@
     </select>
 
     <button type="submit">حفظ التعديلات</button>
+    <button class="danger" type="button" onclick="deleteOil()">حذف</button>
   </form>
 
   <script>
@@ -142,6 +150,24 @@
         console.error(error);
       }
     });
+
+    async function deleteOil() {
+      if (!confirm("هل أنت متأكد من حذف هذا الزيت؟")) return;
+
+      try {
+        const res = await fetch(`${baseURL}/${oilId}`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok) throw new Error('فشل في الحذف');
+
+        alert('تم حذف الزيت بنجاح!');
+        window.location.href = "all_oils.html";
+      } catch (error) {
+        alert('حدث خطأ أثناء الحذف');
+        console.error(error);
+      }
+    }
 
     loadOilData();
   </script>

@@ -136,8 +136,8 @@ export const calculateOilCapital = async (req, res) => {
             success: true,
             message: "Capital calculated successfully",
             data: {
-                quantity:`total quantity is :${totalQuantity} ML`,
-                capital:`total capital is : ${totalCapital} JD`
+                quantity:totalQuantity,
+                capital:totalCapital
             }
         });
 

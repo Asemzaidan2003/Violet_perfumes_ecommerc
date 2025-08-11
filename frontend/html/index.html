@@ -93,12 +93,44 @@
       .btn:hover {
         background: #0056b3;
       }
+      /* قسم الزبون */
+      .customer-section {
+        background: #fff;
+        padding: 20px;
+        margin: 0 20px 20px 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        max-width: 600px;
+      }
+      .customer-section input {
+        padding: 6px 10px;
+        font-size: 1rem;
+        margin-left: 10px;
+        width: 200px;
+      }
+      .customer-section label {
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
     <script src="../js/navbar.js"></script>
     <div id="navbar"></div>
     <h2>نظام المبيعات</h2>
+
+    <!-- قسم الزبون -->
+    <div class="customer-section" style="margin: 0 auto;">
+      <label for="customerPhone">رقم هاتف الزبون:</label>
+      <input type="text" id="customerPhone" placeholder="ادخل رقم الهاتف" />
+      <button class="btn" onclick="checkCustomer()">تحقق</button>
+      <div id="customerInfo" style="margin-top:10px; color: green;"></div>
+
+      <div id="newCustomerForm" style="display:none; margin-top:10px;">
+        <label for="customerName">اسم الزبون:</label>
+        <input type="text" id="customerName" placeholder="ادخل اسم الزبون" />
+      </div>
+    </div>
+
     <div class="container">
       <!-- قسم المنتجات -->
       <div class="products">
@@ -123,6 +155,7 @@
               <th>الكمية</th>
               <th>السعر</th>
               <th>الإجمالي</th>
+              <th>اختيار الزجاجة</th>
               <th>حذف</th>
             </tr>
           </thead>
@@ -141,9 +174,9 @@
       <button class="btn" onclick="confirmAddToCart()">إضافة</button>
       <button class="btn" onclick="closeModal()">إلغاء</button>
     </div>
-    <script type="module" src="../js/checkOut.js">
-            import { checkout } from "../js/checkOut.js";
-    </script>
+
+    <script type="module" src="../js/checkOut.js"></script>
+
     <script>
       const baseURL = "http://localhost:5000/api";
       let products = [];
@@ -155,6 +188,10 @@
 
       let selectedProduct = null;
 
+      // بيانات الزبون الحالية
+      let currentCustomer = null;
+
+      // جلب كل المنتجات
       function getAllProducts() {
         fetch(`${baseURL}/products`)
           .then((response) => response.json())
@@ -165,6 +202,7 @@
           .catch((error) => console.error("Error fetching products:", error));
       }
 
+      // عرض المنتجات
       function renderProducts(list) {
         const container = document.getElementById("productList");
         container.innerHTML = "";
@@ -182,6 +220,7 @@
         });
       }
 
+      // فلترة المنتجات
       function filterProducts() {
         const search = document
           .getElementById("searchInput")
@@ -192,6 +231,7 @@
         renderProducts(filtered);
       }
 
+      // فتح مودال إضافة للسلة
       function openModal(productId) {
         selectedProduct = products.find((p) => p._id === productId);
         const content = document.getElementById("modalContent");
@@ -213,12 +253,14 @@
         document.getElementById("overlay").style.display = "block";
       }
 
+      // إغلاق المودال
       function closeModal() {
         document.getElementById("modal").style.display = "none";
         document.getElementById("overlay").style.display = "none";
         selectedProduct = null;
       }
 
+      // تأكيد إضافة للسلة
       function confirmAddToCart() {
         const size = document.getElementById("sizeSelect").value;
         const quantity = parseInt(
@@ -243,10 +285,10 @@
         closeModal();
       }
 
+      // تحديث عنصر في السلة
       function updateCartItem(index, field, value) {
         if (field === "quantity") {
           cart[index].quantity = parseFloat(value);
-          // تأكد إنك تحدث كمية الزجاجة كمان إذا كانت مختارة
           if (cart[index].bottle) {
             cart[index].bottle.quantity = cart[index].quantity;
           }
@@ -263,16 +305,17 @@
         renderCart();
       }
 
+      // جلب الزجاجات
       function getAllBottles() {
         fetch(`${baseURL}/bottles`)
           .then((response) => response.json())
           .then((data) => {
             bottles = data.data;
-            console.log("Fetched bottles:", bottles);
           })
           .catch((error) => console.error("Error fetching bottles:", error));
       }
 
+      // عرض السلة
       function renderCart() {
         const table = document.getElementById("cartTable");
         table.innerHTML = "";
@@ -283,7 +326,6 @@
           total_items += item.quantity;
           total_amount += item.total;
 
-          // الزجاجات اللي نفس حجم المنتج
           const bottleOptions = bottles
             .filter((b) => b.capacity === parseFloat(item.size))
             .map((b) => {
@@ -322,22 +364,60 @@
         ).innerText = `المجموع: ${total_amount.toFixed(2)} JOD`;
       }
 
+      // حذف عنصر من السلة
       function removeItem(index) {
         cart.splice(index, 1);
         renderCart();
       }
 
-      document.getElementById("checkout").onclick = () => {
-        // Validation: check for empty fields in cart
+      // تحقق من الزبون برقم الهاتف
+      async function checkCustomer() {
+        const phone = document.getElementById("customerPhone").value.trim();
+        if (!phone) {
+          alert("يرجى إدخال رقم الهاتف");
+          return;
+        }
+
+        try {
+          const res = await fetch(`${baseURL}/customers/phone/${phone}`);
+          if (res.ok) {
+            const data = await res.json()
+            console.log(data);
+            if (data.customer._id) {
+              currentCustomer = data.customer;
+              console.log(currentCustomer);
+              document.getElementById("customerInfo").innerText =
+                `الزبون موجود: ${currentCustomer.name || "-"}، يمكنك متابعة الطلب.`;
+              document.getElementById("newCustomerForm").style.display = "none";
+            } else {
+              currentCustomer = null;
+              document.getElementById("customerInfo").innerText =
+                "الزبون غير موجود، سيتم إنشاء زبون جديد.";
+              document.getElementById("newCustomerForm").style.display = "block";
+            }
+          } else {
+            currentCustomer = null;
+            document.getElementById("customerInfo").innerText =
+              "حدث خطأ أثناء التحقق من الزبون.";
+            document.getElementById("newCustomerForm").style.display = "none";
+          }
+        } catch (error) {
+          console.error(error);
+          alert("خطأ في الاتصال بالخادم");
+        }
+      }
+
+      // إنهاء الطلب
+      document.getElementById("checkout").onclick = async () => {
+        // التحقق من السلة
         let valid = true;
         let errorMsg = "";
 
         cart.forEach((item, idx) => {
-          if (!item.size || !item.quantity || !item.price) {
+          if (!item.size || !item.quantity) {
             valid = false;
             errorMsg += `يوجد حقل فارغ في المنتج رقم ${idx + 1}\n`;
           }
-          // Bottle selection validation
           if (!item.bottle || !item.bottle.bottle_id) {
             valid = false;
             errorMsg += `يرجى اختيار زجاجة للمنتج رقم ${idx + 1}\n`;
@@ -352,13 +432,47 @@
           return;
         }
 
+        // تحقق من الزبون
+        let customerId = null;
+
+        if (currentCustomer) {
+          customerId = currentCustomer._id;
+        } else {
+          const name = document.getElementById("customerName").value.trim();
+          const phone = document.getElementById("customerPhone").value.trim();
+
+          if (!name) {
+            alert("يرجى إدخال اسم الزبون الجديد");
+            return;
+          }
+
+          
+            const res = await fetch(`${baseURL}/customers`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name, phone }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              console.log(data)
+              customerId = data._id;
+              currentCustomer = data.customer;
+            } else {
+              alert("فشل إنشاء الزبون الجديد");
+              return;
+            }
+        }
+
+        // إرسال الطلب مع customer_id
         checkout({
           products: cart,
           total_items,
           total_price: total_amount,
+          customer_id: customerId,
         });
       };
 
+      // تحميل البيانات الأولية
       getAllProducts();
       getAllBottles();
     </script>

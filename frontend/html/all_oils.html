@@ -93,8 +93,8 @@
     function renderOilCapital(data) {
         const capitalDiv = document.getElementById("capital");
         capitalDiv.innerHTML = `
-            <h3> ${data.quantity}</h3>
-            <h3>${data.capital}</h3>
+            <h3>Oil stock ${data.quantity}ML</h3>
+            <h3>Oil Capital ${Number(data.capital).toFixed(2)}JD</h3>
         `;
         document.body.appendChild(capitalDiv);
     }

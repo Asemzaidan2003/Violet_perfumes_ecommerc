@@ -6,7 +6,7 @@ import {
 
 export async function checkout(cart) {
   const baseURL = "http://localhost:5000/api";
-
+  const customerId = cart.customer_id;
   // Step 1: التأكد من وجود الكمية الكافية
   const isStockValid = await validateStock(cart);
   if (!isStockValid) {
@@ -49,11 +49,16 @@ export async function checkout(cart) {
     );
     const bottleData = await bottleRes.json();
     const bottle_cost = bottleData.data.cost;
+    const bottle = {
+      bottle_id: product.bottle.bottle_id,
+      name: bottleData.data.name,
+      cost: bottleData.data.cost,
+    };
 
     // Fetch كحول
     const alcoholRes = await fetch(`${baseURL}/alcohols`);
     const alcoholData = await alcoholRes.json();
-    const alcohol_cost_per_ml = alcoholData[0].cost / 1000;
+    const alcohol_cost_per_ml = alcoholData[0].cost;
 
     // حساب التكاليف
     const total_oil_ml = (product.oil_percentage / 100) * size * quantity;
@@ -78,6 +83,7 @@ export async function checkout(cart) {
       total_revenue: +total_revenue.toFixed(2),
       total_cost: +total_cost.toFixed(2),
       total_profit: +total_profit.toFixed(2),
+      bottle: bottle,
     });
   }
 
@@ -103,6 +109,7 @@ export async function checkout(cart) {
     order_notes: "", // يمكن إضافتها من فورم لاحقًا
     status: "pending",
     created_by: "admin",
+    customer_id:customerId,
   };
 
   // Step 4: إرسال الطلب للباك إند
@@ -117,7 +124,7 @@ export async function checkout(cart) {
 
     const data = await res.json();
     alert("✅ تم إنشاء الطلب بنجاح!");
-    console.log("🧾 Order created:", data);
+    window.location.reload();
   } catch (err) {
     console.error("❌ Error creating order:", err);
     alert("فشل في تنفيذ الطلب");
@@ -139,40 +146,45 @@ export async function checkout(cart) {
       const alcohol_needed =
         (alcohol_percentage / 100) * bottle_size * quantity;
 
-      const enough_oil_stock = await checkOilStock(product.oil_id, oil_needed);
-      const enough_alcohol_stock = await checkAlcoholStock(alcohol_needed);
+      // Get current stocks
+      let oil_stock = 0,
+        alcohol_stock = 0;
+      try {
+        const oilRes = await fetch(`${baseURL}/oils/${product.oil_id}`);
+        const oilData = await oilRes.json();
+        oil_stock = oilData.data.oil_quantity;
+      } catch (err) {
+        console.error("Error checking oil stock:", err);
+      }
+      try {
+        const alcoholRes = await fetch(`${baseURL}/alcohols`);
+        const alcoholData = await alcoholRes.json();
+        alcohol_stock = alcoholData[0].quantity;
+      } catch (err) {
+        console.error("Error checking alcohol stock:", err);
+      }
+
+      const enough_oil_stock = oil_stock >= oil_needed - 3;
+      const enough_alcohol_stock = alcohol_stock >= alcohol_needed - 3;
 
       if (!enough_oil_stock || !enough_alcohol_stock) {
         allValid = false;
-        alert(`🚫 لا يوجد كمية كافية للعطر: ${product.name}`);
+        let msg = `🚫 لا يوجد كمية كافية للعطر: ${product.name}\n`;
+        if (!enough_oil_stock) {
+          msg += `الزيت المطلوب: ${oil_needed.toFixed(
+            2
+          )} ML | المتوفر: ${oil_stock} ML\n`;
+        }
+        if (!enough_alcohol_stock) {
+          msg += `الكحول المطلوب: ${alcohol_needed.toFixed(
+            2
+          )} ML | المتوفر: ${alcohol_stock} ML\n`;
+        }
+        alert(msg);
       }
     }
 
     return allValid;
-  }
-
-  async function checkOilStock(oil_id, oil_needed) {
-    try {
-      const res = await fetch(`${baseURL}/oils/${oil_id}`);
-      const data = await res.json();
-      const stock = data.data.oil_quantity;
-      return stock >= oil_needed + 3; // +3 احتياطي
-    } catch (err) {
-      console.error("Error checking oil stock:", err);
-      return false;
-    }
-  }
-
-  async function checkAlcoholStock(alcohol_needed) {
-    try {
-      const res = await fetch(`${baseURL}/alcohols`);
-      const data = await res.json();
-      const stock = data[0].quantity;
-      return stock >= alcohol_needed + 3;
-    } catch (err) {
-      console.error("Error checking alcohol stock:", err);
-      return false;
-    }
   }
 }
 

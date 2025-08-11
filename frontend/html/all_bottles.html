@@ -50,6 +50,10 @@
 <body>
     <div id="navbar"></div>
   <h2>جميع الزجاجات</h2>
+    <div style="text-align: center; margin-top: 20px;">
+    <button onclick="fetchCapital()">احسب رأس المال</button>
+    <div id="capitalResult" style="margin-top: 10px; font-weight: bold;"></div>
+  </div>
 
   <div>
     <label>ابحث بالاسم:</label>
@@ -141,6 +145,25 @@
     document.getElementById("searchName").addEventListener("input", filterAndSort);
     document.getElementById("searchId").addEventListener("input", filterAndSort);
     document.getElementById("sortOption").addEventListener("change", filterAndSort);
+
+        async function fetchCapital() {
+      try {
+        const res = await fetch(`${baseURL}/calculate_bottle_capital`);
+        const json = await res.json();
+
+        if (json.success) {
+          const resultDiv = document.getElementById("capitalResult");
+          resultDiv.innerHTML = `إجمالي الكمية: ${json.data.quantity} | رأس المال: ${json.data.capital.toFixed(2)} دينار`;
+        } else {
+          alert("فشل الحساب: ");
+          console.log("Failed to calculate capital:", json.message);
+        }
+      } catch (err) {
+        console.error("خطأ في جلب رأس المال:", err);
+        alert("حدث خطأ أثناء جلب البيانات");
+      }
+    }
+
 
     fetchBottles();
   </script>
