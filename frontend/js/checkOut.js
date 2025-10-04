@@ -64,12 +64,17 @@ export async function checkout(cart) {
     const total_oil_ml = (product.oil_percentage / 100) * size * quantity;
     const total_alcohol_ml =
       (product.alcohol_percentage / 100) * size * quantity;
-
+    
     const total_cost =
       total_oil_ml * oil_cost_per_ml +
       total_alcohol_ml * alcohol_cost_per_ml +
       bottle_cost * quantity;
-
+    console.log("Total Cost Calculation for: ",product.name," ", total_cost);
+    console.log("  Oil Cost for: ",product.name," ", total_oil_ml * oil_cost_per_ml);
+    console.log("  Alcohol Cost for: ",product.name," ", total_alcohol_ml * alcohol_cost_per_ml);
+    console.log("  Alcohol Needed (ML) for: ",product.name," ", total_alcohol_ml);
+    console.log(" Alcohol Cost per ML for: ",product.name," ", alcohol_cost_per_ml);
+    console.log("  Bottle Cost for: ",product.name," ", bottle_cost * quantity);
     const total_revenue = product.price * quantity;
     const total_profit = total_revenue - total_cost;
 

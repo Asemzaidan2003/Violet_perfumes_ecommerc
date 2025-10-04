@@ -119,16 +119,54 @@
     <h2>نظام المبيعات</h2>
 
     <!-- قسم الزبون -->
-    <div class="customer-section" style="margin: 0 auto;">
+    <div class="customer-section" style="margin: 0 auto">
+      <div id="customerModal">
+        <div id="customerModalContent">
+          <h3>اختيار الزبون</h3>
+          <input
+            type="text"
+            id="searchCustomer"
+            placeholder="ابحث باسم الزبون..."
+            style="width: 100%; padding: 8px; margin-bottom: 10px"
+          />
+          <ul
+            id="customerList"
+            style="
+              list-style: none;
+              padding: 0;
+              max-height: 300px;
+              overflow-y: auto;
+            "
+          ></ul>
+          <button
+            onclick="closeCustomerModal()"
+            style="position: absolute; top: 10px; left: 10px"
+          >
+            X
+          </button>
+        </div>
+      </div>
+
       <label for="customerPhone">رقم هاتف الزبون:</label>
       <input type="text" id="customerPhone" placeholder="ادخل رقم الهاتف" />
       <button class="btn" onclick="checkCustomer()">تحقق</button>
-      <div id="customerInfo" style="margin-top:10px; color: green;"></div>
+      <button
+        class="btn"
+        onclick="document.getElementById('customerModal').style.display='block'; getAllCustomers();"
+      >
+        اختيار من القائمة
+      </button>
+      <div id="customerInfo" style="margin-top: 10px; color: green"></div>
 
-      <div id="newCustomerForm" style="display:none; margin-top:10px;">
+      <div id="newCustomerForm" style="display: none; margin-top: 10px">
         <label for="customerName">اسم الزبون:</label>
         <input type="text" id="customerName" placeholder="ادخل اسم الزبون" />
       </div>
+      <input type="hidden" id="customer_id" />
+      <div
+        id="selectedCustomerName"
+        style="margin-top: 10px; color: blue"
+      ></div>
     </div>
 
     <div class="container">
@@ -141,6 +179,9 @@
           placeholder="اكتب اسم المنتج..."
           oninput="filterProducts()"
         />
+        <button class="btn btn-refresh" onclick="getAllProducts()">
+          Refresh
+        </button>
         <div id="productList"></div>
       </div>
 
@@ -370,6 +411,21 @@
         renderCart();
       }
 
+      async function getAllCustomers() {
+        try {
+          const res = await fetch(`${baseURL}/customers`);
+          if (res.ok) {
+            const data = await res.json();
+            window.allCustomers = data; // Store globally
+            renderCustomerList(data);
+          } else {
+            console.error("حدث خطأ أثناء جلب الزبائن.");
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
       // تحقق من الزبون برقم الهاتف
       async function checkCustomer() {
         const phone = document.getElementById("customerPhone").value.trim();
@@ -381,19 +437,23 @@
         try {
           const res = await fetch(`${baseURL}/customers/phone/${phone}`);
           if (res.ok) {
-            const data = await res.json()
+            const data = await res.json();
             console.log(data);
             if (data.customer._id) {
               currentCustomer = data.customer;
               console.log(currentCustomer);
-              document.getElementById("customerInfo").innerText =
-                `الزبون موجود: ${currentCustomer.name || "-"}، يمكنك متابعة الطلب.`;
+              document.getElementById(
+                "customerInfo"
+              ).innerText = `الزبون موجود: ${
+                currentCustomer.name || "-"
+              }، يمكنك متابعة الطلب.`;
               document.getElementById("newCustomerForm").style.display = "none";
             } else {
               currentCustomer = null;
               document.getElementById("customerInfo").innerText =
                 "الزبون غير موجود، سيتم إنشاء زبون جديد.";
-              document.getElementById("newCustomerForm").style.display = "block";
+              document.getElementById("newCustomerForm").style.display =
+                "block";
             }
           } else {
             currentCustomer = null;
@@ -433,7 +493,7 @@
         }
 
         // تحقق من الزبون
-        let customerId = null;
+        let customerId = document.getElementById("customer_id").value || null;
 
         if (currentCustomer) {
           customerId = currentCustomer._id;
@@ -442,25 +502,25 @@
           const phone = document.getElementById("customerPhone").value.trim();
 
           if (!name) {
+            console.log(customerId)
             alert("يرجى إدخال اسم الزبون الجديد");
             return;
           }
 
-          
-            const res = await fetch(`${baseURL}/customers`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name, phone }),
-            });
-            if (res.ok) {
-              const data = await res.json();
-              console.log(data)
-              customerId = data._id;
-              currentCustomer = data.customer;
-            } else {
-              alert("فشل إنشاء الزبون الجديد");
-              return;
-            }
+          const res = await fetch(`${baseURL}/customers`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, phone }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            console.log(data);
+            customerId = data._id;
+            currentCustomer = data.customer;
+          } else {
+            alert("فشل إنشاء الزبون الجديد");
+            return;
+          }
         }
 
         // إرسال الطلب مع customer_id
@@ -471,7 +531,37 @@
           customer_id: customerId,
         });
       };
+      function closeCustomerModal() {
+        document.getElementById("customerModal").style.display = "none";
+      }
+      function renderCustomerList(customers) {
+        const list = document.getElementById("customerList");
+        list.innerHTML = "";
+        customers.forEach((customer) => {
+          const li = document.createElement("li");
+          li.textContent = customer.name;
+          li.addEventListener("click", () => selectCustomer(customer));
+          list.appendChild(li);
+        });
+      }
+      function selectCustomer(customer) {
+        document.getElementById("customer_id").value = customer._id;
+        currentCustomer = customer;
+        document.getElementById(
+          "selectedCustomerName"
+        ).textContent = `تم اختيار: ${customer.name}`;
+        closeCustomerModal();
+      }
 
+      document
+        .getElementById("searchCustomer")
+        .addEventListener("input", function () {
+          const searchTerm = this.value.toLowerCase();
+          const filtered = window.allCustomers.filter((c) =>
+            c.name.toLowerCase().includes(searchTerm)
+          );
+          renderCustomerList(filtered);
+        });
       // تحميل البيانات الأولية
       getAllProducts();
       getAllBottles();
