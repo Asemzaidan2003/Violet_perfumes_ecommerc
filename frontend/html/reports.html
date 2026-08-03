@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>التقارير</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <script src="../js/vendor/chart.umd.min.js"></script>
+</head>
+
+<body>
+  <div id="navbar"></div>
+
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">تحليلات</span>
+        <h2>التقارير</h2>
+      </div>
+    </div>
+
+    <!-- Date range filter (applies to Sales / Products / Customers tabs) -->
+    <div class="filters" id="dateFilters">
+      <label>
+        من تاريخ
+        <input type="date" id="fromDate" />
+      </label>
+      <label>
+        إلى تاريخ
+        <input type="date" id="toDate" />
+      </label>
+      <label>
+        حالة الطلبات
+        <select id="statusFilter">
+          <option value="completed">المكتملة فقط (المبيعات الفعلية)</option>
+          <option value="all">جميع الحالات (عدا الملغاة)</option>
+          <option value="pending">قيد الانتظار</option>
+          <option value="canceled">ملغاة</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="applyDateFilters()">تطبيق</button>
+      </div>
+      <div class="range-presets" id="rangePresets" style="grid-column:1/-1;">
+        <button class="btn btn-ghost btn-sm" data-preset="today">اليوم</button>
+        <button class="btn btn-ghost btn-sm" data-preset="week">هذا الأسبوع</button>
+        <button class="btn btn-ghost btn-sm" data-preset="month">هذا الشهر</button>
+        <button class="btn btn-ghost btn-sm active" data-preset="30d">آخر 30 يوم</button>
+        <button class="btn btn-ghost btn-sm" data-preset="90d">آخر 90 يوم</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="sales">المبيعات</button>
+      <button class="tab-btn" data-tab="products">المنتجات</button>
+      <button class="tab-btn" data-tab="inventory">المخزون</button>
+      <button class="tab-btn" data-tab="customers">العملاء</button>
+    </div>
+
+    <!-- ===================== SALES TAB ===================== -->
+    <div class="tab-panel active" id="tab-sales">
+      <div class="stats" id="salesStats"></div>
+
+      <div class="card card-pad mb-16">
+        <div class="section-title">
+          <h3>اتجاه المبيعات</h3>
+          <label style="display:flex; align-items:center; gap:8px; margin:0;">
+            <span class="sub">تجميع حسب</span>
+            <select id="salesGroupBy" style="width:auto;">
+              <option value="day">يوم</option>
+              <option value="week">أسبوع</option>
+              <option value="month">شهر</option>
+            </select>
+          </label>
+        </div>
+        <div class="chart-wrap tall">
+          <canvas id="salesChart"></canvas>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="section-title" style="padding:16px 16px 0;">
+          <h3>تفاصيل الفترات</h3>
+          <button class="btn btn-ghost btn-sm" onclick="exportSalesCsv()">⬇️ تصدير CSV</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>الفترة</th>
+                <th>المبيعات</th>
+                <th>التكلفة</th>
+                <th>الربح</th>
+                <th>عدد الطلبات</th>
+                <th>متوسط قيمة الطلب</th>
+              </tr>
+            </thead>
+            <tbody id="salesTable">
+              <tr class="loading-row"><td colspan="6"><span class="spinner"></span>جاري التحميل...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PRODUCTS TAB ===================== -->
+    <div class="tab-panel" id="tab-products">
+      <div class="filters">
+        <label>
+          الترتيب حسب
+          <select id="productsSortBy">
+            <option value="revenue">الإيرادات</option>
+            <option value="quantity">الكمية المباعة</option>
+            <option value="profit">الربح</option>
+          </select>
+        </label>
+        <label>
+          عدد المنتجات
+          <select id="productsLimit">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+          </select>
+        </label>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="loadProductsTab()">تحديث</button>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="card card-pad">
+          <div class="section-title"><h3>الأكثر مبيعًا</h3></div>
+          <div class="chart-wrap tall">
+            <canvas id="productsChart"></canvas>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <div class="section-title"><h3>حسب الفئة</h3></div>
+          <div class="chart-wrap tall">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card mb-16">
+        <div class="section-title" style="padding:16px 16px 0;">
+          <h3>تفاصيل المنتجات</h3>
+          <button class="btn btn-ghost btn-sm" onclick="exportProductsCsv()">⬇️ تصدير CSV</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>المنتج</th>
+                <th>الفئة</th>
+                <th>الكمية</th>
+                <th>الإيرادات</th>
+                <th>التكلفة</th>
+                <th>الربح</th>
+                <th>هامش الربح</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable">
+              <tr class="loading-row"><td colspan="7"><span class="spinner"></span>جاري التحميل...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <div class="section-title"><h3>حسب الحجم</h3></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>الحجم</th><th>الكمية المباعة</th><th>الإيرادات</th></tr></thead>
+            <tbody id="sizeTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== INVENTORY TAB ===================== -->
+    <div class="tab-panel" id="tab-inventory">
+      <div class="threshold-row">
+        <div class="field">
+          <label>حد تنبيه الزيت (ML)</label>
+          <input type="number" id="oilThreshold" value="100" min="0" />
+        </div>
+        <div class="field">
+          <label>حد تنبيه الزجاجات (قطعة)</label>
+          <input type="number" id="bottleThreshold" value="20" min="0" />
+        </div>
+        <button class="btn btn-primary" onclick="loadInventoryTab()">تحديث</button>
+      </div>
+
+      <div class="stats" id="inventoryStats"></div>
+
+      <div class="dash-grid halves">
+        <div class="card card-pad">
+          <div class="section-title"><h3>⚠️ زيوت تحتاج إعادة تعبئة</h3></div>
+          <ul class="mini-list" id="lowStockOilsList"></ul>
+        </div>
+        <div class="card card-pad">
+          <div class="section-title"><h3>⚠️ زجاجات تحتاج إعادة تعبئة</h3></div>
+          <ul class="mini-list" id="lowStockBottlesList"></ul>
+        </div>
+      </div>
+
+      <div class="table-card mb-16">
+        <div class="section-title" style="padding:16px 16px 0;">
+          <h3>مخزون الزيوت</h3>
+          <button class="btn btn-ghost btn-sm" onclick="exportOilsCsv()">⬇️ تصدير CSV</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>الاسم</th><th>الكمية</th><th>التكلفة/مل</th><th>القيمة</th><th>الحالة</th></tr></thead>
+            <tbody id="oilsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card mb-16">
+        <div class="section-title" style="padding:16px 16px 0;">
+          <h3>مخزون الزجاجات</h3>
+          <button class="btn btn-ghost btn-sm" onclick="exportBottlesCsv()">⬇️ تصدير CSV</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>الاسم</th><th>السعة</th><th>الكمية</th><th>التكلفة</th><th>القيمة</th></tr></thead>
+            <tbody id="bottlesTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="section-title" style="padding:16px 16px 0;">
+          <h3>الكحول</h3>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>الاسم</th><th>النوع</th><th>الكمية</th><th>التكلفة</th><th>القيمة</th></tr></thead>
+            <tbody id="alcoholTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== CUSTOMERS TAB ===================== -->
+    <div class="tab-panel" id="tab-customers">
+      <div class="stats" id="customersStats"></div>
+
+      <div class="dash-grid">
+        <div class="card card-pad">
+          <div class="section-title"><h3>زبائن جدد خلال الفترة</h3></div>
+          <div class="chart-wrap">
+            <canvas id="newCustomersChart"></canvas>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <div class="section-title"><h3>نوع الزبائن</h3></div>
+          <div class="chart-wrap">
+            <canvas id="customerTypeChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="section-title" style="padding:16px 16px 0;">
+          <h3>أفضل الزبائن</h3>
+          <button class="btn btn-ghost btn-sm" onclick="exportCustomersCsv()">⬇️ تصدير CSV</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>الهاتف</th>
+                <th>النوع</th>
+                <th>عدد الطلبات</th>
+                <th>إجمالي الإنفاق</th>
+                <th>متوسط الطلب</th>
+                <th>آخر طلب</th>
+              </tr>
+            </thead>
+            <tbody id="customersTable">
+              <tr class="loading-row"><td colspan="7"><span class="spinner"></span>جاري التحميل...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/report-utils.js"></script>
+  <script src="../js/reports.js"></script>
+  <script src="../js/navbar.js"></script>
+</body>
+
+</html>

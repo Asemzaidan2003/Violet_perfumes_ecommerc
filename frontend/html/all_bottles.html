@@ -1,87 +1,68 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>عرض جميع الزجاجات</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      direction: rtl;
-      background-color: #f4f4f4;
-      margin: 0;
-    }
-
-    h2 {
-      text-align: center;
-      color: #333;
-    }
-
-    input, select {
-      padding: 8px;
-      margin: 5px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background-color: white;
-    }
-
-    th, td {
-      border: 1px solid #ccc;
-      padding: 10px;
-      text-align: center;
-    }
-
-    th {
-      background-color: #007bff;
-      color: white;
-    }
-
-    tr:nth-child(even) {
-      background-color: #f9f9f9;
-    }
-  </style>
+  <link rel="stylesheet" href="../css/style.css" />
 </head>
-<script src="../js/navbar.js"></script>
 <body>
-    <div id="navbar"></div>
-  <h2>جميع الزجاجات</h2>
-    <div style="text-align: center; margin-top: 20px;">
-    <button onclick="fetchCapital()">احسب رأس المال</button>
-    <div id="capitalResult" style="margin-top: 10px; font-weight: bold;"></div>
+  <div id="navbar"></div>
+
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">المخزون</span>
+        <h2>جميع الزجاجات</h2>
+      </div>
+      <button class="btn btn-secondary" onclick="fetchCapital()">📊 احسب رأس المال</button>
+    </div>
+
+    <div class="stats" id="capitalStats" style="display: none;">
+      <div class="stat-card accent">
+        <div class="label">رأس مال الزجاجات</div>
+        <div class="value" id="capitalResult">0 <small>JOD</small></div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <label>
+        ابحث بالاسم
+        <input type="text" id="searchName" placeholder="اسم الزجاجة" />
+      </label>
+      <label>
+        ابحث بالرقم
+        <input type="text" id="searchId" placeholder="ID" />
+      </label>
+      <label>
+        ترتيب حسب
+        <select id="sortOption">
+          <option value="">-- اختر --</option>
+          <option value="cost">السعر</option>
+          <option value="quantity">الكمية</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>الاسم</th>
+              <th>السعة (ml)</th>
+              <th>السعر</th>
+              <th>الكمية</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="bottleTableBody">
+            <tr class="loading-row"><td colspan="5"><span class="spinner"></span>جاري تحميل الزجاجات...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
-
-  <div>
-    <label>ابحث بالاسم:</label>
-    <input type="text" id="searchName" placeholder="اسم الزجاجة">
-
-    <label>ابحث بالرقم:</label>
-    <input type="text" id="searchId" placeholder="ID">
-
-    <label>ترتيب حسب:</label>
-    <select id="sortOption">
-      <option value="">-- اختر --</option>
-      <option value="cost">السعر</option>
-      <option value="quantity">الكمية</option>
-    </select>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>الاسم</th>
-        <th>السعة (ml)</th>
-        <th>السعر</th>
-        <th>الكمية</th>
-        <th>تعديل</th>
-      </tr>
-    </thead>
-    <tbody id="bottleTableBody"></tbody>
-  </table>
 
   <script>
     const baseURL = 'http://localhost:5000/api/bottles';
@@ -92,7 +73,6 @@
         const res = await fetch(baseURL);
         const json = await res.json();
         allBottles = json.data;
-        console.log("Fetched bottles:", allBottles);
         renderBottles(allBottles);
       } catch (err) {
         console.error("Error fetching bottles:", err);
@@ -101,19 +81,28 @@
 
     function renderBottles(list) {
       const body = document.getElementById("bottleTableBody");
-      body.innerHTML = "";
 
-      list.forEach(bottle => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${bottle.name}</td>
-          <td>${bottle.capacity}</td>
-          <td>${bottle.cost}</td>
-          <td>${bottle.quantity}</td>
-          <td><button onclick="sendBottleId('${bottle._id}')">تعديل</button></td>
-        `;
-        body.appendChild(row);
-      });
+      if (!list.length) {
+        body.innerHTML = `
+          <tr><td colspan="5">
+            <div class="empty-state">
+              <div class="icon">🧴</div>
+              <div class="title">لا توجد زجاجات مطابقة</div>
+              <div>جرّب تعديل البحث</div>
+            </div>
+          </td></tr>`;
+        return;
+      }
+
+      body.innerHTML = list.map(bottle => `
+        <tr>
+          <td class="cell-strong">${bottle.name}</td>
+          <td class="num">${bottle.capacity}</td>
+          <td class="num">${bottle.cost}</td>
+          <td class="num">${bottle.quantity}</td>
+          <td><button class="btn btn-secondary btn-sm" onclick="sendBottleId('${bottle._id}')">تعديل</button></td>
+        </tr>
+      `).join("");
     }
 
     function filterAndSort() {
@@ -138,6 +127,7 @@
 
       renderBottles(filtered);
     }
+
     function sendBottleId(id) {
       window.location.href = `update_bottle.html?id=${id}`;
     }
@@ -146,16 +136,17 @@
     document.getElementById("searchId").addEventListener("input", filterAndSort);
     document.getElementById("sortOption").addEventListener("change", filterAndSort);
 
-        async function fetchCapital() {
+    async function fetchCapital() {
       try {
         const res = await fetch(`${baseURL}/calculate_bottle_capital`);
         const json = await res.json();
 
         if (json.success) {
-          const resultDiv = document.getElementById("capitalResult");
-          resultDiv.innerHTML = `إجمالي الكمية: ${json.data.quantity} | رأس المال: ${json.data.capital.toFixed(2)} دينار`;
+          document.getElementById("capitalStats").style.display = "grid";
+          document.getElementById("capitalResult").innerHTML =
+            `${json.data.quantity} <small>وحدة — ${json.data.capital.toFixed(2)} JOD</small>`;
         } else {
-          alert("فشل الحساب: ");
+          alert("فشل الحساب");
           console.log("Failed to calculate capital:", json.message);
         }
       } catch (err) {
@@ -164,8 +155,8 @@
       }
     }
 
-
     fetchBottles();
   </script>
+  <script src="../js/navbar.js"></script>
 </body>
 </html>

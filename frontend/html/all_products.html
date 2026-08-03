@@ -1,50 +1,61 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>قائمة المنتجات</title>
-  <style>
-    body { font-family: Arial; direction: rtl; margin: 0; background: #f5f5f5; }
-    table { width: 100%; border-collapse: collapse; background: white; }
-    th, td { padding: 10px; border: 1px solid #ddd; text-align: center; vertical-align: middle; }
-    th { background: #333; color: white; }
-    input, select { padding: 8px; margin: 10px; width: 200px; }
-    button { padding: 6px 12px; background: #007bff; color: white; border: none; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    img { width: 60px; height: auto; border-radius: 5px; }
-  </style>
+  <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
-    <div id="navbar"></div>
-  <h2>📦 جميع المنتجات</h2>
+  <div id="navbar"></div>
 
-  <input type="text" id="searchName" placeholder="🔍 ابحث باسم العطر">
-  <input type="text" id="searchCategory" placeholder="🎯 ابحث بالفئة">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">الكتالوج</span>
+        <h2>📦 جميع المنتجات</h2>
+      </div>
+    </div>
 
+    <div class="filters">
+      <label>
+        ابحث باسم العطر
+        <input type="text" id="searchName" placeholder="🔍 اسم العطر" />
+      </label>
+      <label>
+        ابحث بالفئة
+        <input type="text" id="searchCategory" placeholder="🎯 الفئة" />
+      </label>
+    </div>
 
-  <table id="productTable">
-    <thead>
-      <tr>
-        <th>الصورة</th>
-        <th>الاسم</th>
-        <th>الفئة</th>
-        <th>نسب التركيب</th>
-        <th>الحالة</th>
-        <th>الأحجام والأسعار</th>
-        <th>إجراءات</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- يتم ملء المنتجات هنا -->
-    </tbody>
-  </table>
+    <div class="table-card">
+      <div class="table-scroll">
+        <table id="productTable">
+          <thead>
+            <tr>
+              <th>الصورة</th>
+              <th>الاسم</th>
+              <th>الفئة</th>
+              <th>نسب التركيب</th>
+              <th>الحالة</th>
+              <th>الأحجام والأسعار</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="loading-row"><td colspan="7"><span class="spinner"></span>جاري تحميل المنتجات...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <script>
     let productsData = [];
 
     async function fetchProducts() {
       try {
-        const res = await fetch("http://localhost:5000/api/products"); // غيّر الرابط حسب السيرفر تبعك
+        const res = await fetch("http://localhost:5000/api/products");
         const json = await res.json();
         productsData = json.data;
         renderTable(productsData);
@@ -53,30 +64,52 @@
       }
     }
 
+    function statusBadgeClass(status) {
+      if (status === "available") return "badge-available";
+      if (status === "discontinued") return "badge-discontinued";
+      return "badge-out";
+    }
+
+    function statusLabel(status) {
+      if (status === "available") return "متوفر";
+      if (status === "discontinued") return "متوقف";
+      return "غير متوفر";
+    }
+
     function renderTable(data) {
       const tbody = document.querySelector("#productTable tbody");
-      tbody.innerHTML = "";
 
-      data.forEach(product => {
-        const tr = document.createElement("tr");
+      if (!data.length) {
+        tbody.innerHTML = `
+          <tr><td colspan="7">
+            <div class="empty-state">
+              <div class="icon">📦</div>
+              <div class="title">لا توجد منتجات مطابقة</div>
+              <div>جرّب تعديل البحث</div>
+            </div>
+          </td></tr>`;
+        return;
+      }
 
-        const sizesHTML = product.size_list.map(size => {
-          return `<div>${size.size}: ${size.price} د.أ</div>`;
-        }).join("");
+      tbody.innerHTML = data.map(product => {
+        const sizesHTML = product.size_list.map(size =>
+          `<div>${size.size}: ${size.price} د.أ</div>`
+        ).join("");
 
-        tr.innerHTML = `
-          <td><img src="${product.p_image}" alt="${product.p_name}"></td>
-          <td>${product.p_name}</td>
-          <td>${product.p_category}</td>
-          <td>${product.oil_percentage}% زيت / ${product.alcohol_percentage}% كحول</td>
-          <td>${product.status}</td>
-          <td>${sizesHTML}</td>
-          <td>
-            <button onclick="editProduct('${product._id}')">🛠️ تعديل</button>
-          </td>
+        return `
+          <tr>
+            <td><img class="row-thumb" src="${product.p_image}" alt="${product.p_name}"></td>
+            <td class="cell-strong">${product.p_name}</td>
+            <td>${product.p_category}</td>
+            <td class="num">${product.oil_percentage}% زيت / ${product.alcohol_percentage}% كحول</td>
+            <td><span class="badge ${statusBadgeClass(product.status)}">${statusLabel(product.status)}</span></td>
+            <td>${sizesHTML}</td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="editProduct('${product._id}')">🛠️ تعديل</button>
+            </td>
+          </tr>
         `;
-        tbody.appendChild(tr);
-      });
+      }).join("");
     }
 
     document.getElementById("searchName").addEventListener("input", filterProducts);
@@ -98,9 +131,8 @@
       window.location.href = `edit_product.html?id=${encodeURIComponent(id)}`;
     }
 
-
     fetchProducts();
   </script>
-    <script src="../js/navbar.js"></script>
+  <script src="../js/navbar.js"></script>
 </body>
 </html>

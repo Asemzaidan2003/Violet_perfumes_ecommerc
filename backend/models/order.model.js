@@ -59,4 +59,10 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Reporting queries filter/group heavily by these fields (date-range trends,
+// status breakdowns, per-customer aggregates), so index them for performance.
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ customer_id: 1 });
+
 export default mongoose.model("orders", orderSchema);

@@ -1,53 +1,60 @@
-// كود JavaScript لإضافة شريط التنقل ديناميكيًا
-const navbarHTML = `
-  <nav style="
-    background-color: #343a40;
-    color: white;
-    padding: 15px;
-    font-family: Arial, sans-serif;
-  ">
-    <ul style="list-style: none; display: flex; gap: 20px; margin: 0; padding: 0;">
-      <li><a href="index.html" style="color: white; text-decoration: none;">شاشة المبيعات</a></li>
-      <li style="position: relative;">
-        <a href="#" style="color: white; text-decoration: none;">إضافة جديد ▼</a>
-        <ul class="dropdown" style="
-          display: none;
-          position: absolute;
-          background-color: #343a40;
-          list-style: none;
-          margin: 0;
-          padding: 10px;
-          top: 100%;
-          right: 0;
-          min-width: 160px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        ">
-          <li><a href="add_product.html" style="color:white; text-decoration:none; display:block; padding:5px;">إضافة عطر جديد</a></li>
-          <li><a href="add_oil.html" style="color:white; text-decoration:none; display:block; padding:5px;">إضافة زيت جديد</a></li>
-          <li><a href="add_bottle.html" style="color:white; text-decoration:none; display:block; padding:5px;">إضافة زجاجة جديدة</a></li>
-        </ul>
-      </li>
-      <li><a href="orders.html" style="color: white; text-decoration: none;">الطلبات</a></li>
-      <li><a href="all_oils.html" style="color: white; text-decoration: none;">عرض الزيوت</a></li>
-      <li><a href="all_bottles.html" style="color: white; text-decoration: none;">عرض الزجاجات</a></li>
-      <li><a href="all_products.html" style="color: white; text-decoration: none;">عرض المنتجات</a></li>
-    </ul>
-  </nav>
-  <style>
-    nav ul li {
-      position: relative;
-    }
+// شريط التنقل المشترك — يُبنى ديناميكيًا ويعتمد بالكامل على الأصناف
+// (classes) الموجودة في css/style.css بدل الأنماط المضمّنة inline.
 
-    nav ul li:hover .dropdown {
-      display: block !important;
-    }
-  </style>
-`;
+const NAV_LINKS = [
+  { href: "index.html", label: "شاشة المبيعات" },
+  { href: "dashboard.html", label: "لوحة المعلومات" },
+  { href: "reports.html", label: "التقارير" },
+  { href: "orders.html", label: "الطلبات" },
+  { href: "all_oils.html", label: "عرض الزيوت" },
+  { href: "all_bottles.html", label: "عرض الزجاجات" },
+  { href: "all_products.html", label: "عرض المنتجات" },
+];
+
+const ADD_NEW_LINKS = [
+  { href: "add_product.html", label: "إضافة عطر جديد" },
+  { href: "add_oil.html", label: "إضافة زيت جديد" },
+  { href: "add_bottle.html", label: "إضافة زجاجة جديدة" },
+];
+
+function currentPage() {
+  const path = window.location.pathname.split("/").pop();
+  return path || "index.html";
+}
+
+function buildNavbarHTML() {
+  const current = currentPage();
+  const isActive = (href) => (href === current ? " active" : "");
+
+  const mainLinks = NAV_LINKS.map(
+    (link) => `<li><a class="nav-link${isActive(link.href)}" href="${link.href}">${link.label}</a></li>`
+  ).join("");
+
+  const dropdownItems = ADD_NEW_LINKS.map(
+    (link) => `<li><a href="${link.href}">${link.label}</a></li>`
+  ).join("");
+
+  const addNewActive = ADD_NEW_LINKS.some((l) => l.href === current) ? " active" : "";
+
+  return `
+    <nav class="app-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">🧴 إدارة العطور</a>
+        <ul>
+          <li>
+            <a class="nav-link${addNewActive}" href="#">إضافة جديد ▾</a>
+            <ul class="dropdown">${dropdownItems}</ul>
+          </li>
+          ${mainLinks}
+        </ul>
+      </div>
+    </nav>
+  `;
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   const navbarContainer = document.getElementById("navbar");
-  console.log("Navbar container:", navbarContainer);
   if (navbarContainer) {
-    navbarContainer.innerHTML = navbarHTML;
+    navbarContainer.innerHTML = buildNavbarHTML();
   }
 });

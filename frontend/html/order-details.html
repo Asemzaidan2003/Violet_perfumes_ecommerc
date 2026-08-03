@@ -1,149 +1,119 @@
 <!DOCTYPE html>
-<html lang="ar">
-  <head>
-    <meta charset="UTF-8" />
-    <title>تفاصيل الطلب</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        direction: rtl;
-        background-color: #f4f4f4;
-        margin: 0;
-      }
+<html lang="ar" dir="rtl">
 
-      h2 {
-        text-align: center;
-        margin-bottom: 20px;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تفاصيل الطلب</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
 
-      .summary {
-        background: #fff;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 5px #ccc;
-      }
+<body>
+  <div id="navbar"></div>
 
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        background-color: #fff;
-        margin-bottom: 20px;
-        padding: 20px;
-      }
-
-      th, td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: center;
-      }
-
-      th {
-        background-color: #eee;
-      }
-
-      .back-button {
-        display: block;
-        text-align: center;
-        margin-top: 20px;
-      }
-
-      .back-button a {
-        padding: 10px 20px;
-        background-color: #3498db;
-        color: white;
-        text-decoration: none;
-        border-radius: 5px;
-      }
-      .container{
-        padding: 20px;
-      }
-    </style>
-    
-  </head>
-  <body>
-    <div id="navbar"></div>
-    <h2>تفاصيل الطلب</h2>
-    <div class="container">
-    <div class="summary" id="orderSummary"></div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>اسم العطر</th>
-          <th>الحجم</th>
-          <th>الكمية</th>
-          <th>سعر البيع</th>
-          <th>اسم الزجاجة</th>
-          <th>الإيراد</th>
-          <th>الكلفة</th>
-          <th>الربح</th>
-        </tr>
-      </thead>
-      <tbody id="productsTable"></tbody>
-    </table>
-
-    <div class="back-button">
-      <a href="orders.html">🔙 الرجوع إلى الطلبات</a>
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">الطلبات</span>
+        <h2>تفاصيل الطلب</h2>
+      </div>
+      <a href="orders.html" class="btn btn-primary">الرجوع إلى الطلبات</a>
     </div>
-</div>
-    <script>
-      const baseURL = "http://localhost:5000/api";
 
-      async function fetchOrderDetails() {
-        const params = new URLSearchParams(window.location.search);
-        const orderId = params.get("id");
-        if (!orderId) {
-          alert("رقم الطلب غير موجود");
-          return;
-        }
+    <div class="card card-pad mb-16" id="orderSummary">
+      <div class="empty-state" style="padding: 24px;"><span class="spinner"></span>جاري تحميل التفاصيل...</div>
+    </div>
 
-        try {
-          const res = await fetch(`${baseURL}/orders/${orderId}`);
-          const data = await res.json();
-          if (data.success === false) throw new Error("فشل في جلب الطلب");
-          renderOrderDetails(data.data);
-        } catch (err) {
-          console.error("Error:", err);
-          alert("حدث خطأ أثناء تحميل تفاصيل الطلب");
-        }
-      }
-
-      function renderOrderDetails(order) {
-        const summaryDiv = document.getElementById("orderSummary");
-        summaryDiv.innerHTML = `
-          <p><strong>الحالة:</strong> ${order.status}</p>
-          <p><strong>طريقة الدفع:</strong> ${order.payment_method}</p>
-          <p><strong>عدد المنتجات:</strong> ${order.total_items}</p>
-          <p><strong>الإجمالي:</strong> ${order.final_total.toFixed(2)} JOD</p>
-          <p><strong>الربح:</strong> ${order.total_profit.toFixed(2)} JOD</p>
-          <p><strong>لتكلفة الإجمالية :</strong> ${order.total_cost} JOD</p>
-          <p><strong>ملاحظات:</strong> ${order.order_notes || "-"}</p>
-          <p><strong>تاريخ الإنشاء:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-        `;
-
-        const tbody = document.getElementById("productsTable");
-        tbody.innerHTML = "";
-        order.products.forEach((product, index) => {
-          tbody.innerHTML += `
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead>
             <tr>
-              <td>${index + 1}</td>
-              <td>${product.p_name}</td>
-              <td>${product.product_size}</td>
-              <td>${product.quantity}</td>
-              <td>${product.selling_price.toFixed(2)}</td>
-              <td>${product.bottle?.name || "-"}</td>
-              <td>${product.total_revenue.toFixed(2)}</td>
-              <td>${product.total_cost.toFixed(2)}</td>
-              <td>${product.total_profit.toFixed(2)}</td>
+              <th>#</th>
+              <th>اسم العطر</th>
+              <th>الحجم</th>
+              <th>الكمية</th>
+              <th>سعر البيع</th>
+              <th>اسم الزجاجة</th>
+              <th>الإيراد</th>
+              <th>الكلفة</th>
+              <th>الربح</th>
             </tr>
-          `;
-        });
+          </thead>
+          <tbody id="productsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const baseURL = "http://localhost:5000/api";
+
+    async function fetchOrderDetails() {
+      const params = new URLSearchParams(window.location.search);
+      const orderId = params.get("id");
+      if (!orderId) {
+        alert("رقم الطلب غير موجود");
+        return;
       }
 
-      fetchOrderDetails();
-    </script>
-    <script src="../js/navbar.js"></script>
-  </body>
+      try {
+        const res = await fetch(`${baseURL}/orders/${orderId}`);
+        const data = await res.json();
+        if (data.success === false) throw new Error("فشل في جلب الطلب");
+        renderOrderDetails(data.data);
+      } catch (err) {
+        console.error("Error:", err);
+        alert("حدث خطأ أثناء تحميل تفاصيل الطلب");
+      }
+    }
+
+    function statusLabel(status) {
+      const map = {
+        pending: "قيد الانتظار",
+        completed: "مكتمل",
+        canceled: "ملغي",
+        "ready for delivery": "جاهز للتوصيل",
+        "in delivery": "قيد التوصيل",
+        "uncollected payment": "دفعة غير مستلمة",
+      };
+      return map[status] || status;
+    }
+
+    function renderOrderDetails(order) {
+      const summaryDiv = document.getElementById("orderSummary");
+      summaryDiv.innerHTML = `
+        <div class="summary-grid">
+          <div class="item"><div class="label">الحالة</div><div class="val">${statusLabel(order.status)}</div></div>
+          <div class="item"><div class="label">طريقة الدفع</div><div class="val">${order.payment_method}</div></div>
+          <div class="item"><div class="label">عدد المنتجات</div><div class="val num">${order.total_items}</div></div>
+          <div class="item"><div class="label">الإجمالي</div><div class="val num">${order.final_total.toFixed(2)} JOD</div></div>
+          <div class="item"><div class="label">الربح</div><div class="val num">${order.total_profit.toFixed(2)} JOD</div></div>
+          <div class="item"><div class="label">التكلفة الإجمالية</div><div class="val num">${order.total_cost} JOD</div></div>
+          <div class="item"><div class="label">تاريخ الإنشاء</div><div class="val num">${new Date(order.createdAt).toLocaleDateString()}</div></div>
+          <div class="item"><div class="label">ملاحظات</div><div class="val">${order.order_notes || "-"}</div></div>
+        </div>
+      `;
+
+      const tbody = document.getElementById("productsTable");
+      tbody.innerHTML = order.products.map((product, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td class="cell-strong">${product.p_name}</td>
+          <td>${product.product_size}</td>
+          <td>${product.quantity}</td>
+          <td class="num">${product.selling_price.toFixed(2)}</td>
+          <td>${product.bottle?.name || "-"}</td>
+          <td class="num">${product.total_revenue.toFixed(2)}</td>
+          <td class="num">${product.total_cost.toFixed(2)}</td>
+          <td class="num">${product.total_profit.toFixed(2)}</td>
+        </tr>
+      `).join("");
+    }
+
+    fetchOrderDetails();
+  </script>
+  <script src="../js/navbar.js"></script>
+</body>
+
 </html>

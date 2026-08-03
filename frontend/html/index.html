@@ -1,570 +1,482 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <title>شاشة المبيعات</title>
-    <style>
-      body {
-        font-family: "Segoe UI", sans-serif;
-        background-color: #f5f5f5;
-        margin: 0;
-      }
-      h2 {
-        text-align: center;
-        color: #333;
-      }
-      .container {
-        display: flex;
-        gap: 20px;
-        padding: 20px;
-      }
-      .products,
-      .cart {
-        flex: 1;
-        background: #fff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      }
-      .product {
-        border-bottom: 1px solid #ddd;
-        padding: 10px 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .product img {
-        width: 60px;
-        height: 60px;
-        object-fit: cover;
-        border-radius: 8px;
-        margin-left: 10px;
-      }
-      .product-info {
-        display: flex;
-        align-items: center;
-      }
-      .cart table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      .cart th,
-      .cart td {
-        padding: 8px;
-        border-bottom: 1px solid #ccc;
-        text-align: center;
-      }
-      .cart-total {
-        margin-top: 10px;
-        font-weight: bold;
-      }
-      .modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-        z-index: 1000;
-        display: none;
-        min-width: 300px;
-      }
-      .overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: none;
-        z-index: 999;
-      }
-      .btn {
-        padding: 6px 12px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        margin: 5px;
-      }
-      .btn:hover {
-        background: #0056b3;
-      }
-      /* قسم الزبون */
-      .customer-section {
-        background: #fff;
-        padding: 20px;
-        margin: 0 20px 20px 20px;
-        border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        max-width: 600px;
-      }
-      .customer-section input {
-        padding: 6px 10px;
-        font-size: 1rem;
-        margin-left: 10px;
-        width: 200px;
-      }
-      .customer-section label {
-        font-weight: bold;
-      }
-    </style>
-  </head>
-  <body>
-    <script src="../js/navbar.js"></script>
-    <div id="navbar"></div>
-    <h2>نظام المبيعات</h2>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>شاشة المبيعات</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+
+<body>
+  <div id="navbar"></div>
+
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">نقطة البيع</span>
+        <h2>نظام المبيعات</h2>
+      </div>
+    </div>
 
     <!-- قسم الزبون -->
-    <div class="customer-section" style="margin: 0 auto">
-      <div id="customerModal">
-        <div id="customerModalContent">
-          <h3>اختيار الزبون</h3>
-          <input
-            type="text"
-            id="searchCustomer"
-            placeholder="ابحث باسم الزبون..."
-            style="width: 100%; padding: 8px; margin-bottom: 10px"
-          />
-          <ul
-            id="customerList"
-            style="
-              list-style: none;
-              padding: 0;
-              max-height: 300px;
-              overflow-y: auto;
-            "
-          ></ul>
-          <button
-            onclick="closeCustomerModal()"
-            style="position: absolute; top: 10px; left: 10px"
-          >
-            X
-          </button>
+    <div class="card card-pad mb-16">
+      <div class="panel-head">
+        <h3>بيانات الزبون</h3>
+      </div>
+      <div class="field-row" style="align-items:flex-end;">
+        <div class="field" style="margin-bottom:0;">
+          <label for="customerPhone">رقم هاتف الزبون</label>
+          <input type="text" id="customerPhone" placeholder="ادخل رقم الهاتف" />
         </div>
+        <button class="btn btn-primary" onclick="checkCustomer()">تحقق</button>
+        <button class="btn btn-secondary"
+          onclick="document.getElementById('customerModal').classList.add('open'); getAllCustomers();">
+          اختيار من القائمة
+        </button>
       </div>
 
-      <label for="customerPhone">رقم هاتف الزبون:</label>
-      <input type="text" id="customerPhone" placeholder="ادخل رقم الهاتف" />
-      <button class="btn" onclick="checkCustomer()">تحقق</button>
-      <button
-        class="btn"
-        onclick="document.getElementById('customerModal').style.display='block'; getAllCustomers();"
-      >
-        اختيار من القائمة
-      </button>
-      <div id="customerInfo" style="margin-top: 10px; color: green"></div>
+      <div id="customerInfo" class="customer-info-msg"></div>
 
-      <div id="newCustomerForm" style="display: none; margin-top: 10px">
+      <div id="newCustomerForm" class="field mt-16" style="display: none;">
         <label for="customerName">اسم الزبون:</label>
         <input type="text" id="customerName" placeholder="ادخل اسم الزبون" />
       </div>
       <input type="hidden" id="customer_id" />
-      <div
-        id="selectedCustomerName"
-        style="margin-top: 10px; color: blue"
-      ></div>
+      <div id="selectedCustomerName" class="customer-selected-msg"></div>
     </div>
 
-    <div class="container">
+    <div class="pos-layout">
       <!-- قسم المنتجات -->
-      <div class="products">
-        <h3>البحث عن منتج</h3>
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="اكتب اسم المنتج..."
-          oninput="filterProducts()"
-        />
-        <button class="btn btn-refresh" onclick="getAllProducts()">
-          Refresh
-        </button>
-        <div id="productList"></div>
+      <div class="card card-pad">
+        <div class="panel-head">
+          <h3>البحث عن منتج</h3>
+          <button class="btn btn-ghost btn-sm" onclick="getAllProducts()">🔄 تحديث</button>
+        </div>
+        <div class="search-row">
+          <input type="text" id="searchInput" placeholder="اكتب اسم المنتج..." oninput="filterProducts()" />
+        </div>
+        <div class="product-grid" id="productList"></div>
       </div>
 
       <!-- قسم السلة -->
-      <div class="cart">
-        <h3>سلة المشتريات</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>المنتج</th>
-              <th>الحجم</th>
-              <th>الكمية</th>
-              <th>السعر</th>
-              <th>الإجمالي</th>
-              <th>اختيار الزجاجة</th>
-              <th>حذف</th>
-            </tr>
-          </thead>
-          <tbody id="cartTable"></tbody>
-        </table>
-        <div class="cart-total" id="totalPrice">المجموع: 0</div>
-        <button class="btn" id="checkout">إنهاء الطلب</button>
+      <div class="card card-pad">
+        <div class="panel-head">
+          <h3>سلة المشتريات</h3>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>المنتج</th>
+                <th>الحجم</th>
+                <th>الكمية</th>
+                <th>السعر</th>
+                <th>الإجمالي</th>
+                <th>الزجاجة</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cartTable">
+              <tr>
+                <td colspan="7">
+                  <div class="empty-state" style="padding:24px;">
+                    <div class="icon">🛒</div>السلة فارغة
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cart-total-bar">
+          <span class="text-muted" style="font-weight:700;">المجموع</span>
+          <span class="amount" id="totalPrice">0.00 JOD</span>
+        </div>
+        <button class="btn btn-primary btn-block mt-16" id="checkout">إنهاء الطلب</button>
       </div>
     </div>
+  </div>
 
-    <!-- نافذة المودال -->
-    <div class="overlay" id="overlay"></div>
-    <div class="modal" id="modal">
+  <!-- مودال اختيار الزبون -->
+  <div class="modal-overlay" id="customerModal">
+    <div class="modal-box" id="customerModalContent">
+      <button class="modal-close" onclick="closeCustomerModal()">✕</button>
+      <h3>اختيار الزبون</h3>
+      <input type="text" id="searchCustomer" placeholder="ابحث باسم الزبون..." class="mb-16" />
+      <ul id="customerList" class="pick-list"></ul>
+    </div>
+  </div>
+
+  <!-- مودال إضافة للسلة -->
+  <div class="modal-overlay" id="overlay">
+    <div class="modal-box" id="modal">
+      <button class="modal-close" onclick="closeModal()">✕</button>
       <h3>إضافة للسلة</h3>
       <div id="modalContent"></div>
-      <button class="btn" onclick="confirmAddToCart()">إضافة</button>
-      <button class="btn" onclick="closeModal()">إلغاء</button>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="confirmAddToCart()">إضافة</button>
+        <button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+      </div>
     </div>
+  </div>
 
-    <script type="module" src="../js/checkOut.js"></script>
+  <script type="module" src="../js/checkOut.js"></script>
 
-    <script>
-      const baseURL = "http://localhost:5000/api";
-      let products = [];
-      const cart = [];
-      let bottles = [];
+  <script>
+    const baseURL = "http://localhost:5000/api";
+    let products = [];
+    const cart = [];
+    let bottles = [];
 
-      let total_items = 0;
-      let total_amount = 0;
+    let total_items = 0;
+    let total_amount = 0;
 
-      let selectedProduct = null;
+    let selectedProduct = null;
 
-      // بيانات الزبون الحالية
-      let currentCustomer = null;
+    // بيانات الزبون الحالية
+    let currentCustomer = null;
 
-      // جلب كل المنتجات
-      function getAllProducts() {
-        fetch(`${baseURL}/products`)
-          .then((response) => response.json())
-          .then((data) => {
-            products = data.data;
-            renderProducts(products);
-          })
-          .catch((error) => console.error("Error fetching products:", error));
+    // جلب كل المنتجات
+    function getAllProducts() {
+      fetch(`${baseURL}/products`)
+        .then((response) => response.json())
+        .then((data) => {
+          products = data.data;
+          renderProducts(products);
+        })
+        .catch((error) => console.error("Error fetching products:", error));
+    }
+
+    // عرض المنتجات
+    function renderProducts(list) {
+      const container = document.getElementById("productList");
+
+      if (!list.length) {
+        container.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">لا توجد منتجات مطابقة</div>`;
+        return;
       }
 
-      // عرض المنتجات
-      function renderProducts(list) {
-        const container = document.getElementById("productList");
-        container.innerHTML = "";
-        list.forEach((product) => {
-          const div = document.createElement("div");
-          div.className = "product";
-          div.innerHTML = `
-          <div class="product-info">
-            <img src="${product.p_image}" alt="${product.p_name}">
-            <span>${product.p_name}</span>
-          </div>
-          <button class="btn" onclick='openModal("${product._id}")'>أضف</button>
-        `;
-          container.appendChild(div);
-        });
-      }
+      container.innerHTML = list.map((product) => `
+        <div class="product-card">
+          <img src="${product.p_image}" alt="${product.p_name}">
+          <div class="name">${product.p_name}</div>
+          <button class="btn btn-primary btn-sm" onclick='openModal("${product._id}")'>أضف</button>
+        </div>
+      `).join("");
+    }
 
-      // فلترة المنتجات
-      function filterProducts() {
-        const search = document
-          .getElementById("searchInput")
-          .value.toLowerCase();
-        const filtered = products.filter((p) =>
-          p.p_name.toLowerCase().includes(search)
-        );
-        renderProducts(filtered);
-      }
+    // فلترة المنتجات
+    function filterProducts() {
+      const search = document
+        .getElementById("searchInput")
+        .value.toLowerCase();
+      const filtered = products.filter((p) =>
+        p.p_name.toLowerCase().includes(search)
+      );
+      renderProducts(filtered);
+    }
 
-      // فتح مودال إضافة للسلة
-      function openModal(productId) {
-        selectedProduct = products.find((p) => p._id === productId);
-        const content = document.getElementById("modalContent");
-        content.innerHTML = `
-        <label>اختر الحجم:</label>
-        <select id="sizeSelect">
-          ${selectedProduct.size_list
-            .map(
-              (s) =>
-                `<option value="${s.size}">${s.size} - ${s.price} JOD</option>`
-            )
-            .join("")}
-        </select>
-        <br><br>
-        <label>الكمية:</label>
-        <input type="number" id="quantityInput" value="1" min="1" />
+    // فتح مودال إضافة للسلة
+    function openModal(productId) {
+      selectedProduct = products.find((p) => p._id === productId);
+      const content = document.getElementById("modalContent");
+      content.innerHTML = `
+        <div class="field">
+          <label>اختر الحجم</label>
+          <select id="sizeSelect">
+            ${selectedProduct.size_list
+          .map(
+            (s) =>
+              `<option value="${s.size}">${s.size} - ${s.price} JOD</option>`
+          )
+          .join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>الكمية</label>
+          <input type="number" id="quantityInput" value="1" min="1" />
+        </div>
       `;
-        document.getElementById("modal").style.display = "block";
-        document.getElementById("overlay").style.display = "block";
-      }
+      document.getElementById("overlay").classList.add("open");
+    }
 
-      // إغلاق المودال
-      function closeModal() {
-        document.getElementById("modal").style.display = "none";
-        document.getElementById("overlay").style.display = "none";
-        selectedProduct = null;
-      }
+    // إغلاق المودال
+    function closeModal() {
+      document.getElementById("overlay").classList.remove("open");
+      selectedProduct = null;
+    }
 
-      // تأكيد إضافة للسلة
-      function confirmAddToCart() {
-        const size = document.getElementById("sizeSelect").value;
-        const quantity = parseInt(
-          document.getElementById("quantityInput").value
-        );
-        const price = selectedProduct.size_list.find(
-          (s) => s.size === size
-        ).price;
+    // تأكيد إضافة للسلة
+    function confirmAddToCart() {
+      const size = document.getElementById("sizeSelect").value;
+      const quantity = parseInt(
+        document.getElementById("quantityInput").value
+      );
+      const price = selectedProduct.size_list.find(
+        (s) => s.size === size
+      ).price;
 
-        cart.push({
-          id: selectedProduct._id,
-          name: selectedProduct.p_name,
-          size,
-          quantity,
-          price,
-          total: price * quantity,
-          oil_id: selectedProduct.oil_id,
-          oil_percentage: selectedProduct.oil_percentage,
-          alcohol_percentage: selectedProduct.alcohol_percentage,
-        });
-        renderCart();
-        closeModal();
-      }
+      cart.push({
+        id: selectedProduct._id,
+        name: selectedProduct.p_name,
+        size,
+        quantity,
+        price,
+        total: price * quantity,
+        oil_id: selectedProduct.oil_id,
+        oil_percentage: selectedProduct.oil_percentage,
+        alcohol_percentage: selectedProduct.alcohol_percentage,
+      });
+      renderCart();
+      closeModal();
+    }
 
-      // تحديث عنصر في السلة
-      function updateCartItem(index, field, value) {
-        if (field === "quantity") {
-          cart[index].quantity = parseFloat(value);
-          if (cart[index].bottle) {
-            cart[index].bottle.quantity = cart[index].quantity;
-          }
-        } else if (field === "price") {
-          cart[index].price = parseFloat(value);
-        } else if (field === "bottle_id") {
-          cart[index].bottle = {
-            bottle_id: value,
-            quantity: cart[index].quantity,
-          };
+    // تحديث عنصر في السلة
+    function updateCartItem(index, field, value) {
+      if (field === "quantity") {
+        cart[index].quantity = parseFloat(value);
+        if (cart[index].bottle) {
+          cart[index].bottle.quantity = cart[index].quantity;
         }
-
-        cart[index].total = cart[index].quantity * cart[index].price;
-        renderCart();
+      } else if (field === "price") {
+        cart[index].price = parseFloat(value);
+      } else if (field === "bottle_id") {
+        cart[index].bottle = {
+          bottle_id: value,
+          quantity: cart[index].quantity,
+        };
       }
 
-      // جلب الزجاجات
-      function getAllBottles() {
-        fetch(`${baseURL}/bottles`)
-          .then((response) => response.json())
-          .then((data) => {
-            bottles = data.data;
+      cart[index].total = cart[index].quantity * cart[index].price;
+      renderCart();
+    }
+
+    // جلب الزجاجات
+    function getAllBottles() {
+      fetch(`${baseURL}/bottles`)
+        .then((response) => response.json())
+        .then((data) => {
+          bottles = data.data;
+        })
+        .catch((error) => console.error("Error fetching bottles:", error));
+    }
+
+    // عرض السلة
+    function renderCart() {
+      const table = document.getElementById("cartTable");
+      total_items = 0;
+      total_amount = 0;
+
+      if (!cart.length) {
+        table.innerHTML = `<tr><td colspan="7"><div class="empty-state" style="padding:24px;"><div class="icon">🛒</div>السلة فارغة</div></td></tr>`;
+        document.getElementById("totalPrice").innerText = `0.00 JOD`;
+        return;
+      }
+
+      table.innerHTML = cart.map((item, index) => {
+        total_items += item.quantity;
+        total_amount += item.total;
+
+        const bottleOptions = bottles
+          .filter((b) => b.capacity === parseFloat(item.size))
+          .map((b) => {
+            const selected =
+              item.bottle?.bottle_id === b._id ? "selected" : "";
+            return `<option value="${b._id}" ${selected}>${b.name} (المتوفر: ${b.quantity})</option>`;
           })
-          .catch((error) => console.error("Error fetching bottles:", error));
-      }
+          .join("");
 
-      // عرض السلة
-      function renderCart() {
-        const table = document.getElementById("cartTable");
-        table.innerHTML = "";
-        total_items = 0;
-        total_amount = 0;
-
-        cart.forEach((item, index) => {
-          total_items += item.quantity;
-          total_amount += item.total;
-
-          const bottleOptions = bottles
-            .filter((b) => b.capacity === parseFloat(item.size))
-            .map((b) => {
-              const selected =
-                item.bottle?.bottle_id === b._id ? "selected" : "";
-              return `<option value="${b._id}" ${selected}>${b.name} (المتوفر: ${b.quantity})</option>`;
-            })
-            .join("");
-
-          table.innerHTML += `
+        return `
         <tr>
-          <td>${item.name}</td>
+          <td class="cell-strong">${item.name}</td>
           <td>${item.size}</td>
           <td>
-            <input type="number" value="${item.quantity}" min="1"
+            <input class="qty-input" type="number" value="${item.quantity}" min="1"
               onchange="updateCartItem(${index}, 'quantity', this.value)">
           </td>
           <td>
-            <input type="number" value="${item.price}" min="0"
+            <input class="price-input" type="number" value="${item.price}" min="0"
               onchange="updateCartItem(${index}, 'price', this.value)">
           </td>
-          <td>${item.total.toFixed(2)}</td>
+          <td class="num">${item.total.toFixed(2)}</td>
           <td>
             <select onchange="updateCartItem(${index}, 'bottle_id', this.value)">
               <option value="">اختر زجاجة</option>
               ${bottleOptions}
             </select>
           </td>
-          <td><button class="btn" onclick="removeItem(${index})">🗑️</button></td>
+          <td><button class="btn-icon" onclick="removeItem(${index})">🗑️</button></td>
         </tr>
       `;
-        });
+      }).join("");
 
-        document.getElementById(
-          "totalPrice"
-        ).innerText = `المجموع: ${total_amount.toFixed(2)} JOD`;
-      }
+      document.getElementById(
+        "totalPrice"
+      ).innerText = `${total_amount.toFixed(2)} JOD`;
+    }
 
-      // حذف عنصر من السلة
-      function removeItem(index) {
-        cart.splice(index, 1);
-        renderCart();
-      }
+    // حذف عنصر من السلة
+    function removeItem(index) {
+      cart.splice(index, 1);
+      renderCart();
+    }
 
-      async function getAllCustomers() {
-        try {
-          const res = await fetch(`${baseURL}/customers`);
-          if (res.ok) {
-            const data = await res.json();
-            window.allCustomers = data; // Store globally
-            renderCustomerList(data);
-          } else {
-            console.error("حدث خطأ أثناء جلب الزبائن.");
-          }
-        } catch (error) {
-          console.error(error);
+    async function getAllCustomers() {
+      try {
+        const res = await fetch(`${baseURL}/customers`);
+        if (res.ok) {
+          const data = await res.json();
+          window.allCustomers = data; // Store globally
+          renderCustomerList(data);
+        } else {
+          console.error("حدث خطأ أثناء جلب الزبائن.");
         }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    // تحقق من الزبون برقم الهاتف
+    async function checkCustomer() {
+      const phone = document.getElementById("customerPhone").value.trim();
+      if (!phone) {
+        alert("يرجى إدخال رقم الهاتف");
+        return;
       }
 
-      // تحقق من الزبون برقم الهاتف
-      async function checkCustomer() {
-        const phone = document.getElementById("customerPhone").value.trim();
-        if (!phone) {
-          alert("يرجى إدخال رقم الهاتف");
-          return;
-        }
-
-        try {
-          const res = await fetch(`${baseURL}/customers/phone/${phone}`);
-          if (res.ok) {
-            const data = await res.json();
-            console.log(data);
-            if (data.customer._id) {
-              currentCustomer = data.customer;
-              console.log(currentCustomer);
-              document.getElementById(
-                "customerInfo"
-              ).innerText = `الزبون موجود: ${
-                currentCustomer.name || "-"
-              }، يمكنك متابعة الطلب.`;
-              document.getElementById("newCustomerForm").style.display = "none";
-            } else {
-              currentCustomer = null;
-              document.getElementById("customerInfo").innerText =
-                "الزبون غير موجود، سيتم إنشاء زبون جديد.";
-              document.getElementById("newCustomerForm").style.display =
-                "block";
-            }
+      try {
+        const res = await fetch(`${baseURL}/customers/phone/${phone}`);
+        if (res.ok) {
+          const data = await res.json();
+          console.log(data);
+          if (data.customer._id) {
+            currentCustomer = data.customer;
+            console.log(currentCustomer);
+            document.getElementById(
+              "customerInfo"
+            ).innerText = `الزبون موجود: ${currentCustomer.name || "-"
+            }، يمكنك متابعة الطلب.`;
+            document.getElementById("newCustomerForm").style.display = "none";
           } else {
             currentCustomer = null;
             document.getElementById("customerInfo").innerText =
-              "حدث خطأ أثناء التحقق من الزبون.";
-            document.getElementById("newCustomerForm").style.display = "none";
+              "الزبون غير موجود، سيتم إنشاء زبون جديد.";
+            document.getElementById("newCustomerForm").style.display =
+              "block";
           }
-        } catch (error) {
-          console.error(error);
-          alert("خطأ في الاتصال بالخادم");
+        } else {
+          currentCustomer = null;
+          document.getElementById("customerInfo").innerText =
+            "حدث خطأ أثناء التحقق من الزبون.";
+          document.getElementById("newCustomerForm").style.display = "none";
         }
+      } catch (error) {
+        console.error(error);
+        alert("خطأ في الاتصال بالخادم");
+      }
+    }
+
+    // إنهاء الطلب
+    document.getElementById("checkout").onclick = async () => {
+      // التحقق من السلة
+      let valid = true;
+      let errorMsg = "";
+
+      cart.forEach((item, idx) => {
+        if (!item.size || !item.quantity) {
+          valid = false;
+          errorMsg += `يوجد حقل فارغ في المنتج رقم ${idx + 1}\n`;
+        }
+        if (!item.bottle || !item.bottle.bottle_id) {
+          valid = false;
+          errorMsg += `يرجى اختيار زجاجة للمنتج رقم ${idx + 1}\n`;
+        }
+      });
+
+      if (!valid) {
+        alert(
+          errorMsg ||
+          "يرجى تعبئة جميع الحقول واختيار الزجاجة لكل منتج في السلة."
+        );
+        return;
       }
 
-      // إنهاء الطلب
-      document.getElementById("checkout").onclick = async () => {
-        // التحقق من السلة
-        let valid = true;
-        let errorMsg = "";
+      // تحقق من الزبون
+      let customerId = document.getElementById("customer_id").value || null;
 
-        cart.forEach((item, idx) => {
-          if (!item.size || !item.quantity) {
-            valid = false;
-            errorMsg += `يوجد حقل فارغ في المنتج رقم ${idx + 1}\n`;
-          }
-          if (!item.bottle || !item.bottle.bottle_id) {
-            valid = false;
-            errorMsg += `يرجى اختيار زجاجة للمنتج رقم ${idx + 1}\n`;
-          }
-        });
+      if (currentCustomer) {
+        customerId = currentCustomer._id;
+      } else {
+        const name = document.getElementById("customerName").value.trim();
+        const phone = document.getElementById("customerPhone").value.trim();
 
-        if (!valid) {
-          alert(
-            errorMsg ||
-              "يرجى تعبئة جميع الحقول واختيار الزجاجة لكل منتج في السلة."
-          );
+        if (!name) {
+          console.log(customerId)
+          alert("يرجى إدخال اسم الزبون الجديد");
           return;
         }
 
-        // تحقق من الزبون
-        let customerId = document.getElementById("customer_id").value || null;
-
-        if (currentCustomer) {
-          customerId = currentCustomer._id;
+        const res = await fetch(`${baseURL}/customers`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, phone }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          console.log(data);
+          customerId = data._id;
+          currentCustomer = data.customer;
         } else {
-          const name = document.getElementById("customerName").value.trim();
-          const phone = document.getElementById("customerPhone").value.trim();
-
-          if (!name) {
-            console.log(customerId)
-            alert("يرجى إدخال اسم الزبون الجديد");
-            return;
-          }
-
-          const res = await fetch(`${baseURL}/customers`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, phone }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            console.log(data);
-            customerId = data._id;
-            currentCustomer = data.customer;
-          } else {
-            alert("فشل إنشاء الزبون الجديد");
-            return;
-          }
+          alert("فشل إنشاء الزبون الجديد");
+          return;
         }
-
-        // إرسال الطلب مع customer_id
-        checkout({
-          products: cart,
-          total_items,
-          total_price: total_amount,
-          customer_id: customerId,
-        });
-      };
-      function closeCustomerModal() {
-        document.getElementById("customerModal").style.display = "none";
-      }
-      function renderCustomerList(customers) {
-        const list = document.getElementById("customerList");
-        list.innerHTML = "";
-        customers.forEach((customer) => {
-          const li = document.createElement("li");
-          li.textContent = customer.name;
-          li.addEventListener("click", () => selectCustomer(customer));
-          list.appendChild(li);
-        });
-      }
-      function selectCustomer(customer) {
-        document.getElementById("customer_id").value = customer._id;
-        currentCustomer = customer;
-        document.getElementById(
-          "selectedCustomerName"
-        ).textContent = `تم اختيار: ${customer.name}`;
-        closeCustomerModal();
       }
 
-      document
-        .getElementById("searchCustomer")
-        .addEventListener("input", function () {
-          const searchTerm = this.value.toLowerCase();
-          const filtered = window.allCustomers.filter((c) =>
-            c.name.toLowerCase().includes(searchTerm)
-          );
-          renderCustomerList(filtered);
-        });
-      // تحميل البيانات الأولية
-      getAllProducts();
-      getAllBottles();
-    </script>
-  </body>
+      // إرسال الطلب مع customer_id
+      checkout({
+        products: cart,
+        total_items,
+        total_price: total_amount,
+        customer_id: customerId,
+      });
+    };
+    function closeCustomerModal() {
+      document.getElementById("customerModal").classList.remove("open");
+    }
+    function renderCustomerList(customers) {
+      const list = document.getElementById("customerList");
+      list.innerHTML = "";
+      customers.forEach((customer) => {
+        const li = document.createElement("li");
+        li.textContent = customer.name;
+        li.addEventListener("click", () => selectCustomer(customer));
+        list.appendChild(li);
+      });
+    }
+    function selectCustomer(customer) {
+      document.getElementById("customer_id").value = customer._id;
+      currentCustomer = customer;
+      document.getElementById(
+        "selectedCustomerName"
+      ).textContent = `تم اختيار: ${customer.name}`;
+      closeCustomerModal();
+    }
+
+    document
+      .getElementById("searchCustomer")
+      .addEventListener("input", function () {
+        const searchTerm = this.value.toLowerCase();
+        const filtered = window.allCustomers.filter((c) =>
+          c.name.toLowerCase().includes(searchTerm)
+        );
+        renderCustomerList(filtered);
+      });
+    // تحميل البيانات الأولية
+    getAllProducts();
+    getAllBottles();
+    renderCart();
+  </script>
+  <script src="../js/navbar.js"></script>
+</body>
+
 </html>

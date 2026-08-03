@@ -4,20 +4,20 @@ import Product from "../models/product.model.js";
 export const createProduct = async (req, res) => {
     try {
         const {
-          p_name,
-          p_image,
-          size_list,
-          p_category,
-          oil_id,
-          status,
-          p_offer_percentage,
-          oil_percentage,
-          alcohol_percentage,
+            p_name,
+            p_image,
+            size_list,
+            p_category,
+            oil_id,
+            status,
+            p_offer_percentage,
+            oil_percentage,
+            alcohol_percentage,
         } = req.body;
 
         // Validate required fields (p_offer_percentage and status are optional)
         if (!p_name || !p_image || !size_list || !p_category || !oil_id || !oil_percentage || !alcohol_percentage) {
-            return res.status(400).json({success:false , message: "Please provide all required fields" });
+            return res.status(400).json({ success: false, message: "Please provide all required fields" });
         }
 
         // Validate `size_list` structure (should be an array of objects with size & price)
@@ -25,8 +25,8 @@ export const createProduct = async (req, res) => {
             return res.status(400).json({ message: "Invalid size_list format. It should be an array of objects with 'size' and 'price' fields." });
         }
         // A thing to do , don't forget to check if the oil_id is found , then save the data , otherwise it's an error !!
-        
-        
+
+
         // Create a new product
         const newProduct = new Product({
             p_name,
@@ -41,27 +41,27 @@ export const createProduct = async (req, res) => {
         });
 
         await newProduct.save();
-        res.status(201).json({ success:true ,message: "Product created successfully", data: newProduct });
-    
+        res.status(201).json({ success: true, message: "Product created successfully", data: newProduct });
+
     } catch (error) {
-        res.status(500).json({success:false , message: "Server error", error: error.message });
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
 
 //DELETE
-export const deleteProduct = async (req,res)=>{
-    const {id} = req.params;
+export const deleteProduct = async (req, res) => {
+    const { id } = req.params;
 
     try {
         await Product.findByIdAndDelete(id);
         res.status(200).json({
             success: true,
-            message:"Product deleted",
+            message: "Product deleted",
         })
     } catch (error) {
         res.status(404).json({
-            success:false,
-            message:`No product found with this ID: ${id}`, 
+            success: false,
+            message: `No product found with this ID: ${id}`,
         })
     }
 };
@@ -70,7 +70,6 @@ export const deleteProduct = async (req,res)=>{
 export const getProducts = async (req, res) => {
     try {
         const products = await Product.find({});
-        
         if (products.length === 0) {
             return res.status(404).json({
                 success: false,

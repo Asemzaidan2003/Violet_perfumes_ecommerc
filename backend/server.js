@@ -8,8 +8,15 @@ import bottleRouter from './routes/bottle.Routs.js';
 import alcoholRouter from './routes/alcohol.Routs.js';
 import orderRouter from './routes/order.Routs.js';
 import customerRouter from './routes/customer.Routs.js'
+import reportRouter from './routes/report.Routs.js';
 import cors from "cors";
+import dns from "dns";
 
+
+dns.setServers([
+  "8.8.8.8",
+  "1.1.1.1"
+])
 
 dotenv.config();
 const app = express();
@@ -23,6 +30,7 @@ app.use('/api/bottles',bottleRouter);
 app.use('/api/alcohols',alcoholRouter);
 app.use('/api/orders',orderRouter);
 app.use('/api/customers',customerRouter);
+app.use('/api/reports',reportRouter);
 app.listen(port , () => {
     connectDB();
     console.log(`Server Started at port ${port}!!`)
