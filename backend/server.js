@@ -1,39 +1,21 @@
-/*The entery point to the API*/
-import express from "express";
-import dotenv from "dotenv";
-import {connectDB} from './config/db.js';
-import productRouter from './routes/product.Routs.js';
-import oilRouter from './routes/oil.Routs.js';
-import bottleRouter from './routes/bottle.Routs.js';
-import alcoholRouter from './routes/alcohol.Routs.js';
-import orderRouter from './routes/order.Routs.js';
-import customerRouter from './routes/customer.Routs.js'
-import reportRouter from './routes/report.Routs.js';
-import cors from "cors";
-import dns from "dns";
+import "dotenv/config";
+import mongoose from "mongoose";
+import { createApp } from "./app.js";
 
+for (const key of ["MONGO_URI", "SESSION_SECRET"]) {
+  if (!process.env[key]) { console.error(`Missing required env var ${key}`); process.exit(1); }
+}
+if (process.env.SESSION_SECRET.length < 32) {
+  console.error("SESSION_SECRET must be at least 32 characters"); process.exit(1);
+}
 
-dns.setServers([
-  "8.8.8.8",
-  "1.1.1.1"
-])
+await mongoose.connect(process.env.MONGO_URI);
+console.log(`MongoDB connected: ${mongoose.connection.host}`);
+// SEED: Task 2 adds `await seedAdmin();` here.
 
-dotenv.config();
-const app = express();
 const port = process.env.PORT || 3000;
-app.use(cors());
-app.use(express.json())//allows us to accept JSON data in the req.body
-console.log(process.env.MONGO_URI)
-app.use('/api/products',productRouter);
-app.use('/api/oils',oilRouter);
-app.use('/api/bottles',bottleRouter);
-app.use('/api/alcohols',alcoholRouter);
-app.use('/api/orders',orderRouter);
-app.use('/api/customers',customerRouter);
-app.use('/api/reports',reportRouter);
-app.listen(port , () => {
-    connectDB();
-    console.log(`Server Started at port ${port}!!`)
-});
+const server = createApp().listen(port, () => console.log(`Server started on port ${port}`));
 
-
+const shutdown = () => server.close(() => mongoose.disconnect().then(() => process.exit(0)));
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
