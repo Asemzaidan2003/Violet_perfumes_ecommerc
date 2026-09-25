@@ -53,7 +53,7 @@ test("negative stock (owed) is allowed, but negative cost/capacity is still reje
 
 test("500s never leak error details", async () => {
   // duplicate product name → 409 via central handler, not a raw Mongo error
-  const body = JSON.stringify({ p_name: "Dup", p_image: "x", p_category: "c", oil_id: "o1",
+  const body = JSON.stringify({ p_name: "Dup", p_image: "x", p_category: "Men", oil_id: "o1",
     size_list: [{ size: "30ml", price: 10 }], oil_percentage: 20, alcohol_percentage: 80 });
   await api("/products", { method: "POST", body });
   const res = await api("/products", { method: "POST", body });

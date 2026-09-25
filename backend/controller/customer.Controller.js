@@ -1,4 +1,5 @@
 import Customer from "../models/customer.model.js";
+import { normalizePhone } from "../../storefront/js/shared/phone.js";
 
 export const getAllCustomers = async (req, res) => {
   const customers = await Customer.find().sort({ createdAt: -1 });
@@ -35,7 +36,7 @@ export const deleteCustomer = async (req, res) => {
 };
 
 export const getCustomerByPhone = async (req, res) => {
-  const phone = req.params.phone;
+  const phone = normalizePhone(req.params.phone);
   const customer = await Customer.findOne({ phone });
   if (!customer) {
     return res.status(200).json({ message: "الزبون غير موجود" , customer: {_id:null} });

@@ -18,6 +18,7 @@ import { errorHandler } from "./middleware/error.js";
 mongoose.set("runValidators", true);
 
 const frontendDir = fileURLToPath(new URL("../frontend", import.meta.url));
+const storefrontDir = fileURLToPath(new URL("../storefront", import.meta.url));
 
 export function createApp() {
   const app = express();
@@ -57,6 +58,7 @@ export function createApp() {
   app.use("/api", (req, res) => res.status(404).json({ success: false, message: "Not found" }));
 
   app.use("/admin", express.static(frontendDir));
+  app.use("/assets", express.static(storefrontDir));
   app.get("/", (req, res) => res.redirect("/admin/html/index.html")); // storefront takes "/" later
 
   app.use(errorHandler);

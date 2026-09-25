@@ -12,6 +12,11 @@ export const createProduct = async (req, res) => {
         p_offer_percentage,
         oil_percentage,
         alcohol_percentage,
+        description,
+        families,
+        notes,
+        images,
+        keywords,
     } = req.body;
 
     // Validate required fields (p_offer_percentage and status are optional)
@@ -36,7 +41,12 @@ export const createProduct = async (req, res) => {
         oil_percentage,
         alcohol_percentage,
         status,
-        p_offer_percentage: p_offer_percentage || 0
+        p_offer_percentage: p_offer_percentage || 0,
+        description,
+        families,
+        notes,
+        images,
+        keywords,
     });
 
     await newProduct.save();

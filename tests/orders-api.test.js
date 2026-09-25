@@ -15,7 +15,7 @@ before(async () => {
   await Alcohol.create({ name: "Ethanol", type: "perfumer", quantity: 1000, cost: 0.02 });
   const bottle = await Bottle.create({ name: "B30", capacity: 30, cost: 1, quantity: 10 });
   const product = await Product.create({
-    p_name: "Test Perfume", p_image: "x", p_category: "c", oil_id: "OIL1",
+    p_name: "Test Perfume", p_image: "x", p_category: "Men", oil_id: "OIL1",
     size_list: [{ size: "30ml", price: 20 }], oil_percentage: 20, alcohol_percentage: 80,
   });
   ids = { bottle: bottle._id.toString(), product: product._id.toString() };
@@ -29,7 +29,7 @@ const api = (path, method = "GET", body) => fetch(`${t.url}/api${path}`, {
 
 test("POST /api/orders creates a confirmed POS order and reports shortages", async () => {
   const res = await api("/orders", "POST", {
-    products: [{ product_id: ids.product, size: "30ml", quantity: 1, price: 20, bottle_id: ids.bottle }],
+    products: [{ product_id: ids.product, size: "30", quantity: 1, price: 20, bottle_id: ids.bottle }],
     payment_method: "Cash",
   });
   assert.equal(res.status, 201);
@@ -40,7 +40,7 @@ test("POST /api/orders creates a confirmed POS order and reports shortages", asy
 });
 
 test("status rules and confirm endpoint over HTTP", async () => {
-  const { order } = await placeOrder({ products: [{ product_id: ids.product, size: "30ml", quantity: 1 }] }, "online");
+  const { order } = await placeOrder({ products: [{ product_id: ids.product, size: "30", quantity: 1 }] }, "online");
   const blocked = await api(`/orders/${order._id}`, "PUT", { status: "completed" });
   assert.equal(blocked.status, 409);
   assert.deepEqual(Object.keys(await blocked.json()).sort(), ["message", "success"]);
@@ -55,6 +55,6 @@ test("status rules and confirm endpoint over HTTP", async () => {
 });
 
 test("missing status is 400", async () => {
-  const { order } = await placeOrder({ products: [{ product_id: ids.product, size: "30ml", quantity: 1, bottle_id: ids.bottle }] }, "pos");
+  const { order } = await placeOrder({ products: [{ product_id: ids.product, size: "30", quantity: 1, bottle_id: ids.bottle }] }, "pos");
   assert.equal((await api(`/orders/${order._id}`, "PUT", {})).status, 400);
 });

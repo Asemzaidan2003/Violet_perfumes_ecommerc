@@ -14,7 +14,7 @@ before(async () => {
   const alcohol = await Alcohol.create({ name: "Ethanol", type: "perfumer", quantity: 1000, cost: 0.02 });
   const bottle = await Bottle.create({ name: "B30", capacity: 30, cost: 1, quantity: 10 });
   const product = await Product.create({
-    p_name: "Test Perfume", p_image: "x", p_category: "c", oil_id: "OIL1",
+    p_name: "Test Perfume", p_image: "x", p_category: "Men", oil_id: "OIL1",
     size_list: [{ size: "30ml", price: 20 }], oil_percentage: 20, alcohol_percentage: 80,
   });
   ids = { bottle: bottle._id.toString(), alcohol: alcohol._id.toString(), product: product._id.toString() };
@@ -28,7 +28,7 @@ const api = (path, method = "GET", body) => fetch(`${t.url}/api${path}`, {
 
 test("owed oil stock is covered by an additive restock", async () => {
   const sale = await api("/orders", "POST", {
-    products: [{ product_id: ids.product, size: "30ml", quantity: 2, price: 20, bottle_id: ids.bottle }],
+    products: [{ product_id: ids.product, size: "30", quantity: 2, price: 20, bottle_id: ids.bottle }],
     payment_method: "Cash",
   });
   assert.equal(sale.status, 201);

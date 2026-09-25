@@ -22,7 +22,7 @@ beforeEach(async () => {
   const bottle = await Bottle.create({ name: "B30", capacity: 30, cost: 1, quantity: 10 });
   const bottle50 = await Bottle.create({ name: "B50", capacity: 50, cost: 2, quantity: 10 });
   const product = await Product.create({
-    p_name: "Test Perfume", p_image: "x", p_category: "c", oil_id: "OIL1",
+    p_name: "Test Perfume", p_image: "x", p_category: "Men", oil_id: "OIL1",
     size_list: [{ size: "30ml", price: 20 }], oil_percentage: 20, alcohol_percentage: 80,
   });
   ids = { bottle: bottle._id.toString(), bottle50: bottle50._id.toString(), product: product._id.toString() };
@@ -33,7 +33,7 @@ const stock = async () => ({
   alcohol: (await Alcohol.findOne()).quantity,
   bottle: (await Bottle.findById(ids.bottle)).quantity,
 });
-const line = (extra = {}) => ({ product_id: ids.product, size: "30ml", quantity: 2, bottle_id: ids.bottle, ...extra });
+const line = (extra = {}) => ({ product_id: ids.product, size: "30", quantity: 2, bottle_id: ids.bottle, ...extra });
 
 test("POS sale deducts stock and prices/costs server-side", async () => {
   const { order, shortages } = await placeOrder({ products: [line({ total_cost: 999 })] }, "pos");
@@ -162,10 +162,10 @@ const round2 = (n) => Math.round(n * 100) / 100;
 test("per-line and order totals reconcile: total_cost + total_profit equals total_revenue", async () => {
   await Oil.updateOne({ id: "OIL1" }, { oil_cost: 0.335 });
   const product2 = await Product.create({
-    p_name: "Test Perfume 2", p_image: "x", p_category: "c", oil_id: "OIL1",
+    p_name: "Test Perfume 2", p_image: "x", p_category: "Men", oil_id: "OIL1",
     size_list: [{ size: "30ml", price: 20 }], oil_percentage: 30, alcohol_percentage: 70,
   });
-  const l2 = () => ({ product_id: product2._id.toString(), size: "30ml", quantity: 1, bottle_id: ids.bottle });
+  const l2 = () => ({ product_id: product2._id.toString(), size: "30", quantity: 1, bottle_id: ids.bottle });
   const { order } = await placeOrder({ products: [l2(), l2(), l2()] }, "pos");
   for (const l of order.products) {
     assert.equal(round2(l.total_cost + l.total_profit), l.total_revenue);
