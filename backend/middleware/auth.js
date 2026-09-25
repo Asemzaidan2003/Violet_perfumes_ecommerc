@@ -49,7 +49,9 @@ export const cookieOptions = () => ({
 function readCookie(req, name) {
   const pair = (req.headers.cookie || "").split(";").map((s) => s.trim())
     .find((s) => s.startsWith(`${name}=`));
-  return pair ? decodeURIComponent(pair.slice(name.length + 1)) : null;
+  // No decodeURIComponent: the token alphabet (base64url + ".") is never percent-encoded,
+  // and decoding an attacker-controlled cookie can throw URIError on malformed input.
+  return pair ? pair.slice(name.length + 1) : null;
 }
 
 export async function requireAdmin(req, res, next) {

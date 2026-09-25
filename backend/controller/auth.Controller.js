@@ -14,6 +14,12 @@ export const login = async (req, res) => {
     return res.status(429).json({ success: false, message: "Too many attempts, try again later" });
   }
 
+  // Record the attempt synchronously, before any await, so concurrent
+  // requests can't all read the same stale counter and slip past the limit.
+  const entry = active ?? { count: 0, first: now };
+  entry.count++;
+  failures.set(req.ip, entry);
+
   const { username, password } = req.body ?? {};
   if (typeof username !== "string" || typeof password !== "string") {
     return res.status(400).json({ success: false, message: "Username and password are required" });
@@ -21,9 +27,6 @@ export const login = async (req, res) => {
 
   const user = await User.findOne({ username });
   if (!user || !(await verifyPassword(password, user.password_hash))) {
-    const entry = active ?? { count: 0, first: now };
-    entry.count++;
-    failures.set(req.ip, entry);
     return res.status(401).json({ success: false, message: "Invalid username or password" });
   }
 

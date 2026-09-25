@@ -2,6 +2,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startTestApp, loginAs } from "./helpers.js";
 import { hashPassword, verifyPassword, createToken, verifyToken } from "../backend/middleware/auth.js";
+import Product from "../backend/models/product.model.js";
 
 let t;
 before(async () => { t = await startTestApp(); });
@@ -24,9 +25,20 @@ test("token rejects tampering and expiry", () => {
 
 test("protected route needs a session", async () => {
   assert.equal((await fetch(`${t.url}/api/products`)).status, 401);
+  await Product.create({
+    p_name: "test-perfume", p_image: "test.jpg", p_category: "test", oil_id: "000000000000000000000000",
+    size_list: [{ size: "30ml", price: 10 }], oil_percentage: 20, alcohol_percentage: 80,
+  });
   const cookie = await loginAs(t.url);
   const res = await fetch(`${t.url}/api/products`, { headers: { cookie } });
-  assert.notEqual(res.status, 401);
+  assert.equal(res.status, 200);
+});
+
+test("malformed percent-encoded session cookie is rejected, not a 500", async () => {
+  const res = await fetch(`${t.url}/api/products`, {
+    headers: { cookie: "nsamat_session=%E0%A4%A" },
+  });
+  assert.equal(res.status, 401);
 });
 
 test("login rejects bad password and non-string input", async () => {
