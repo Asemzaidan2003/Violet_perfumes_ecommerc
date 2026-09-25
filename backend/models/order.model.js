@@ -36,6 +36,7 @@ const orderSchema = new mongoose.Schema(
         stock: {
           oil_ml: Number,
           alcohol_ml: Number,
+          oil_doc_id: { type: mongoose.Schema.Types.ObjectId },
           alcohol_id: { type: mongoose.Schema.Types.ObjectId },
           bottles: Number,
         },

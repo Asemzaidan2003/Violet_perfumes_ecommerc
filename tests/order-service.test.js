@@ -127,3 +127,28 @@ test("invalid input is rejected with 400", async () => {
   }
   await assert.rejects(placeOrder({ products: [] }, "pos"), { status: 400 });
 });
+
+const round2 = (n) => Math.round(n * 100) / 100;
+
+test("per-line and order totals reconcile: total_cost + total_profit equals total_revenue", async () => {
+  await Oil.updateOne({ id: "OIL1" }, { oil_cost: 0.335 });
+  const product2 = await Product.create({
+    p_name: "Test Perfume 2", p_image: "x", p_category: "c", oil_id: "OIL1",
+    size_list: [{ size: "30ml", price: 20 }], oil_percentage: 30, alcohol_percentage: 70,
+  });
+  const l2 = () => ({ product_id: product2._id.toString(), size: "30ml", quantity: 1, bottle_id: ids.bottle });
+  const { order } = await placeOrder({ products: [l2(), l2(), l2()] }, "pos");
+  for (const l of order.products) {
+    assert.equal(round2(l.total_cost + l.total_profit), l.total_revenue);
+    assert.equal(l.total_cost, 4.44);
+    assert.equal(l.total_profit, 15.56);
+  }
+  assert.equal(round2(order.total_cost + order.total_profit), order.total_revenue);
+});
+
+test("cancel refunds oil by its stable _id even if the oil's custom id was renamed", async () => {
+  const { order } = await placeOrder({ products: [line()] }, "pos");
+  await Oil.updateOne({ id: "OIL1" }, { id: "OIL1-RENAMED" });
+  await changeStatus(order._id, "canceled");
+  assert.equal((await Oil.findOne({ id: "OIL1-RENAMED" })).oil_quantity, 100);
+});

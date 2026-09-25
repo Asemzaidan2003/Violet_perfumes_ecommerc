@@ -96,10 +96,10 @@ async function deductAndCost(order, session) {
 
     const cost = line.oil_ml * oil.doc.oil_cost + line.alcohol_ml * alcohol.doc.cost + line.quantity * bottle.doc.cost;
     line.bottle = { bottle_id: bottle.doc._id, name: bottle.doc.name, cost: bottle.doc.cost };
-    line.stock = { oil_ml: oil.taken, alcohol_ml: alcohol.taken, alcohol_id: alcohol.doc._id, bottles: bottle.taken };
+    line.stock = { oil_ml: oil.taken, alcohol_ml: alcohol.taken, oil_doc_id: oil.doc._id, alcohol_id: alcohol.doc._id, bottles: bottle.taken };
     line.total_cost = round2(cost);
     line.cost_price = round2(cost / line.quantity);
-    line.total_profit = round2(line.total_revenue - cost);
+    line.total_profit = round2(line.total_revenue - line.total_cost);
   }
   order.stock_deducted = true;
   setTotals(order);
@@ -111,7 +111,7 @@ async function restock(order, session) {
   for (const line of order.products) {
     const s = line.stock;
     if (s?.bottles == null) continue; // legacy line: the deducted amounts were never recorded
-    await Oil.updateOne({ id: line.oil_id }, { $inc: { oil_quantity: s.oil_ml } }, { session });
+    await Oil.updateOne({ _id: s.oil_doc_id }, { $inc: { oil_quantity: s.oil_ml } }, { session });
     await Alcohol.updateOne({ _id: s.alcohol_id }, { $inc: { quantity: s.alcohol_ml } }, { session });
     await Bottle.updateOne({ _id: line.bottle.bottle_id }, { $inc: { quantity: s.bottles } }, { session });
   }
