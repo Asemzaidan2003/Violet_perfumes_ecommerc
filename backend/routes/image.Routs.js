@@ -13,6 +13,9 @@ router.get("/:file", async (req, res) => {
   if (!img || EXT[img.type] !== m[3]) return res.status(404).end();
   const useThumb = Boolean(m[2] && img.thumb);
   res.set("Cache-Control", "public, max-age=31536000, immutable");
+  // Defense in depth: sniffImage can be fooled by a PNG-signature+HTML polyglot, so pin these too — uploaded bytes can then never execute as a document, even if a browser mis-renders the declared type.
+  res.set("X-Content-Type-Options", "nosniff");
+  res.set("Content-Security-Policy", "default-src 'none'; sandbox");
   res.type(useThumb ? img.thumb_type : img.type).send(useThumb ? img.thumb : img.full);
 });
 

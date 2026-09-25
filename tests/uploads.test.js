@@ -60,6 +60,19 @@ test("thumb upload is stored and served", async () => {
   assert.deepEqual(Buffer.from(await thumb.arrayBuffer()), JPEG);
 });
 
+test("served images carry nosniff and a locked-down CSP", async () => {
+  const { data } = await (await up(PNG, "image/png")).json();
+  const res = await fetch(`${t.url}${data.url}`);
+  assert.equal(res.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(res.headers.get("content-security-policy"), "default-src 'none'; sandbox");
+});
+
+test("a stored image requested with the wrong extension is 404", async () => {
+  const { data } = await (await up(PNG, "image/png")).json();
+  const wrongExt = data.url.replace(/\.png$/, ".jpg");
+  assert.equal((await fetch(`${t.url}${wrongExt}`)).status, 404);
+});
+
 test("unknown or malformed image paths are 404", async () => {
   assert.equal((await fetch(`${t.url}/img/64b7f0000000000000000000.png`)).status, 404);
   assert.equal((await fetch(`${t.url}/img/../../etc/passwd`)).status, 404);
