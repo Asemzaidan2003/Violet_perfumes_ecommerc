@@ -10,6 +10,8 @@ import alcoholRouter from "./routes/alcohol.Routs.js";
 import orderRouter from "./routes/order.Routs.js";
 import customerRouter from "./routes/customer.Routs.js";
 import reportRouter from "./routes/report.Routs.js";
+import authRouter from "./routes/auth.Routs.js";
+import { requireAdmin } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
 
 // Update queries (findByIdAndUpdate etc.) validate against the schema too.
@@ -41,7 +43,8 @@ export function createApp() {
   app.get("/api/health", (req, res) => {
     res.json({ ok: true, db: mongoose.connection.readyState === 1 });
   });
-  // AUTH: Task 2 mounts /api/auth and requireAdmin here.
+  app.use("/api/auth", authRouter);
+  app.use("/api", requireAdmin); // everything below is admin-only; storefront adds public routes above this line
 
   app.use("/api/products", productRouter);
   app.use("/api/oils", oilRouter);

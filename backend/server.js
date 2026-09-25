@@ -1,6 +1,7 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import { createApp } from "./app.js";
+import { seedAdmin } from "./controller/auth.Controller.js";
 
 for (const key of ["MONGO_URI", "SESSION_SECRET"]) {
   if (!process.env[key]) { console.error(`Missing required env var ${key}`); process.exit(1); }
@@ -11,7 +12,7 @@ if (process.env.SESSION_SECRET.length < 32) {
 
 await mongoose.connect(process.env.MONGO_URI);
 console.log(`MongoDB connected: ${mongoose.connection.host}`);
-// SEED: Task 2 adds `await seedAdmin();` here.
+await seedAdmin();
 
 const port = process.env.PORT || 3000;
 const server = createApp().listen(port, () => console.log(`Server started on port ${port}`));

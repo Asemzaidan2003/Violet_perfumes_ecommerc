@@ -12,9 +12,9 @@ test("health reports db connected", async () => {
   assert.deepEqual(await res.json(), { ok: true, db: true });
 });
 
-test("unknown api route is JSON 404", async () => {
+test("unknown api route without session is 401", async () => {
   const res = await fetch(`${t.url}/api/nope`);
-  assert.equal(res.status, 404);
+  assert.equal(res.status, 401);
   assert.equal((await res.json()).success, false);
 });
 
