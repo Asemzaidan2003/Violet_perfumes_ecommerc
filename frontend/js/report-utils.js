@@ -84,6 +84,16 @@ async function apiGet(path) {
   return json.data;
 }
 
+async function apiPut(path, body) {
+  const res = await fetch(`${baseURL}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Request failed: ${path} (${res.status})`);
+  return res.json();
+}
+
 // Builds a small "YYYY-MM-DD" string from a Date, using local time (not UTC)
 function toDateInputValue(d) {
   const x = new Date(d);

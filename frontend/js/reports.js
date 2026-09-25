@@ -369,21 +369,59 @@ function renderBottlesTable(bottles) {
       .join("") || `<tr><td colspan="5"><div class="empty-state">لا توجد بيانات</div></td></tr>`;
 }
 
+let _lastAlcohol = [];
+
 function renderAlcoholTable(alcohol) {
+  _lastAlcohol = alcohol;
   const tbody = document.getElementById("alcoholTable");
   tbody.innerHTML =
     alcohol
       .map(
         (a) => `
-    <tr>
+    <tr id="alcohol-row-${a.id}">
       <td class="cell-strong">${a.name}</td>
       <td>${a.type}</td>
       <td class="num">${num(a.quantity)}</td>
       <td class="num">${money(a.cost)}</td>
       <td class="num">${money(a.value)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="editAlcoholRow('${a.id}')">✏️ تعديل</button></td>
     </tr>`
       )
-      .join("") || `<tr><td colspan="5"><div class="empty-state">لا توجد بيانات</div></td></tr>`;
+      .join("") || `<tr><td colspan="6"><div class="empty-state">لا توجد بيانات</div></td></tr>`;
+}
+
+function editAlcoholRow(id) {
+  const a = _lastAlcohol.find((x) => String(x.id) === String(id));
+  if (!a) return;
+  const row = document.getElementById(`alcohol-row-${id}`);
+  row.innerHTML = `
+    <td><input type="text" id="alcohol-name-${id}" value="${a.name}"></td>
+    <td><input type="text" id="alcohol-type-${id}" value="${a.type}"></td>
+    <td><input type="number" id="alcohol-quantity-${id}" value="${a.quantity}"></td>
+    <td><input type="number" step="0.01" id="alcohol-cost-${id}" value="${a.cost}"></td>
+    <td class="num">${money(a.value)}</td>
+    <td>
+      <button class="btn btn-primary btn-sm" onclick="saveAlcoholRow('${id}')">💾 حفظ</button>
+      <button class="btn btn-ghost btn-sm" onclick="renderAlcoholTable(_lastAlcohol)">✖️ إلغاء</button>
+    </td>`;
+}
+
+async function saveAlcoholRow(id) {
+  const name = document.getElementById(`alcohol-name-${id}`).value.trim();
+  const type = document.getElementById(`alcohol-type-${id}`).value.trim();
+  const quantity = Number(document.getElementById(`alcohol-quantity-${id}`).value);
+  const cost = Number(document.getElementById(`alcohol-cost-${id}`).value);
+  if (!name || !type || Number.isNaN(quantity) || Number.isNaN(cost)) {
+    alert("يرجى تعبئة جميع الحقول بشكل صحيح");
+    return;
+  }
+  try {
+    await apiPut(`/alcohols/${id}`, { name, type, quantity, cost });
+    await loadInventoryTab();
+  } catch (err) {
+    console.error("Error updating alcohol:", err);
+    alert("تعذر حفظ التعديلات");
+  }
 }
 
 function exportOilsCsv() {

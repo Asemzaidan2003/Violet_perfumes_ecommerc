@@ -8,6 +8,6 @@ const router = express.Router();
 
 router.get('/', getAlcohol);
 router.post('/', addAlcohol);
-router.put('/', updateAlcohol);
+router.put('/:id', updateAlcohol);
 
 export default router;

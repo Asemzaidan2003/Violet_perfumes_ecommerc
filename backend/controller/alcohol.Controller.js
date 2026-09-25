@@ -21,7 +21,7 @@ export const getAlcohol = async (req, res) => {
 
 export const updateAlcohol = async (req, res) => {
   try {
-    const alcohol = await Alcohol.findOneAndUpdate({}, req.body, { new: true });
+    const alcohol = await Alcohol.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!alcohol) {
       return res.status(404).json({ message: "Alcohol not found" });
     }
