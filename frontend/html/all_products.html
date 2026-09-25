@@ -100,7 +100,7 @@
         return `
           <tr>
             <td><img class="row-thumb" src="${product.p_image}" alt="${product.p_name}"></td>
-            <td class="cell-strong">${product.p_name}</td>
+            <td class="cell-strong">${product.p_name}${String(product.p_image).startsWith("/img/") ? "" : ' <span class="badge badge-pending">بدون صورة خاصة</span>'}</td>
             <td>${product.p_category}</td>
             <td class="num">${product.oil_percentage}% زيت / ${product.alcohol_percentage}% كحول</td>
             <td><span class="badge ${statusBadgeClass(product.status)}">${statusLabel(product.status)}</span></td>

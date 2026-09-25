@@ -28,6 +28,7 @@ const NAV_LINKS = [
   { href: "all_oils.html", label: "عرض الزيوت" },
   { href: "all_bottles.html", label: "عرض الزجاجات" },
   { href: "all_products.html", label: "عرض المنتجات" },
+  { href: "catalog.html", label: "تصنيف المنتجات" },
 ];
 
 const ADD_NEW_LINKS = [
