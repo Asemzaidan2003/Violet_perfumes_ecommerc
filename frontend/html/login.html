@@ -7,17 +7,33 @@
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
-  <main class="container">
-    <h1>تسجيل الدخول</h1>
-    <form id="loginForm">
-      <label for="username">اسم المستخدم</label>
-      <input id="username" name="username" autocomplete="username" required />
-      <label for="password">كلمة المرور</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required />
+  <div class="page page-narrow">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">إدارة العطور</span>
+        <h2>تسجيل الدخول</h2>
+      </div>
+    </div>
+
+    <form id="loginForm" class="form-card">
+      <div class="field">
+        <label for="username">اسم المستخدم</label>
+        <input type="text" id="username" name="username" autocomplete="username" required />
+      </div>
+
+      <div class="field">
+        <label for="password">كلمة المرور</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required />
+      </div>
+
       <p id="error" role="alert" hidden></p>
-      <button type="submit">دخول</button>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-block">دخول</button>
+      </div>
     </form>
-  </main>
+  </div>
+
   <script>
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();

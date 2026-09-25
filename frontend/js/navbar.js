@@ -1,6 +1,24 @@
 // شريط التنقل المشترك — يُبنى ديناميكيًا ويعتمد بالكامل على الأصناف
 // (classes) الموجودة في css/style.css بدل الأنماط المضمّنة inline.
 
+// يعترض كل نداءات fetch: أي 401 من /api/* (باستثناء تسجيل الدخول) يعيد التوجيه
+// فورًا لصفحة الدخول، بدل ترك صفحات البيانات تعرض أخطاء قبل أن يلحقها navbar.js.
+const originalFetch = window.fetch;
+window.fetch = async function (input, init) {
+  const response = await originalFetch(input, init);
+  const rawUrl = typeof input === "string" ? input : input.url;
+  const url = new URL(rawUrl, location.href);
+  if (
+    response.status === 401 &&
+    url.origin === location.origin &&
+    url.pathname.startsWith("/api/") &&
+    url.pathname !== "/api/auth/login"
+  ) {
+    location.replace("login.html");
+  }
+  return response;
+};
+
 const NAV_LINKS = [
   { href: "index.html", label: "شاشة المبيعات" },
   { href: "dashboard.html", label: "لوحة المعلومات" },
