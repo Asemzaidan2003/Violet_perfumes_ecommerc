@@ -1,4 +1,5 @@
 import Product from "../models/product.model.js";
+import { invalidateCatalog } from "../store/catalog.js";
 
 // POST Product
 export const createProduct = async (req, res) => {
@@ -50,6 +51,7 @@ export const createProduct = async (req, res) => {
     });
 
     await newProduct.save();
+    invalidateCatalog();
     res.status(201).json({ success: true, message: "Product created successfully", data: newProduct });
 };
 
@@ -64,6 +66,7 @@ export const deleteProduct = async (req, res) => {
             message: `No product found with this ID: ${id}`,
         });
     }
+    invalidateCatalog();
     res.status(200).json({
         success: true,
         message: "Product deleted",
@@ -124,6 +127,7 @@ export const updateProduct = async (req, res) => {
         });
     }
 
+    invalidateCatalog();
     res.status(200).json({
         success: true,
         message: "Product updated successfully",

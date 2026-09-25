@@ -16,6 +16,8 @@ import reportRouter from "./routes/report.Routs.js";
 import authRouter from "./routes/auth.Routs.js";
 import uploadRouter from "./routes/upload.Routs.js";
 import imageRouter from "./routes/image.Routs.js";
+import storeRouter from "./routes/store.Routs.js";
+import adminSettingsRouter from "./routes/admin.Routs.js";
 import { requireAdmin } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
 
@@ -60,6 +62,7 @@ export function createApp({ limits = {} } = {}) {
     res.json({ ok: true, db: mongoose.connection.readyState === 1 });
   });
   app.use("/api/auth", authRouter);
+  app.use("/api/store", storeRouter); // public storefront API — must stay above the requireAdmin gate below
   app.use("/api", requireAdmin); // everything below is admin-only; storefront adds public routes above this line
 
   app.use("/api/products", productRouter);
@@ -70,6 +73,7 @@ export function createApp({ limits = {} } = {}) {
   app.use("/api/customers", customerRouter);
   app.use("/api/reports", reportRouter);
   app.use("/api/uploads", uploadRouter);
+  app.use("/api/settings", adminSettingsRouter);
   app.use("/api", (req, res) => res.status(404).json({ success: false, message: "Not found" }));
 
   app.get("/admin", (req, res) => res.redirect("/admin/html/index.html"));

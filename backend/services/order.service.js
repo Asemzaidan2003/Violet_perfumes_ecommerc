@@ -5,6 +5,7 @@ import Oil from "../models/oil.model.js";
 import Bottle from "../models/bottle.model.js";
 import Alcohol from "../models/alcohol.model.js";
 import { normalizeSize } from "../../storefront/js/shared/vocab.js";
+import { effectivePrice } from "../catalog/pricing.js";
 
 // Business rule: an order is never blocked for stock. Stock is deducted only when an
 // order is confirmed through the POS; it may go negative (what the shop owes) and any
@@ -44,9 +45,7 @@ async function priceLines(items, source, session) {
     if (!listed || !(ml > 0)) throw fail(400, `السطر ${n}: الحجم "${item.size}" غير متوفر للعطر ${product.p_name}`);
 
     const override = source === "pos" && item.price != null && item.price !== "";
-    const price = override
-      ? Number(item.price)
-      : round2(listed.price * (1 - (product.p_offer_percentage || 0) / 100));
+    const price = override ? Number(item.price) : effectivePrice(product, listed);
     if (!Number.isFinite(price) || price < 0) throw fail(400, `السطر ${n}: السعر غير صالح`);
 
     lines.push({
