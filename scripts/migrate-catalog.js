@@ -3,6 +3,12 @@
 //   node scripts/migrate-catalog.js --apply    (writes EJSON backups to backups/, then updates)
 // Deploy order: stop the app → run with --apply → start the new code
 // (the new category enum rejects edits of un-migrated products).
+//
+// Restore from a backup:
+//   mongoimport --uri "$MONGO_URI" --collection products --jsonArray --drop --file backups/products-<stamp>.json
+//   mongoimport --uri "$MONGO_URI" --collection customers --jsonArray --drop --file backups/customers-<stamp>.json
+// --drop removes indexes (Mongoose rebuilds them when the app starts).
+// Run --apply from a machine that keeps backups/ (hosted disks are wiped on deploy).
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
@@ -29,8 +35,13 @@ export async function migrateCatalog(db, { apply = false, backupDir = "backups",
     const set = {};
     const isTest = String(p.p_name).trim().toLowerCase() === "test";
     const raw = String(p.p_category ?? "").trim().toLowerCase();
-    const category = isTest ? "Unisex" : CATEGORY_MAP[raw] ?? "Unisex";
-    if (!isTest && !CATEGORY_MAP[raw]) review.push(`category needs review: ${p._id} ${p.p_name} "${p.p_category}" → Unisex`);
+    // Object.hasOwn, not `CATEGORY_MAP[raw]` truthiness: a raw value like "constructor" or
+    // "__proto__" is not an own key but resolves via the prototype chain to an inherited
+    // Object.prototype value, which is truthy — silently corrupting p_category instead of
+    // falling through to "Unisex" + review.
+    const known = Object.hasOwn(CATEGORY_MAP, raw);
+    const category = !isTest && known ? CATEGORY_MAP[raw] : "Unisex";
+    if (!isTest && !known) review.push(`category needs review: ${p._id} ${p.p_name} "${p.p_category}" → Unisex`);
     if (category !== p.p_category) set.p_category = category;
     if (isTest && p.status !== "discontinued") set.status = "discontinued";
 
@@ -55,6 +66,9 @@ export async function migrateCatalog(db, { apply = false, backupDir = "backups",
     }
   }
 
+  // Group ALL customers (not just the ones whose phone changes) by normalised phone, so a
+  // number that was already stored normalised still counts toward its group.
+  const phoneGroups = new Map();
   for (const c of customers) {
     const phone = normalizePhone(c.phone);
     if (!isJordanMobile(phone)) { review.push(`phone not a Jordan mobile (left as is): ${c._id} ${c.name} "${c.phone}"`); continue; }
@@ -62,22 +76,53 @@ export async function migrateCatalog(db, { apply = false, backupDir = "backups",
       changes.push({ collection: "customers", _id: c._id, name: c.name, field: "phone", from: c.phone, to: phone });
       updates.push(["customers", { _id: c._id, phone: c.phone }, { $set: { phone } }]);
     }
+    if (!phoneGroups.has(phone)) phoneGroups.set(phone, []);
+    phoneGroups.get(phone).push(c);
+  }
+  for (const [phone, group] of phoneGroups) {
+    if (group.length > 1) {
+      const who = group.map((c) => `${c._id} ${c.name}`).join(", ");
+      review.push(`phone shared by ${group.length} customers (the POS lookup returns only the first): ${phone} — ${who}`);
+    }
   }
 
   const backups = [];
+  let applied = 0;
+  let skipped = 0;
   if (apply && updates.length) {
     fs.mkdirSync(backupDir, { recursive: true });
+    // "wx": never overwrite a backup. A second run that collides on the same second's
+    // stamp throws here, before any update runs.
     for (const [name, docs] of [["products", products], ["customers", customers]]) {
       const file = path.join(backupDir, `${name}-${stamp(now)}.json`);
-      fs.writeFileSync(file, mongoose.mongo.BSON.EJSON.stringify(docs, { relaxed: false }));
+      fs.writeFileSync(file, mongoose.mongo.BSON.EJSON.stringify(docs, { relaxed: false }), { flag: "wx" });
       backups.push(file);
     }
+    // Crash-safe report: the plan (changes, review, backup paths) is durable on disk before
+    // a single update runs, so a crash mid-migration still leaves a record of what was
+    // intended and where the pre-migration data is.
+    const reportLines = [
+      `Catalogue migration report — ${now.toISOString()}`,
+      "",
+      "Planned changes:",
+      ...changes.map((c) => `${c.collection} ${c._id} ${c.name}: ${c.field} ${JSON.stringify(c.from)} → ${JSON.stringify(c.to)}`),
+      "",
+      "Review:",
+      ...review,
+      "",
+      "Backups:",
+      ...backups,
+      "",
+    ];
+    fs.writeFileSync(path.join(backupDir, `report-${stamp(now)}.txt`), reportLines.join("\n"), { flag: "wx" });
+
     for (const [collection, filter, update] of updates) {
       const r = await db.collection(collection).updateOne(filter, update);
-      if (r.matchedCount === 0) review.push(`skipped (changed since read): ${collection} ${filter._id}`);
+      if (r.matchedCount === 0) { skipped++; review.push(`skipped (changed since read): ${collection} ${filter._id}`); }
+      else applied++;
     }
   }
-  return { changes, review, backups };
+  return { changes, review, backups, applied, skipped };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -85,9 +130,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   await mongoose.connect(process.env.MONGO_URI);
   const { host, name } = mongoose.connection;
   console.log(`${apply ? "APPLY" : "DRY RUN"} on ${host}/${name}`);
-  const { changes, review, backups } = await migrateCatalog(mongoose.connection.db, { apply });
+  const { changes, review, backups, applied, skipped } = await migrateCatalog(mongoose.connection.db, { apply });
   for (const c of changes) console.log(`${c.collection} ${c._id} ${c.name}: ${c.field} ${JSON.stringify(c.from)} → ${JSON.stringify(c.to)}`);
   for (const r of review) console.log(`REVIEW ${r}`);
-  console.log(`${changes.length} change(s), ${review.length} item(s) to review${apply ? `, backups: ${backups.join(", ") || "none"}` : " — run with --apply to write"}`);
+  console.log(`${changes.length} change(s), ${review.length} item(s) to review, applied ${applied}, skipped ${skipped}${apply ? `, backups: ${backups.join(", ") || "none"}` : " — run with --apply to write"}`);
   await mongoose.disconnect();
 }
