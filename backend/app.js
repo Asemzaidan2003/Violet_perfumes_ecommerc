@@ -1,8 +1,11 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
+import compression from "compression";
 import mongoose from "mongoose";
 import { fileURLToPath } from "node:url";
+import pkg from "../package.json" with { type: "json" };
+import { createLimiter } from "./middleware/rateLimit.js";
 import productRouter from "./routes/product.Routs.js";
 import oilRouter from "./routes/oil.Routs.js";
 import bottleRouter from "./routes/bottle.Routs.js";
@@ -22,9 +25,17 @@ mongoose.set("runValidators", true);
 const frontendDir = fileURLToPath(new URL("../frontend", import.meta.url));
 const storefrontDir = fileURLToPath(new URL("../storefront", import.meta.url));
 
-export function createApp() {
+export function createApp({ limits = {} } = {}) {
   const app = express();
   const prod = process.env.NODE_ENV === "production";
+
+  app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS ?? 0));
+  app.locals.limiters = {
+    login: createLimiter({ windowMs: 15 * 60_000, max: 5, ...limits.login }),
+    orders: createLimiter({ windowMs: 60 * 60_000, max: 10, ...limits.orders }),
+    interest: createLimiter({ windowMs: 60 * 60_000, max: 20, ...limits.interest }),
+  };
+  app.locals.assetV = `${pkg.version}-${Date.now().toString(36)}`;
 
   app.use(helmet({
     contentSecurityPolicy: {
@@ -37,6 +48,7 @@ export function createApp() {
       },
     },
   }));
+  app.use(compression());
 
   const origins = (process.env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
   if (origins.length) app.use(cors({ origin: origins, credentials: true }));
@@ -60,8 +72,15 @@ export function createApp() {
   app.use("/api/uploads", uploadRouter);
   app.use("/api", (req, res) => res.status(404).json({ success: false, message: "Not found" }));
 
+  app.get("/admin", (req, res) => res.redirect("/admin/html/index.html"));
   app.use("/admin", express.static(frontendDir));
-  app.use("/assets", express.static(storefrontDir));
+  app.use("/assets", (req, res, next) => {
+    res.set("Cache-Control", "v" in req.query ? "public, max-age=31536000, immutable" : "no-cache");
+    next();
+  }, express.static(storefrontDir, { cacheControl: false }));
+  const fontsDir = (pkgName) => fileURLToPath(new URL(`../node_modules/@fontsource/${pkgName}/files`, import.meta.url));
+  app.use("/vendor/fonts/el-messiri", express.static(fontsDir("el-messiri"), { maxAge: "1y", immutable: true }));
+  app.use("/vendor/fonts/plex-arabic", express.static(fontsDir("ibm-plex-sans-arabic"), { maxAge: "1y", immutable: true }));
   app.use("/img", imageRouter);
   app.get("/", (req, res) => res.redirect("/admin/html/index.html")); // storefront takes "/" later
 
