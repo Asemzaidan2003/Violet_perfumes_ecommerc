@@ -1,13 +1,13 @@
 # Promotions Engine — Design Spec
 
-Status: approved to proceed autonomously by the user, 2026-09-25
+Status: approved to proceed autonomously by the user, 2026-09-25. Revised after an independent
+design review (same day).
 Scope: storefront sub-project 3 of 4. Depends on storefront core (2), which defines the slots.
 
 ## Intent
 
 "Nice places to post our ads or any offers we have, in multiple and different ways — not only in the
-hero panel." The owner manages every placement, offer and code from the admin panel, with
-scheduling, and without a developer.
+hero panel." The owner manages every placement, offer and code from the admin, with scheduling.
 
 ## Placements
 
@@ -16,84 +16,93 @@ scheduling, and without a developer.
 | Field | Type | Notes |
 |---|---|---|
 | `slot` | enum | `announcement`, `hero`, `home_mid`, `home_bottom`, `collection_banner`, `grid_tile`, `product_promo`, `cart_upsell` |
-| `title` | String ≤ 80 | required except `announcement` uses it as the whole text |
+| `title` | String ≤ 80, required | for `announcement` it is the whole text |
 | `subtitle` | String ≤ 160 | optional |
-| `image` | String (upload URL) | required for `hero`, `home_mid`, `home_bottom`, `collection_banner`, `grid_tile`; optional elsewhere |
-| `link` | String | internal path (`/c/men`, `/p/<id>`, `/offers`…) or `https://…`; nothing else (no `javascript:`) |
-| `cta` | String ≤ 30 | button label, optional |
+| `image` | String | an `/img/…` upload URL; required for `hero`, `home_mid`, `home_bottom`, `collection_banner`, `grid_tile` |
+| `link` | String, optional | internal path matching `^/(?![/\\])\S*$` (rejects `//evil.com`, `/\evil.com`) or an absolute URL whose `new URL(link).protocol === "https:"` (rendered with `rel="noopener"`); anything else → 400 |
+| `cta` | String ≤ 30 | optional button label |
 | `theme` | enum `dark`, `light`, `gold` | colour treatment |
-| `target` | `{ category?, family? }` | for `collection_banner` / `grid_tile`: show only on that aisle; empty = everywhere |
-| `starts_at`, `ends_at` | Date, optional | schedule window (inclusive start, exclusive end) |
-| `active` | Boolean, default true | manual on/off |
+| `target` | `{ category?, family? }` | `collection_banner`/`grid_tile` only: show only on that aisle; empty = every aisle |
+| `starts_at`, `ends_at` | Date, optional | window: start inclusive, end exclusive |
+| `active` | Boolean, default true | manual switch |
 | `sort` | Number, default 0 | order within a slot |
 
-A placement is **live** when `active` and `starts_at ≤ now` (or unset) and `now < ends_at` (or unset).
-The storefront reads live placements per page (one query per request, cached 60 s in memory and
-invalidated on any admin write).
+**Live** = `active` and (`starts_at` unset or ≤ now) and (`ends_at` unset or now < `ends_at`). The
+storefront loads live placements once per request from a 60 s in-memory cache invalidated on every
+admin placement write. All placement text is rendered through the escaping `html` tag.
 
-How each slot renders:
-- `announcement` — thin bar above the header; rotates if several (5 s, paused on hover/focus,
-  no rotation under reduced motion); dismissible per session.
-- `hero` — the window display: up to 3 slides, swipe/arrows/dots, auto-advance 6 s (paused on
-  hover/focus/hidden tab; off under reduced motion). When none are live, the built-in brand welcome
-  slide shows.
-- `home_mid`, `home_bottom` — wide banners (1 or 2 side by side on desktop).
-- `collection_banner` — banner under an aisle header, matched by `target`.
-- `grid_tile` — promo card injected into collection grids (after the 4th and every 8th product),
-  same size as a product card, matched by `target`.
-- `product_promo` — slim strip under the product price (e.g. "توصيل مجاني فوق 30 د.أ").
+Rendering per slot:
+- `announcement` — thin bar above the header; several rotate every 5 s (paused on hover/focus; no
+  rotation under reduced motion); dismissible for the session.
+- `hero` — slides after the built-in welcome slide (max 3 admin slides); swipe/arrows/dots;
+  auto-advance 6 s paused on hover/focus/hidden tab; off under reduced motion.
+- `home_mid`, `home_bottom` — wide banners (two side by side on desktop when two are live).
+- `collection_banner` — under the aisle header, matched by `target`.
+- `grid_tile` — card-sized promo after collection items 4, 12, 20…, cycling through matching tiles.
+- `product_promo` — slim strip under the product price.
 - `cart_upsell` — card inside the cart drawer.
 
-Images use `alt` = title; decorative overlay text is real text, never baked into the image.
+Text over images is real text (never baked into the image); images have `alt` = title.
 
 ## Product offers
 
-- Existing `p_offer_percentage` (0–100) plus new `offer_ends_at` (optional Date).
-- One shared `effectivePrice(product, sizeEntry, now)` (in `backend/catalog/pricing.js`) is used by
-  **both** the storefront display and the order service: the offer applies while
-  `p_offer_percentage > 0` and (`offer_ends_at` unset or `now < offer_ends_at`).
-- `/offers` lists products with a live offer, plus live `collection_banner`s targeted at nothing.
-- Product cards/pages show the struck-through list price and a "−X%" badge; a countdown chip
-  ("ينتهي خلال 2 يوم") when `offer_ends_at` is within 7 days.
+- Existing `p_offer_percentage` (0–100) plus `offer_ends_at` (optional Date).
+- `effectivePrice` (`backend/catalog/pricing.js`, shared by display and the order service) applies
+  the offer while `p_offer_percentage > 0` and (`offer_ends_at` unset or now < `offer_ends_at`).
+- `/offers` lists products with a live offer; shelves/cards/pages show the struck-through list price
+  and a "−X%" badge; a countdown chip (`Intl.RelativeTimeFormat("ar")`, e.g. "ينتهي خلال يومين") when
+  the end is within 7 days.
 
 ## Discount codes
 
-`Coupon` model: `code` (String, uppercase, trim, unique, 3–20 `[A-Z0-9_-]`), `type` enum
-`percent|fixed`, `value` (> 0; percent ≤ 100), `min_subtotal` (≥ 0, default 0), `starts_at`,
-`ends_at`, `max_uses` (0 = unlimited), `used` (default 0), `active`.
+`Coupon`: `code` (uppercase, trim, unique, 3–20 of `[A-Z0-9_-]`), `type` `percent|fixed`, `value`
+(> 0; percent ≤ 100), `min_subtotal` (≥ 0), `starts_at`/`ends_at` (start inclusive, end exclusive),
+`max_uses` (0 = unlimited), `used` (default 0), `active`. Codes **stack on product offers** (the
+discount applies to the already-offered subtotal).
 
-- Checkout has a collapsible "لديك كود خصم؟" field. `POST /api/store/coupons/check
-  { code, subtotal }` → `{ valid, discount, message }` (Arabic message; rate limit 30/hour/IP; same
-  generic message for unknown and inactive codes to avoid code enumeration).
-- `placeOrder` (online only) accepts `coupon_code`. Inside the order transaction it re-validates the
-  code, computes `discount` on `total_revenue` (percent → round2; fixed → min(value, revenue)),
-  and increments `used` with a guarded update (`used < max_uses` when limited) so concurrent orders
-  can't exceed the limit. Invalid at that moment → 400 with the Arabic reason (the checkout shows it).
-- Order fields: `discount` (Number, default 0), `coupon_code` (String). Totals:
-  `final_total = total_revenue + delivery_fee − discount` (never below 0);
-  `total_profit = Σ line profits − discount` (discount is not attributed to lines; product-level
-  reports stay pre-discount — documented).
-- Cancelling or deleting an order with a coupon decrements `used` in the same transaction.
+- Checkout: collapsible "لديك كود خصم؟". `POST /api/store/coupons/check { code, subtotal }` →
+  `{ valid, discount, message }`; rate limit 30/hour/IP; one generic message for unknown, inactive
+  or expired codes (no enumeration); `min_subtotal` failures say how much more is needed.
+- Public order body field `coupon` → service input `coupon_code` (online only). Inside the order
+  transaction the service re-validates (active, window, `min_subtotal` on pre-discount
+  `total_revenue`) and claims a use with a guarded update
+  `updateOne({ _id, active: true, $or: [{ max_uses: 0 }, { $expr: { $lt: ["$used", "$max_uses"] } }] },
+  { $inc: { used: 1 } })`; 0 matched → 400 with the Arabic reason. The order stores a snapshot
+  `coupon: { code, type, value }` (validity/window are only checked at placement).
+- **Totals — `setTotals` is the only place they are computed:**
+  - `discount = coupon ? (percent ? round2(total_revenue × value / 100) : min(value, total_revenue)) : 0`
+  - `final_total = round2(total_revenue − discount + delivery_fee)`
+  - `total_profit = stock_deducted ? round2(Σ line profit − discount) : 0`
+  - When the admin edits quantity/price at confirmation, the discount is re-derived from the edited
+    revenue with the snapshot. Product-level reports stay pre-discount (the discount is not
+    attributed to lines) — documented in the admin reports help text.
+- **A use is returned exactly once**, under the same guard as the stock refund (the transition into
+  `canceled`, or deleting a non-canceled order), inside the same transaction:
+  `updateOne({ code, used: { $gt: 0 } }, { $inc: { used: -1 } })` — a deleted coupon is a no-op.
 - POS sales don't take codes (the cashier already overrides prices).
 
 ## Admin UI
 
-- `promotions.html` (new) — tabs: **الإعلانات** (placements grouped by slot with thumbnail, live/
-  scheduled/expired status, active toggle, sort up/down, edit, delete) and **أكواد الخصم** (coupon
-  list with usage `used/max`, active toggle, edit, delete). Create/edit forms reuse the image
-  upload component from the catalogue sub-project and show a live preview of the placement in its
-  slot style.
-- Product forms gain `offer_ends_at` (date-time) next to the offer percentage.
-- Navbar link "العروض والإعلانات".
+- `promotions.html` (new) — tabs **الإعلانات** (placements grouped by slot: thumbnail, live /
+  scheduled / expired status, active toggle, sort up/down, edit, delete, "عرض في المتجر" link) and
+  **أكواد الخصم** (code, type/value, window, `used/max`, active toggle, edit, delete). Forms reuse the
+  catalogue upload component. No live preview (a thumbnail + view link is enough).
+- `datetime-local` inputs are converted in the browser with `new Date(value).toISOString()` before
+  sending (server stores UTC; `TZ=Asia/Amman` for display).
+- Product forms gain `offer_ends_at` next to the offer percentage.
+- Navbar link "العروض والإعلانات". All placement/coupon text rendered with `esc()`.
 
 Admin API (behind `requireAdmin`): `GET/POST /api/placements`, `PUT/DELETE /api/placements/:id`,
 `GET/POST /api/coupons`, `PUT/DELETE /api/coupons/:id`.
 
 ## Testing
 
-- Placement liveness window (before start, active, after end, inactive), targeting, link validation
-  (reject `javascript:`/other schemes), public rendering escapes text.
-- `effectivePrice` expiry: storefront and order service agree; an expired offer is not charged.
-- Coupons: percent/fixed/min_subtotal/window/max_uses; concurrent orders on a 1-use code → exactly
-  one succeeds; cancel restores `used`; `final_total`/`total_profit` include the discount; code check
-  endpoint gives one generic message for unknown vs inactive.
+- Placements: liveness window edges (before start, at start, before end, at end, inactive), targeting,
+  link validation (`javascript:`, `//evil.com`, `/\evil.com`, `http:` rejected; `/c/men` and
+  `https://…` accepted), escaped rendering, cache invalidation on write.
+- `effectivePrice` expiry: display and charged price agree; an expired offer is not charged.
+- Coupons: percent/fixed, `min_subtotal`, window edges, `max_uses`; concurrent orders on a 1-use code
+  → exactly one succeeds; cancel returns the use once; delete of an already-canceled order doesn't
+  return it again; a 10% code survives a quantity edit at confirmation in both `final_total` and
+  `total_profit`; unconfirmed online orders report `total_profit` 0; the check endpoint gives one
+  generic message for unknown vs inactive.
