@@ -5,8 +5,9 @@ const customerSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
+      trim: true,
     },
-    phone: String,
+    phone: { type: String, trim: true },
     address: String,
     notes: String,
     type: {

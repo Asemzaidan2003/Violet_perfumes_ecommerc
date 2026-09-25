@@ -8,15 +8,18 @@ const oilSchema = new mongoose.Schema({
     },
     oil_name: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     oil_cost: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
     oil_quantity: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
     status: {
         type: String,

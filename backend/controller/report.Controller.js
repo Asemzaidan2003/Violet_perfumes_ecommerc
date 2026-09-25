@@ -108,7 +108,6 @@ const summarizeOrders = async (match) => {
 // 1) DASHBOARD SUMMARY  ->  GET /api/reports/dashboard
 // ---------------------------------------------------------------------------
 export const getDashboardSummary = async (req, res) => {
-  try {
     const now = new Date();
     const today = { from: startOfDay(now), to: endOfDay(now) };
     const yesterday = { from: startOfDay(addDays(now, -1)), to: endOfDay(addDays(now, -1)) };
@@ -299,17 +298,12 @@ export const getDashboardSummary = async (req, res) => {
         pending_orders_count: pendingOrdersCount,
       },
     });
-  } catch (error) {
-    console.error("Error building dashboard summary:", error);
-    res.status(500).json({ success: false, message: "Failed to build dashboard summary", error: error.message });
-  }
 };
 
 // ---------------------------------------------------------------------------
 // 2) SALES REPORT  ->  GET /api/reports/sales?from&to&groupBy=day|week|month&status
 // ---------------------------------------------------------------------------
 export const getSalesReport = async (req, res) => {
-  try {
     const { from, to } = parseDateRange(req.query, 30);
     const groupBy = ["day", "week", "month"].includes(req.query.groupBy) ? req.query.groupBy : "day";
     const match = { ...statusMatch(req.query.status), createdAt: { $gte: from, $lte: to } };
@@ -354,17 +348,12 @@ export const getSalesReport = async (req, res) => {
         })),
       },
     });
-  } catch (error) {
-    console.error("Error building sales report:", error);
-    res.status(500).json({ success: false, message: "Failed to build sales report", error: error.message });
-  }
 };
 
 // ---------------------------------------------------------------------------
 // 3) PRODUCTS REPORT  ->  GET /api/reports/products?from&to&limit&sortBy&status
 // ---------------------------------------------------------------------------
 export const getProductsReport = async (req, res) => {
-  try {
     const { from, to } = parseDateRange(req.query, 30);
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
     const sortField = ["revenue", "quantity", "profit"].includes(req.query.sortBy) ? req.query.sortBy : "revenue";
@@ -473,17 +462,12 @@ export const getProductsReport = async (req, res) => {
         })),
       },
     });
-  } catch (error) {
-    console.error("Error building products report:", error);
-    res.status(500).json({ success: false, message: "Failed to build products report", error: error.message });
-  }
 };
 
 // ---------------------------------------------------------------------------
 // 4) INVENTORY REPORT  ->  GET /api/reports/inventory?oilThreshold&bottleThreshold
 // ---------------------------------------------------------------------------
 export const getInventoryReport = async (req, res) => {
-  try {
     const oilThreshold = parseFloat(req.query.oilThreshold) || 100;
     const bottleThreshold = parseFloat(req.query.bottleThreshold) || 20;
 
@@ -545,17 +529,12 @@ export const getInventoryReport = async (req, res) => {
         product_status_breakdown: productStatusCounts.map((p) => ({ status: p._id, count: p.count })),
       },
     });
-  } catch (error) {
-    console.error("Error building inventory report:", error);
-    res.status(500).json({ success: false, message: "Failed to build inventory report", error: error.message });
-  }
 };
 
 // ---------------------------------------------------------------------------
 // 5) CUSTOMERS REPORT  ->  GET /api/reports/customers?from&to&limit&status
 // ---------------------------------------------------------------------------
 export const getCustomersReport = async (req, res) => {
-  try {
     const { from, to } = parseDateRange(req.query, 90);
     const limit = Math.min(parseInt(req.query.limit) || 10, 100);
     const match = {
@@ -630,8 +609,4 @@ export const getCustomersReport = async (req, res) => {
         walk_in_orders_in_range: ordersWithoutCustomer,
       },
     });
-  } catch (error) {
-    console.error("Error building customers report:", error);
-    res.status(500).json({ success: false, message: "Failed to build customers report", error: error.message });
-  }
 };
