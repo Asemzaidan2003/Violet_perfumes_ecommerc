@@ -11,6 +11,8 @@ import orderRouter from "./routes/order.Routs.js";
 import customerRouter from "./routes/customer.Routs.js";
 import reportRouter from "./routes/report.Routs.js";
 import authRouter from "./routes/auth.Routs.js";
+import uploadRouter from "./routes/upload.Routs.js";
+import imageRouter from "./routes/image.Routs.js";
 import { requireAdmin } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
 
@@ -55,10 +57,12 @@ export function createApp() {
   app.use("/api/orders", orderRouter);
   app.use("/api/customers", customerRouter);
   app.use("/api/reports", reportRouter);
+  app.use("/api/uploads", uploadRouter);
   app.use("/api", (req, res) => res.status(404).json({ success: false, message: "Not found" }));
 
   app.use("/admin", express.static(frontendDir));
   app.use("/assets", express.static(storefrontDir));
+  app.use("/img", imageRouter);
   app.get("/", (req, res) => res.redirect("/admin/html/index.html")); // storefront takes "/" later
 
   app.use(errorHandler);
