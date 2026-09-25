@@ -126,21 +126,21 @@
         price: parseFloat(entry.querySelector("input[name='price']").value)
       }));
 
-      const extras = (await window.productFields.ready).read();
-      const data = {
-        p_name: document.getElementById("p_name").value,
-        p_category: document.getElementById("p_category").value,
-        p_offer_percentage: parseFloat(document.getElementById("p_offer_percentage").value),
-        oil_id: document.getElementById("oil_id").value,
-        oil_percentage: parseFloat(document.getElementById("oil_percentage").value),
-        alcohol_percentage: parseFloat(document.getElementById("alcohol_percentage").value),
-        status: document.getElementById("status").value,
-        p_image: document.getElementById("p_image").value,
-        size_list: size_list,
-        ...extras
-      };
-      console.log("adding product data : ", data);
       try {
+        const extras = (await window.productFields.ready).read();
+        const data = {
+          p_name: document.getElementById("p_name").value,
+          p_category: document.getElementById("p_category").value,
+          p_offer_percentage: parseFloat(document.getElementById("p_offer_percentage").value),
+          oil_id: document.getElementById("oil_id").value,
+          oil_percentage: parseFloat(document.getElementById("oil_percentage").value),
+          alcohol_percentage: parseFloat(document.getElementById("alcohol_percentage").value),
+          status: document.getElementById("status").value,
+          p_image: document.getElementById("p_image").value,
+          size_list: size_list,
+          ...extras
+        };
+        console.log("adding product data : ", data);
         const response = await fetch("/api/products", {
           method: "POST",
           headers: {

@@ -128,10 +128,18 @@
       const vocab = await import("/assets/js/shared/vocab.js");
       CATEGORIES = vocab.CATEGORIES;
       FAMILIES = vocab.FAMILIES;
-      const res = await fetch("/api/products");
-      const json = await res.json();
-      productsData = json.data ?? []; // getProducts responds 404 with no data when the catalogue is empty
-      renderRows();
+      try {
+        const res = await fetch("/api/products");
+        const json = await res.json().catch(() => ({}));
+        // getProducts responds 404 (success:false) when the catalogue is legitimately
+        // empty — that's not a failure; any other non-ok status is.
+        if (!res.ok && res.status !== 404) throw new Error(json.message || "تعذر تحميل المنتجات");
+        productsData = json.data ?? [];
+        renderRows();
+      } catch (err) {
+        document.getElementById("catalogBody").replaceChildren(el("tr", {},
+          el("td", { colSpan: 5, className: "text-muted", textContent: err.message || "تعذر تحميل المنتجات" })));
+      }
     }
 
     init();

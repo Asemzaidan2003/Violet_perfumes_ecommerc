@@ -12,7 +12,7 @@ const productSchema = new mongoose.Schema(
   {
     p_name: { type: String, required: true, unique: true, trim: true },
     p_image: { type: String, required: true },
-    p_category: { type: String, required: true, enum: { values: CATEGORY_KEYS, message: "فئة غير صالحة" } },
+    p_category: { type: String, required: [true, "الفئة مطلوبة"], enum: { values: CATEGORY_KEYS, message: "فئة غير صالحة" } },
     p_offer_percentage: { type: Number, default: 0, min: 0, max: 100 },
 
     oil_id: {

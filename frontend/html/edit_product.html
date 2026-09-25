@@ -111,8 +111,15 @@
         const json = await res.json();
         const product = json.data;
 
-        const pf = await window.productFields.ready;
-        pf.fill(product); // sets p_category too — its <select> options exist only after this resolves
+        // Isolated so a rejected `ready` (network hiccup on the dynamic import,
+        // already surfaced in #productExtras by product-fields.js itself) doesn't
+        // also stop the unrelated core fields below from populating.
+        try {
+          const pf = await window.productFields.ready;
+          pf.fill(product); // sets p_category too — its <select> options exist only after this resolves
+        } catch (err) {
+          console.error("فشل تحميل حقول المنتج الإضافية", err);
+        }
 
         document.getElementById("p_name").value = product.p_name;
         document.getElementById("p_offer_percentage").value = product.p_offer_percentage;
@@ -142,21 +149,20 @@
         price: parseFloat(entry.querySelector("input[name='price']").value)
       }));
 
-      const extras = (await window.productFields.ready).read();
-      const data = {
-        p_name: document.getElementById("p_name").value,
-        p_category: document.getElementById("p_category").value,
-        p_offer_percentage: parseFloat(document.getElementById("p_offer_percentage").value),
-        oil_id: document.getElementById("oil_id").value,
-        oil_percentage: parseFloat(document.getElementById("oil_percentage").value),
-        alcohol_percentage: parseFloat(document.getElementById("alcohol_percentage").value),
-        status: document.getElementById("status").value,
-        p_image: document.getElementById("p_image").value,
-        size_list: size_list,
-        ...extras
-      };
-
       try {
+        const extras = (await window.productFields.ready).read();
+        const data = {
+          p_name: document.getElementById("p_name").value,
+          p_category: document.getElementById("p_category").value,
+          p_offer_percentage: parseFloat(document.getElementById("p_offer_percentage").value),
+          oil_id: document.getElementById("oil_id").value,
+          oil_percentage: parseFloat(document.getElementById("oil_percentage").value),
+          alcohol_percentage: parseFloat(document.getElementById("alcohol_percentage").value),
+          status: document.getElementById("status").value,
+          p_image: document.getElementById("p_image").value,
+          size_list: size_list,
+          ...extras
+        };
         const response = await fetch(`/api/products/${productId}`, {
           method: "PUT",
           headers: {

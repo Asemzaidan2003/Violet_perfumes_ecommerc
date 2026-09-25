@@ -62,6 +62,14 @@ test("invalid category yields an Arabic error message", async () => {
   assert.match(body.message, /فئة غير صالحة/);
 });
 
+test("PUT with a blank p_category is rejected with the Arabic required message", async () => {
+  const created = await (await api("/products", "POST", base())).json();
+  const res = await api(`/products/${created.data._id}`, "PUT", { p_category: "" });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.match(body.message, /الفئة مطلوبة/);
+});
+
 test("PUT /api/products/:id normalizes size_list on update", async () => {
   const created = await (await api("/products", "POST", base())).json();
   const res = await api(`/products/${created.data._id}`, "PUT", { size_list: [{ size: "30ml", price: 10 }] });

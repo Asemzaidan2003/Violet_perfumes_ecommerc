@@ -9,6 +9,7 @@ async function encode(bitmap, maxEdge) {
   const toBlob = (type) => new Promise((resolve) => canvas.toBlob(resolve, type, 0.85));
   let blob = await toBlob("image/webp");
   if (!blob || blob.type !== "image/webp") blob = await toBlob("image/jpeg"); // Safari has no WebP encoder
+  if (!blob) throw new Error("تعذر معالجة الصورة في المتصفح");
   return blob;
 }
 
