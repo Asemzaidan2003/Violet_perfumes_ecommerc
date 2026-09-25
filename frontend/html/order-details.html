@@ -45,6 +45,10 @@
         </table>
       </div>
     </div>
+
+    <div class="form-actions" id="confirmBar" style="display: none; margin-top: 16px;">
+      <button class="btn btn-primary" id="confirmBtn">تأكيد الطلب وخصم المخزون</button>
+    </div>
   </div>
 
   <script>
@@ -93,6 +97,8 @@
           <div class="item"><div class="label">التكلفة الإجمالية</div><div class="val num">${order.total_cost} JOD</div></div>
           <div class="item"><div class="label">تاريخ الإنشاء</div><div class="val num">${new Date(order.createdAt).toLocaleDateString()}</div></div>
           <div class="item"><div class="label">ملاحظات</div><div class="val">${order.order_notes || "-"}</div></div>
+          <div class="item"><div class="label">المصدر</div><div class="val">${order.source === "online" ? "الموقع" : "نقطة البيع"}</div></div>
+          <div class="item"><div class="label">المخزون</div><div class="val">${order.stock_deducted === false ? "بانتظار التأكيد" : "تم الخصم"}</div></div>
         </div>
       `;
 
@@ -110,6 +116,57 @@
           <td class="num">${product.total_profit.toFixed(2)}</td>
         </tr>
       `).join("");
+
+      if (order.stock_deducted === false && order.status !== "canceled") renderConfirmForm(order);
+    }
+
+    // طلب من الموقع: اختيار الزجاجات ثم التأكيد لخصم المخزون
+    async function renderConfirmForm(order) {
+      const res = await fetch(`${baseURL}/bottles`);
+      const bottles = (await res.json()).data || [];
+      document.getElementById("productsTable").innerHTML = order.products.map((p, i) => {
+        const options = bottles
+          .filter((b) => b.capacity === parseFloat(p.product_size))
+          .map((b) => `<option value="${b._id}">${b.name} (المتوفر: ${b.quantity})</option>`)
+          .join("");
+        return `
+          <tr>
+            <td>${i + 1}</td>
+            <td class="cell-strong">${p.p_name}</td>
+            <td>${p.product_size}</td>
+            <td><input class="qty-input" type="number" min="1" step="1" id="qty-${i}" value="${p.quantity}"></td>
+            <td><input class="price-input" type="number" min="0" step="0.01" id="price-${i}" value="${p.selling_price}"></td>
+            <td><select id="bottle-${i}"><option value="">-- اختر زجاجة --</option>${options}</select></td>
+            <td class="num">${p.total_revenue.toFixed(2)}</td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+          </tr>`;
+      }).join("");
+      document.getElementById("confirmBar").style.display = "";
+      document.getElementById("confirmBtn").onclick = () => submitConfirm(order);
+    }
+
+    async function submitConfirm(order) {
+      const lines = order.products.map((_, i) => ({
+        bottle_id: document.getElementById(`bottle-${i}`).value,
+        quantity: document.getElementById(`qty-${i}`).value,
+        price: document.getElementById(`price-${i}`).value,
+      }));
+      if (lines.some((l) => !l.bottle_id)) return alert("يرجى اختيار زجاجة لكل منتج");
+      const res = await fetch(`${baseURL}/orders/${order._id}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lines }),
+      });
+      const data = await res.json();
+      if (!res.ok) return alert(data.message || "تعذر تأكيد الطلب");
+      let msg = "✅ تم تأكيد الطلب وخصم المخزون";
+      if (data.shortages?.length) {
+        msg += "\n\n⚠️ المخزون غير كافٍ لهذه المواد (تم تصفيرها):\n" +
+          data.shortages.map((s) => `${s.item}: المطلوب ${s.needed}، المتوفر ${s.available}`).join("\n");
+      }
+      alert(msg);
+      location.reload();
     }
 
     fetchOrderDetails();
