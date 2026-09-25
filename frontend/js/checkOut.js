@@ -5,7 +5,7 @@ import {
 } from "./update_stocks.js";
 
 export async function checkout(cart) {
-  const baseURL = "http://localhost:5000/api";
+  const baseURL = "/api";
   const customerId = cart.customer_id;
   // Step 1: التأكد من وجود الكمية الكافية
   const isStockValid = await validateStock(cart);

@@ -103,7 +103,7 @@
 
     async function fetchProduct() {
       try {
-        const res = await fetch(`http://localhost:5000/api/products/${productId}`);
+        const res = await fetch(`/api/products/${productId}`);
         const json = await res.json();
         const product = json.data;
 
@@ -149,7 +149,7 @@
       };
 
       try {
-        const response = await fetch(`http://localhost:5000/api/products/${productId}`, {
+        const response = await fetch(`/api/products/${productId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json"

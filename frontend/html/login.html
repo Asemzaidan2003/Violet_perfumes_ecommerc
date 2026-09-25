@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الدخول</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>تسجيل الدخول</h1>
+    <form id="loginForm">
+      <label for="username">اسم المستخدم</label>
+      <input id="username" name="username" autocomplete="username" required />
+      <label for="password">كلمة المرور</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required />
+      <p id="error" role="alert" hidden></p>
+      <button type="submit">دخول</button>
+    </form>
+  </main>
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const err = document.getElementById("error");
+      err.hidden = true;
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: e.target.username.value,
+          password: e.target.password.value,
+        }),
+      });
+      if (res.ok) return location.replace("index.html");
+      err.textContent = res.status === 429
+        ? "محاولات كثيرة، حاول لاحقًا"
+        : "اسم المستخدم أو كلمة المرور غير صحيحة";
+      err.hidden = false;
+    });
+  </script>
+</body>
+</html>

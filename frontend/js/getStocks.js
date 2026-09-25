@@ -1,4 +1,4 @@
-const baseURL = "http://localhost:5000/api";
+const baseURL = "/api";
 export async function getOilStock(oil_id) {
   try {
     const res = await fetch(`${baseURL}/oils/${oil_id}`);

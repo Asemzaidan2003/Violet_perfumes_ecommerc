@@ -135,7 +135,7 @@
       };
       console.log("adding product data : ", data);
       try {
-        const response = await fetch("http://localhost:5000/api/products", {
+        const response = await fetch("/api/products", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -161,7 +161,7 @@
     async function openOilModal() {
       document.getElementById("oilModal").classList.add("open");
       try {
-        const response = await fetch("http://localhost:5000/api/oils");
+        const response = await fetch("/api/oils");
         const json = await response.json();
         allOils = json.data;
         renderOilList(allOils);

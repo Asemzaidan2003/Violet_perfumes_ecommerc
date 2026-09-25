@@ -1,5 +1,5 @@
 // Shared helpers for the reporting/dashboard pages.
-const baseURL = "http://localhost:5000/api";
+const baseURL = "/api";
 
 const ARABIC_STATUS = {
   pending: "قيد الانتظار",

@@ -55,7 +55,7 @@
 
     async function fetchProducts() {
       try {
-        const res = await fetch("http://localhost:5000/api/products");
+        const res = await fetch("/api/products");
         const json = await res.json();
         productsData = json.data;
         renderTable(productsData);

@@ -46,15 +46,24 @@ function buildNavbarHTML() {
             <ul class="dropdown">${dropdownItems}</ul>
           </li>
           ${mainLinks}
+          <li><a class="nav-link" href="#" id="logoutLink">تسجيل الخروج</a></li>
         </ul>
       </div>
     </nav>
   `;
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
+  const res = await fetch("/api/auth/me");
+  if (res.status === 401) return location.replace("login.html");
+
   const navbarContainer = document.getElementById("navbar");
   if (navbarContainer) {
     navbarContainer.innerHTML = buildNavbarHTML();
+    document.getElementById("logoutLink").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST" });
+      location.replace("login.html");
+    });
   }
 });

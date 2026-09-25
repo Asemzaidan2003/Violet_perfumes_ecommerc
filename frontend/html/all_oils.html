@@ -76,7 +76,7 @@
 
     async function fetchOils() {
       try {
-        const res = await fetch("http://localhost:5000/api/oils");
+        const res = await fetch("/api/oils");
         const json = await res.json();
         oilsData = json.data;
         renderTable(oilsData);
@@ -88,7 +88,7 @@
 
     async function getOilCapital() {
       try {
-        const res = await fetch("http://localhost:5000/api/oils/calculate_oil_capital");
+        const res = await fetch("/api/oils/calculate_oil_capital");
         const json = await res.json();
         renderOilCapital(json.data);
       } catch (err) {

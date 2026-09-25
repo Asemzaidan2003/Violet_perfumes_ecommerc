@@ -1,5 +1,5 @@
 import { getOilStock , getBottleStock , getAlcoholStock } from "./getStocks.js";
-const baseURL = "http://localhost:5000/api";
+const baseURL = "/api";
 export async function updateOilStock(oil_id , add_quantity) {
   try {
     const currentStock = await getOilStock(oil_id);
