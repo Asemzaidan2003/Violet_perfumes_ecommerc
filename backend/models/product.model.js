@@ -1,20 +1,18 @@
 import mongoose from "mongoose";
-import { CATEGORY_KEYS, FAMILY_KEYS } from "../../storefront/js/shared/vocab.js";
+import { CATEGORY_KEYS, FAMILY_KEYS, normalizeSize } from "../../storefront/js/shared/vocab.js";
 
-// "30ml", " 50 مل " → "30", "50" (so the storefront and stock rules see one spelling).
-const normalizeSize = (v) => String(v ?? "").trim().replace(/\s*(ml|مل)\s*$/i, "").trim();
 const note = { type: String, trim: true, maxlength: 40 };
 const noteList = {
   type: [note],
   validate: { validator: (v) => v.length <= 10, message: "عشر نوتات كحد أقصى لكل طبقة" },
 };
-const IMAGE_URL = /^(\/img\/[a-f0-9]{24}(-480)?\.(webp|jpg|png)|https:\/\/\S+)$/;
+const IMAGE_URL = /^(\/img\/[a-f0-9]{24}(-480)?\.(webp|jpg|png)|https:\/\/[^\s"'<>]+)$/;
 
 const productSchema = new mongoose.Schema(
   {
     p_name: { type: String, required: true, unique: true, trim: true },
     p_image: { type: String, required: true },
-    p_category: { type: String, required: true, enum: CATEGORY_KEYS },
+    p_category: { type: String, required: true, enum: { values: CATEGORY_KEYS, message: "فئة غير صالحة" } },
     p_offer_percentage: { type: Number, default: 0, min: 0, max: 100 },
 
     oil_id: {
@@ -52,7 +50,7 @@ const productSchema = new mongoose.Schema(
       default: "available",
     },
     description: { type: String, trim: true, maxlength: 2000 },
-    families: [{ type: String, enum: FAMILY_KEYS }],
+    families: [{ type: String, enum: { values: FAMILY_KEYS, message: "عائلة عطرية غير صالحة" } }],
     notes: { top: noteList, heart: noteList, base: noteList },
     images: [{ type: String, validate: { validator: (v) => IMAGE_URL.test(v), message: "رابط صورة غير صالح" } }],
     keywords: { type: String, trim: true, maxlength: 300 },

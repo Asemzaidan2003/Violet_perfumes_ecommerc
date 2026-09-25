@@ -150,6 +150,12 @@ test("concurrent POS sales on the same stock both deduct", async () => {
   assert.deepEqual(await stock(), { oil: 76, alcohol: 904, bottle: 6 });
 });
 
+test("POS line sent as '30ml' matches the stored '30' and records the normalized size", async () => {
+  const { order, shortages } = await placeOrder({ products: [line({ size: "30ml" })] }, "pos");
+  assert.deepEqual(shortages, []);
+  assert.equal(order.products[0].product_size, "30");
+});
+
 test("invalid input is rejected with 400", async () => {
   for (const bad of [line({ quantity: 0 }), line({ size: "99ml" }), line({ bottle_id: undefined }), line({ product_id: "nope" })]) {
     await assert.rejects(placeOrder({ products: [bad] }, "pos"), { status: 400 });

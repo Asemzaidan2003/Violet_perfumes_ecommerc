@@ -32,3 +32,6 @@ export const FAMILIES = [
 
 export const CATEGORY_KEYS = CATEGORIES.map((c) => c.key);
 export const FAMILY_KEYS = FAMILIES.map((f) => f.key);
+
+// "30ml", " 50 مل " → "30", "50" (so the storefront and stock rules see one spelling).
+export const normalizeSize = (v) => String(v ?? "").trim().replace(/\s*(ml|مل)\s*$/i, "").trim();

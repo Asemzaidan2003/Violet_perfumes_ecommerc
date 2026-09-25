@@ -49,9 +49,25 @@ test("invalid catalogue values are rejected with 400", async () => {
     base({ notes: { top: ["x".repeat(41)] } }),
     base({ size_list: [{ size: "abc", price: 10 }] }),
     base({ images: ["javascript:alert(1)"] }),
+    base({ images: ['https://x.com/a"onerror=alert(1)'] }),
   ]) {
     assert.equal((await api("/products", "POST", bad)).status, 400, JSON.stringify(bad));
   }
+});
+
+test("invalid category yields an Arabic error message", async () => {
+  const res = await api("/products", "POST", base({ p_category: "test" }));
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.match(body.message, /فئة غير صالحة/);
+});
+
+test("PUT /api/products/:id normalizes size_list on update", async () => {
+  const created = await (await api("/products", "POST", base())).json();
+  const res = await api(`/products/${created.data._id}`, "PUT", { size_list: [{ size: "30ml", price: 10 }] });
+  assert.equal(res.status, 200);
+  const p = await Product.findById(created.data._id).lean();
+  assert.equal(p.size_list[0].size, "30");
 });
 
 test("size '30ml' is stored as '30'", async () => {

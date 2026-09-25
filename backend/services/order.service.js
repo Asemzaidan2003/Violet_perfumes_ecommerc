@@ -4,6 +4,7 @@ import Product from "../models/product.model.js";
 import Oil from "../models/oil.model.js";
 import Bottle from "../models/bottle.model.js";
 import Alcohol from "../models/alcohol.model.js";
+import { normalizeSize } from "../../storefront/js/shared/vocab.js";
 
 // Business rule: an order is never blocked for stock. Stock is deducted only when an
 // order is confirmed through the POS; it may go negative (what the shop owes) and any
@@ -37,8 +38,9 @@ async function priceLines(items, source, session) {
     if (!mongoose.isValidObjectId(item.product_id)) throw fail(400, `السطر ${n}: معرّف المنتج غير صالح`);
     const product = await Product.findById(item.product_id).session(session);
     if (!product) throw fail(404, `السطر ${n}: المنتج غير موجود`);
-    const ml = parseFloat(item.size);
-    const listed = product.size_list.find((s) => s.size === item.size);
+    const size = normalizeSize(item.size);
+    const ml = parseFloat(size);
+    const listed = product.size_list.find((s) => s.size === size);
     if (!listed || !(ml > 0)) throw fail(400, `السطر ${n}: الحجم "${item.size}" غير متوفر للعطر ${product.p_name}`);
 
     const override = source === "pos" && item.price != null && item.price !== "";
@@ -50,7 +52,7 @@ async function priceLines(items, source, session) {
     lines.push({
       product_id: product._id,
       p_name: product.p_name,
-      product_size: item.size,
+      product_size: size,
       quantity,
       selling_price: price,
       total_revenue: round2(price * quantity),
