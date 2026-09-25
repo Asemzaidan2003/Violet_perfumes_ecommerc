@@ -32,3 +32,14 @@ test("admin UI served at /admin with security headers", async () => {
   assert.ok(res.headers.get("content-security-policy"));
   assert.equal(res.headers.get("x-powered-by"), null);
 });
+
+test("unsupported charset on login is a 4xx, not an unauthenticated 500", async () => {
+  const res = await fetch(`${t.url}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json; charset=latin1" },
+    body: JSON.stringify({ username: "admin", password: "x" }),
+  });
+  assert.equal(res.status, 415);
+  const body = await res.json();
+  assert.equal(body.success, false);
+});

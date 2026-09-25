@@ -39,6 +39,7 @@ export function createApp() {
   if (origins.length) app.use(cors({ origin: origins, credentials: true }));
 
   app.use(express.json({ limit: "100kb" }));
+  app.use((req, res, next) => { req.body ??= {}; next(); });
 
   app.get("/api/health", (req, res) => {
     res.json({ ok: true, db: mongoose.connection.readyState === 1 });

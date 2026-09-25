@@ -15,6 +15,7 @@ window.fetch = async function (input, init) {
     url.pathname !== "/api/auth/login"
   ) {
     location.replace("login.html");
+    return new Promise(() => {});
   }
   return response;
 };

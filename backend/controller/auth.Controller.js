@@ -50,6 +50,9 @@ export async function seedAdmin({ ADMIN_USERNAME, ADMIN_PASSWORD } = process.env
   if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
     throw new Error("No users exist: set ADMIN_USERNAME and ADMIN_PASSWORD to create the first admin");
   }
+  if (ADMIN_PASSWORD.length < 12) {
+    throw new Error("ADMIN_PASSWORD must be at least 12 characters");
+  }
   await User.create({ username: ADMIN_USERNAME, password_hash: await hashPassword(ADMIN_PASSWORD) });
   console.log(`Seeded admin user "${ADMIN_USERNAME}"`);
 }

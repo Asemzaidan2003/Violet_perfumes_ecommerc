@@ -8,12 +8,12 @@ let t;
 before(async () => { t = await startTestApp(); await loginAs(t.url); });
 after(() => t.close());
 
-test("10 concurrent bad logins still cap at 5 failures (at least one 429)", async () => {
+test("10 concurrent bad logins still cap at 5 failures (exactly 5 non-429)", async () => {
   const bad = () => fetch(`${t.url}/api/auth/login`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: "admin", password: "wrong" }),
   });
   const results = await Promise.all(Array.from({ length: 10 }, bad));
   const statuses = results.map((r) => r.status);
-  assert.ok(statuses.includes(429), `expected at least one 429, got: ${statuses.join(",")}`);
+  assert.equal(statuses.filter((s) => s !== 429).length, 5, `statuses: ${statuses.join(",")}`);
 });

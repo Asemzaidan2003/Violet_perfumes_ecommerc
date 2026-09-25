@@ -1,5 +1,6 @@
-import { getOilStock , getBottleStock , getAlcoholStock } from "./getStocks.js";
+import { getOilStock , getBottleStock } from "./getStocks.js";
 const baseURL = "/api";
+// ponytail: client-side read-then-write clamps at 0; replaced by the server-side atomic inventory engine (docs/superpowers/specs/2026-09-22-inventory-stock-engine-design.md)
 export async function updateOilStock(oil_id , add_quantity) {
   try {
     const currentStock = await getOilStock(oil_id);
@@ -8,7 +9,7 @@ export async function updateOilStock(oil_id , add_quantity) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ oil_quantity: currentStock+add_quantity }),
+      body: JSON.stringify({ oil_quantity: Math.max(0, currentStock + add_quantity) }),
     });
     const data = await res.json();
     return data;
@@ -18,14 +19,16 @@ export async function updateOilStock(oil_id , add_quantity) {
 }
 
 export async function updateAlcoholStock(add_quantity) {
-    const currentStock = await getAlcoholStock();
     try {
-        const res = await fetch(`${baseURL}/alcohols`, {
+        const listRes = await fetch(`${baseURL}/alcohols`);
+        const list = await listRes.json();
+        const alcohol = list[0];
+        const res = await fetch(`${baseURL}/alcohols/${alcohol._id}`, {
         method: "PUT",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ quantity: currentStock + add_quantity }),
+        body: JSON.stringify({ quantity: Math.max(0, alcohol.quantity + add_quantity) }),
         });
         const data = await res.json();
         return data;
@@ -42,7 +45,7 @@ export async function updateBottleStock(bottle_id , add_quantity) {
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ quantity: currentStock + add_quantity }),
+        body: JSON.stringify({ quantity: Math.max(0, currentStock + add_quantity) }),
         });
         const data = await res.json();
         return data;

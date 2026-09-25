@@ -14,7 +14,7 @@ await mongoose.connect(process.env.MONGO_URI);
 console.log(`MongoDB connected: ${mongoose.connection.host}`);
 await seedAdmin();
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 const server = createApp().listen(port, () => console.log(`Server started on port ${port}`));
 
 const shutdown = () => server.close(() => mongoose.disconnect().then(() => process.exit(0)));
