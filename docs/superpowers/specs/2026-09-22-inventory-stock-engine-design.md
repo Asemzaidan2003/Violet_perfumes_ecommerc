@@ -1,6 +1,6 @@
 # Inventory / Auto Out-of-Stock Engine — Design Spec
 
-Status: approved by user, pending implementation plan
+Status: SUPERSEDED by 2026-09-25-order-stock-engine-design.md (user changed the business rule: orders are never blocked; stock is deducted only on POS confirmation)
 Scope: sub-project 1 of Phase 3 (ecommerce). Sub-projects 2 (ecommerce storefront)
 and 3 (admin control of offers/codes/Hero Banner) are separate specs, built on
 top of this one.
