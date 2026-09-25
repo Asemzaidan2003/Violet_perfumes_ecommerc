@@ -18,6 +18,12 @@ place: when an order is confirmed through the POS.
   The admin opens it in the POS, picks a bottle per line (may adjust quantity
   or price), and confirms → stock is deducted then.
 
+**Owed stock (user decision, 2026-09-25):** confirmation always deducts the full
+amount, so stock can go negative. A negative quantity is what the shop owes;
+restocking uses "add quantity" (`add_quantity`, an atomic `$inc`), so the next
+delivery covers the debt automatically. Shortages are still reported to the
+admin. Inventory capital counts negative stock as 0.
+
 ## Problem with today's code
 
 - Stock is deducted in the browser (`update_stocks.js`, read-then-write PUTs),
@@ -124,6 +130,15 @@ Public order endpoint, storefront pages, customer accounts, payment,
 availability display (storefront spec); stock history/audit; report changes
 (reports already count only `completed` by default, which now requires
 confirmation).
+
+### Recorded for the storefront spec (user requirement, 2026-09-25)
+
+- A product (or size) whose stock is out (≤ 0 oil for one unit, or no matching
+  bottle) is shown as **out of stock** on the website so customers know.
+- Customers can send an **"I'm interested in this perfume" request** for it
+  (contact + product/size); the admin sees these requests to decide what to
+  make. Whether an out-of-stock item can still be ordered directly is to be
+  confirmed with the user during storefront brainstorming.
 
 ## Testing (`node:test`, local replica set)
 
