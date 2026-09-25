@@ -12,6 +12,8 @@ const round2 = (n) => Math.round(n * 100) / 100;
 // The central error handler returns `message` for exposed 4xx errors.
 const fail = (status, message) => Object.assign(new Error(message), { status, expose: true });
 const NEEDS_CONFIRMATION = ["completed", "ready for delivery", "in delivery", "uncollected payment"];
+const MAX_LINES = 50;
+const MAX_QTY = 1000;
 
 // Order + stock changes commit or roll back together. A concurrent write to the same
 // stock record raises a write conflict, which connection.transaction() retries.
@@ -25,11 +27,12 @@ async function inTransaction(fn) {
 
 async function priceLines(items, source, session) {
   if (!Array.isArray(items) || items.length === 0) throw fail(400, "الطلب يجب أن يحتوي على منتج واحد على الأقل");
+  if (items.length > MAX_LINES) throw fail(400, "عدد المنتجات في الطلب كبير جدًا (الحد 50)");
   const lines = [];
   for (const [i, item] of items.entries()) {
     const n = i + 1;
     const quantity = Number(item?.quantity);
-    if (!Number.isInteger(quantity) || quantity < 1) throw fail(400, `السطر ${n}: الكمية يجب أن تكون عددًا صحيحًا 1 أو أكثر`);
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_QTY) throw fail(400, `السطر ${n}: الكمية يجب أن تكون بين 1 و 1000`);
     if (!mongoose.isValidObjectId(item.product_id)) throw fail(400, `السطر ${n}: معرّف المنتج غير صالح`);
     const product = await Product.findById(item.product_id).session(session);
     if (!product) throw fail(404, `السطر ${n}: المنتج غير موجود`);
@@ -53,7 +56,7 @@ async function priceLines(items, source, session) {
       oil_id: product.oil_id,
       oil_ml: round2((product.oil_percentage / 100) * ml * quantity),
       alcohol_ml: round2((product.alcohol_percentage / 100) * ml * quantity),
-      bottle: item.bottle_id ? { bottle_id: item.bottle_id } : undefined,
+      bottle: source === "pos" && item.bottle_id ? { bottle_id: item.bottle_id } : undefined,
     });
   }
   return lines;
@@ -118,7 +121,8 @@ async function restock(order, session) {
   order.stock_deducted = false;
 }
 
-export async function placeOrder(input = {}, source = "pos") {
+export async function placeOrder(input = {}, source) {
+  if (source !== "pos" && source !== "online") throw fail(400, "مصدر الطلب غير صالح");
   const deliveryFee = Number(input.delivery_fee ?? 0);
   if (!Number.isFinite(deliveryFee) || deliveryFee < 0) throw fail(400, "رسوم التوصيل غير صالحة");
   return inTransaction(async (session) => {
@@ -152,7 +156,7 @@ export async function confirmOrder(id, edits = []) {
       const edit = edits[i] || {};
       if (edit.quantity != null && edit.quantity !== "") {
         const q = Number(edit.quantity);
-        if (!Number.isInteger(q) || q < 1) throw fail(400, `السطر ${i + 1}: الكمية يجب أن تكون عددًا صحيحًا 1 أو أكثر`);
+        if (!Number.isSafeInteger(q) || q < 1 || q > MAX_QTY) throw fail(400, `السطر ${i + 1}: الكمية يجب أن تكون بين 1 و 1000`);
         line.oil_ml = round2((line.oil_ml / line.quantity) * q);
         line.alcohol_ml = round2((line.alcohol_ml / line.quantity) * q);
         line.quantity = q;
@@ -183,7 +187,7 @@ export async function changeStatus(id, status) {
     }
     if (status === "canceled" && order.status !== "canceled") await restock(order, session);
     order.status = status;
-    await order.save({ session });
+    await order.save({ session, validateModifiedOnly: true });
     return order;
   });
 }

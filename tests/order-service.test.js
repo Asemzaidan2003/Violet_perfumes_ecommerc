@@ -55,8 +55,21 @@ test("POS may override price; online uses list price with offer and cannot overr
   const pos = await placeOrder({ products: [line({ price: 15 })] }, "pos");
   assert.equal(pos.order.products[0].selling_price, 15);
   await Product.updateOne({ _id: ids.product }, { p_offer_percentage: 10 });
-  const online = await placeOrder({ products: [line({ price: 1, bottle_id: undefined })] }, "online");
+  const online = await placeOrder({ products: [line({ price: 1 })] }, "online");
   assert.equal(online.order.products[0].selling_price, 18);
+  assert.equal(online.order.products[0].bottle?.bottle_id, undefined);
+});
+
+test("placeOrder rejects an invalid or missing source", async () => {
+  await assert.rejects(placeOrder({ products: [line()] }), { status: 400 });
+  await assert.rejects(placeOrder({ products: [line()] }, "bogus"), { status: 400 });
+});
+
+test("quantity and line-count limits are enforced", async () => {
+  await assert.rejects(placeOrder({ products: [line({ quantity: 1e308 })] }, "pos"), { status: 400 });
+  await assert.rejects(placeOrder({ products: [line({ quantity: 1001 })] }, "pos"), { status: 400 });
+  const lines = Array.from({ length: 51 }, () => line());
+  await assert.rejects(placeOrder({ products: lines }, "pos"), { status: 400 });
 });
 
 test("online order is not deducted until confirmed, and confirms once", async () => {
@@ -108,6 +121,22 @@ test("legacy order counts as confirmed; cancelling it changes status only", asyn
   assert.equal((await changeStatus(insertedId, "completed")).status, "completed");
   assert.equal((await changeStatus(insertedId, "canceled")).status, "canceled");
   assert.deepEqual(await stock(), { oil: 100, alcohol: 1000, bottle: 10 });
+});
+
+test("legacy order with an off-schema field can still be completed and canceled", async () => {
+  const { insertedId } = await Order.collection.insertOne({
+    products: [{
+      product_id: new mongoose.Types.ObjectId(), p_name: "Old", product_size: "30ml", quantity: 1,
+      selling_price: 10, cost_price: 4, total_revenue: 10, total_cost: 4, total_profit: 6,
+      bottle: { bottle_id: new mongoose.Types.ObjectId(ids.bottle), name: "B30", cost: 1 },
+    }],
+    total_items: 1, total_revenue: 10, total_cost: 4, total_profit: 6,
+    payment_method: "Cash on Delivery", delivery_fee: 0, final_total: 10, status: "pending",
+    createdAt: new Date(), updatedAt: new Date(),
+  });
+  assert.equal((await changeStatus(insertedId, "completed")).status, "completed");
+  await assert.rejects(changeStatus(insertedId, "bogus"), (err) => err.name === "ValidationError" || err.status === 400);
+  assert.equal((await changeStatus(insertedId, "canceled")).status, "canceled");
 });
 
 test("a bad line rolls back the whole order", async () => {

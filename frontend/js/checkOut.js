@@ -22,7 +22,7 @@ export async function checkout(cart) {
     const data = await res.json();
     if (!res.ok) {
       alert(data.message || "فشل في تنفيذ الطلب");
-      return;
+      return false;
     }
     let msg = "✅ تم إنشاء الطلب بنجاح!";
     if (data.shortages?.length) {
@@ -31,9 +31,11 @@ export async function checkout(cart) {
     }
     alert(msg);
     window.location.reload();
+    return true;
   } catch (err) {
     console.error("❌ Error creating order:", err);
     alert("فشل في تنفيذ الطلب");
+    return false;
   }
 }
 

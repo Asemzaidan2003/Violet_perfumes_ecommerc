@@ -98,7 +98,7 @@
           <div class="item"><div class="label">تاريخ الإنشاء</div><div class="val num">${new Date(order.createdAt).toLocaleDateString()}</div></div>
           <div class="item"><div class="label">ملاحظات</div><div class="val">${order.order_notes || "-"}</div></div>
           <div class="item"><div class="label">المصدر</div><div class="val">${order.source === "online" ? "الموقع" : "نقطة البيع"}</div></div>
-          <div class="item"><div class="label">المخزون</div><div class="val">${order.stock_deducted === false ? "بانتظار التأكيد" : "تم الخصم"}</div></div>
+          <div class="item"><div class="label">المخزون</div><div class="val">${order.status === "canceled" ? "ملغي (أُعيد المخزون)" : order.stock_deducted === false ? "بانتظار التأكيد" : "تم الخصم"}</div></div>
         </div>
       `;
 

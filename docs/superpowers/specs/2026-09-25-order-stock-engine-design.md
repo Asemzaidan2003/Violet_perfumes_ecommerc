@@ -32,11 +32,13 @@ place: when an order is confirmed through the POS.
   bottle until confirmation).
 - New `oil_id` (String, the oil's custom `id`), `oil_ml`, `alcohol_ml`
   (Numbers): amounts the line needs.
-- New `stock: { oil_ml, alcohol_ml, alcohol_id, bottles }`: amounts actually
-  deducted at confirmation (can be less than needed when stock ran short), so a
-  refund returns exactly what was taken.
+- New `stock: { oil_ml, alcohol_ml, alcohol_id, oil_doc_id, bottles }`: amounts
+  actually deducted at confirmation (can be less than needed when stock ran
+  short), so a refund returns exactly what was taken. Refunds use
+  `oil_doc_id` (the oil's stable `_id`), not the oil's custom `id`, so
+  renaming an oil's custom `id` doesn't lose refunds.
 - `cost_price`, `total_cost`, `total_profit` become `default: 0` (unknown until
-  confirmation).
+  confirmation). Line profit is computed from the rounded line cost.
 
 Order level:
 - New `source: enum ["pos", "online"], default "pos"`.
@@ -54,14 +56,19 @@ and its stock changes commit or roll back together; concurrent writers cause a
 write conflict that the helper retries.
 
 - `placeOrder(input, source)` → `{ order, shortages }`
-  - Input lines: `{ product_id, size, quantity, price?, bottle_id? }`.
+  - `source` is required and must be exactly `"pos"` or `"online"`; there is
+    no default. Input lines: `{ product_id, size, quantity, price?, bottle_id? }`.
   - Server prices every line from the product's `size_list` with
     `p_offer_percentage` applied. Only `source === "pos"` may override `price`.
-    Client-sent cost/total fields are ignored.
+    Client-sent cost/total fields are ignored. Online orders ignore any
+    client-sent `bottle_id`; the bottle is only assigned when `source === "pos"`.
   - Needed amounts: `oil_ml = oil_percentage/100 × parseFloat(size) × qty`,
     same for alcohol.
   - `pos` → confirm immediately (below). `online` → saved with
     `stock_deducted: false`, costs and profit 0.
+  - Limits: at most 50 lines per order (`MAX_LINES`), quantity must be a safe
+    integer between 1 and 1000 (`MAX_QTY`), enforced on `placeOrder` lines and
+    on `confirmOrder` quantity edits alike.
 - `confirmOrder(id, lineEdits)` → `{ order, shortages }` — for unconfirmed
   orders; applies per-line `{ bottle_id, quantity?, price? }` then confirms.
 - `changeStatus(id, status)` → order.

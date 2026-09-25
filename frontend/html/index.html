@@ -420,6 +420,9 @@
       // تحقق من الزبون
       let customerId = document.getElementById("customer_id").value || null;
 
+      const btn = document.getElementById("checkout");
+      btn.disabled = true;
+
       if (currentCustomer) {
         customerId = currentCustomer._id;
       } else {
@@ -429,6 +432,7 @@
         if (!name) {
           console.log(customerId)
           alert("يرجى إدخال اسم الزبون الجديد");
+          btn.disabled = false;
           return;
         }
 
@@ -441,20 +445,22 @@
           const data = await res.json();
           console.log(data);
           customerId = data._id;
-          currentCustomer = data.customer;
+          currentCustomer = data;
         } else {
           alert("فشل إنشاء الزبون الجديد");
+          btn.disabled = false;
           return;
         }
       }
 
       // إرسال الطلب مع customer_id
-      checkout({
+      const ok = await checkout({
         products: cart,
         total_items,
         total_price: total_amount,
         customer_id: customerId,
       });
+      if (!ok) btn.disabled = false;
     };
     function closeCustomerModal() {
       document.getElementById("customerModal").classList.remove("open");
