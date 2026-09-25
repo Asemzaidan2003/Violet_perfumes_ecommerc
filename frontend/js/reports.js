@@ -397,7 +397,7 @@ function editAlcoholRow(id) {
   row.innerHTML = `
     <td><input type="text" id="alcohol-name-${id}" value="${a.name}"></td>
     <td><input type="text" id="alcohol-type-${id}" value="${a.type}"></td>
-    <td><input type="number" id="alcohol-quantity-${id}" value="${a.quantity}"></td>
+    <td><input type="number" id="alcohol-quantity-${id}" value="${a.quantity}"><input type="number" id="alcohol-add-${id}" min="0" step="any" placeholder="+ إضافة"></td>
     <td><input type="number" step="0.01" id="alcohol-cost-${id}" value="${a.cost}"></td>
     <td class="num">${money(a.value)}</td>
     <td>
@@ -407,16 +407,21 @@ function editAlcoholRow(id) {
 }
 
 async function saveAlcoholRow(id) {
+  const a = _lastAlcohol.find((x) => String(x.id) === String(id));
   const name = document.getElementById(`alcohol-name-${id}`).value.trim();
   const type = document.getElementById(`alcohol-type-${id}`).value.trim();
   const quantity = Number(document.getElementById(`alcohol-quantity-${id}`).value);
   const cost = Number(document.getElementById(`alcohol-cost-${id}`).value);
+  const addQuantityRaw = document.getElementById(`alcohol-add-${id}`).value;
   if (!name || !type || Number.isNaN(quantity) || Number.isNaN(cost)) {
     alert("يرجى تعبئة جميع الحقول بشكل صحيح");
     return;
   }
+  const data = { name, type, cost };
+  if (!a || quantity !== a.quantity) data.quantity = quantity;
+  if (addQuantityRaw !== "" && Number(addQuantityRaw) > 0) data.add_quantity = Number(addQuantityRaw);
   try {
-    await apiPut(`/alcohols/${id}`, { name, type, quantity, cost });
+    await apiPut(`/alcohols/${id}`, data);
     await loadInventoryTab();
   } catch (err) {
     console.error("Error updating alcohol:", err);

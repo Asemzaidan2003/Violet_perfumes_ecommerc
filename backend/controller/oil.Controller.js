@@ -1,4 +1,5 @@
 import Oil from '../models/oil.model.js';
+import { stockUpdate } from '../utils/restock.js';
 
 export const createOil = async (req , res)=>{
     const {id , oil_name , oil_cost , oil_quantity} = req.body;
@@ -21,7 +22,7 @@ export const createOil = async (req , res)=>{
 };
 
 export const updateOil = async (req , res)=>{
-    const update = req.body;
+    const update = stockUpdate(req.body, "oil_quantity");
     const updatedOil = await Oil.findOneAndUpdate(
         { id: req.params.id },
         update,
@@ -101,8 +102,8 @@ export const calculateOilCapital = async (req, res) => {
             data: null
         });
     }
-    const totalQuantity = oilData.reduce((sum , oil)=>sum+oil.oil_quantity , 0)
-    const totalCapital = oilData.reduce((sum , oil)=>sum+oil.oil_quantity*oil.oil_cost,0)
+    const totalQuantity = oilData.reduce((sum , oil)=>sum+Math.max(0, oil.oil_quantity) , 0)
+    const totalCapital = oilData.reduce((sum , oil)=>sum+Math.max(0, oil.oil_quantity)*oil.oil_cost,0)
     res.status(200).json({
         success: true,
         message: "Capital calculated successfully",

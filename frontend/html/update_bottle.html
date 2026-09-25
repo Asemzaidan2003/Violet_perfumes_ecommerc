@@ -37,7 +37,12 @@
 
       <div class="field">
         <label for="quantity">الكمية المتوفرة</label>
-        <input type="number" id="quantity" name="quantity" required />
+        <input type="number" step="1" id="quantity" name="quantity" required />
+      </div>
+
+      <div class="field">
+        <label for="add_quantity">إضافة كمية (وارد جديد)</label>
+        <input type="number" id="add_quantity" name="add_quantity" min="0" step="1" />
       </div>
 
       <div class="form-actions">
@@ -50,6 +55,7 @@
     const baseURL = "/api/bottles";
     const params = new URLSearchParams(window.location.search);
     const bottleId = params.get("id");
+    let loadedQuantity = 0;
 
     if (!bottleId) {
       alert("لا يوجد ID في الرابط!");
@@ -65,7 +71,8 @@
         document.getElementById("name").value = data.name;
         document.getElementById("capacity").value = data.capacity;
         document.getElementById("cost").value = data.cost;
-        document.getElementById("quantity").value = data.quantity;
+        loadedQuantity = data.quantity;
+        document.getElementById("quantity").value = loadedQuantity;
       } catch (err) {
         alert("فشل في تحميل بيانات الزجاجة");
         console.error(err);
@@ -79,8 +86,15 @@
         name: document.getElementById("name").value,
         capacity: parseInt(document.getElementById("capacity").value),
         cost: parseFloat(document.getElementById("cost").value),
-        quantity: parseInt(document.getElementById("quantity").value),
       };
+      const quantity = parseInt(document.getElementById("quantity").value);
+      if (quantity !== loadedQuantity) {
+        data.quantity = quantity;
+      }
+      const add_quantity = document.getElementById("add_quantity").value;
+      if (add_quantity !== "" && parseFloat(add_quantity) > 0) {
+        data.add_quantity = parseFloat(add_quantity);
+      }
 
       try {
         const res = await fetch(`${baseURL}/${bottleId}`, {

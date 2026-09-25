@@ -31,8 +31,13 @@
         </div>
         <div class="field">
           <label for="oil_quantity">الكمية</label>
-          <input type="number" id="oil_quantity" name="oil_quantity" required />
+          <input type="number" step="any" id="oil_quantity" name="oil_quantity" required />
         </div>
+      </div>
+
+      <div class="field">
+        <label for="add_quantity">إضافة كمية (وارد جديد)</label>
+        <input type="number" id="add_quantity" name="add_quantity" min="0" step="any" />
       </div>
 
       <div class="field">
@@ -54,6 +59,7 @@
     const baseURL = '/api/oils';
     const params = new URLSearchParams(window.location.search);
     const oilId = params.get("id");
+    let loadedQuantity = 0;
 
     if (!oilId) {
       alert("لا يوجد ID في الرابط!");
@@ -68,7 +74,8 @@
         const oil = await res.json();
         document.getElementById('oil_name').value = oil.data.oil_name || "";
         document.getElementById('oil_cost').value = oil.data.oil_cost || 0;
-        document.getElementById('oil_quantity').value = oil.data.oil_quantity || 0;
+        loadedQuantity = oil.data.oil_quantity || 0;
+        document.getElementById('oil_quantity').value = loadedQuantity;
         document.getElementById('status').value = oil.data.status || "available";
       } catch (error) {
         alert('خطأ في تحميل البيانات');
@@ -82,6 +89,7 @@
       const oil_name = document.getElementById('oil_name').value.trim();
       const oil_cost = document.getElementById('oil_cost').value;
       const oil_quantity = document.getElementById('oil_quantity').value;
+      const add_quantity = document.getElementById('add_quantity').value;
       const status = document.getElementById('status').value;
 
       if (!oil_name || oil_cost === '' || oil_quantity === '' || !status) {
@@ -91,9 +99,14 @@
       const data = {
         oil_name,
         oil_cost: parseFloat(oil_cost),
-        oil_quantity: parseInt(oil_quantity),
         status
       };
+      if (parseFloat(oil_quantity) !== loadedQuantity) {
+        data.oil_quantity = parseFloat(oil_quantity);
+      }
+      if (add_quantity !== '' && parseFloat(add_quantity) > 0) {
+        data.add_quantity = parseFloat(add_quantity);
+      }
 
       try {
         const res = await fetch(`${baseURL}/${oilId}`, {

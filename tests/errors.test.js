@@ -29,17 +29,26 @@ test("missing record is 404", async () => {
   assert.equal(res.status, 404);
 });
 
-test("negative stock is rejected with 400 on create and update", async () => {
+test("negative stock (owed) is allowed, but negative cost/capacity is still rejected", async () => {
+  // quantity has no min: it may go negative to represent stock the shop owes.
   const create = await api("/bottles", {
     method: "POST", body: JSON.stringify({ name: "B", capacity: 30, cost: 1, quantity: -1 }),
   });
-  assert.equal(create.status, 400);
-  const ok = await api("/bottles", {
-    method: "POST", body: JSON.stringify({ name: "B", capacity: 30, cost: 1, quantity: 5 }),
-  });
-  const id = (await ok.json()).data._id;
+  assert.equal(create.status, 201);
+  const id = (await create.json()).data._id;
   const upd = await api(`/bottles/${id}`, { method: "PUT", body: JSON.stringify({ quantity: -3 }) });
-  assert.equal(upd.status, 400);
+  assert.equal(upd.status, 200);
+  assert.equal((await upd.json()).data.quantity, -3);
+
+  // cost and capacity keep their min: 0
+  const badCost = await api("/bottles", {
+    method: "POST", body: JSON.stringify({ name: "B2", capacity: 30, cost: -1, quantity: 5 }),
+  });
+  assert.equal(badCost.status, 400);
+  const badCapacity = await api("/bottles", {
+    method: "POST", body: JSON.stringify({ name: "B3", capacity: -30, cost: 1, quantity: 5 }),
+  });
+  assert.equal(badCapacity.status, 400);
 });
 
 test("500s never leak error details", async () => {

@@ -6,7 +6,8 @@ import Bottle from "../models/bottle.model.js";
 import Alcohol from "../models/alcohol.model.js";
 
 // Business rule: an order is never blocked for stock. Stock is deducted only when an
-// order is confirmed through the POS; it floors at 0 and any gap is returned as a shortage.
+// order is confirmed through the POS; it may go negative (what the shop owes) and any
+// gap is returned as a shortage. The next restock (add_quantity -> $inc) covers the debt.
 
 const round2 = (n) => Math.round(n * 100) / 100;
 // The central error handler returns `message` for exposed 4xx errors.
@@ -62,15 +63,15 @@ async function priceLines(items, source, session) {
   return lines;
 }
 
-// Takes up to `amount` from one stock record (floor 0) and records any shortage.
+// Takes the full `amount`; stock may go negative (what the shop owes) and the next
+// restock (add_quantity → $inc) covers it. Any gap is still reported as a shortage.
 async function take(Model, filter, field, nameField, amount, missingMessage, ctx) {
   const doc = await Model.findOne(filter).session(ctx.session);
   if (!doc) throw fail(404, missingMessage);
   const had = doc[field];
   if (had < amount) ctx.shortages.push({ item: doc[nameField], needed: amount, available: had });
-  const taken = round2(Math.min(Math.max(had, 0), amount));
-  await Model.updateOne({ _id: doc._id }, { $set: { [field]: round2(Math.max(0, had - amount)) } }, { session: ctx.session });
-  return { doc, taken };
+  await Model.updateOne({ _id: doc._id }, { $set: { [field]: round2(had - amount) } }, { session: ctx.session });
+  return { doc, taken: amount };
 }
 
 function setTotals(order) {

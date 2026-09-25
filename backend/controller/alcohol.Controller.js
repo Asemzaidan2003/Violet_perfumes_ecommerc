@@ -1,4 +1,5 @@
 import Alcohol from "../models/alcohol.model.js";
+import { stockUpdate } from "../utils/restock.js";
 
 export const addAlcohol = async (req, res) => {
   const alcohol = new Alcohol(req.body);
@@ -12,7 +13,7 @@ export const getAlcohol = async (req, res) => {
 };
 
 export const updateAlcohol = async (req, res) => {
-  const alcohol = await Alcohol.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const alcohol = await Alcohol.findByIdAndUpdate(req.params.id, stockUpdate(req.body, "quantity"), { new: true });
   if (!alcohol) {
     return res.status(404).json({ message: "Alcohol not found" });
   }

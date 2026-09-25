@@ -206,8 +206,8 @@ export const getDashboardSummary = async (req, res) => {
         {
           $group: {
             _id: null,
-            quantity: { $sum: "$oil_quantity" },
-            capital: { $sum: { $multiply: ["$oil_quantity", "$oil_cost"] } },
+            quantity: { $sum: { $max: [0, "$oil_quantity"] } },
+            capital: { $sum: { $multiply: [{ $max: [0, "$oil_quantity"] }, "$oil_cost"] } },
           },
         },
       ]),
@@ -215,8 +215,8 @@ export const getDashboardSummary = async (req, res) => {
         {
           $group: {
             _id: null,
-            quantity: { $sum: "$quantity" },
-            capital: { $sum: { $multiply: ["$quantity", "$cost"] } },
+            quantity: { $sum: { $max: [0, "$quantity"] } },
+            capital: { $sum: { $multiply: [{ $max: [0, "$quantity"] }, "$cost"] } },
           },
         },
       ]),
@@ -230,8 +230,8 @@ export const getDashboardSummary = async (req, res) => {
       Order.countDocuments({ status: "pending" }),
     ]);
 
-    const alcoholCapital = alcohol.reduce((sum, a) => sum + a.quantity * a.cost, 0);
-    const alcoholQuantity = alcohol.reduce((sum, a) => sum + a.quantity, 0);
+    const alcoholCapital = alcohol.reduce((sum, a) => sum + Math.max(0, a.quantity) * a.cost, 0);
+    const alcoholQuantity = alcohol.reduce((sum, a) => sum + Math.max(0, a.quantity), 0);
 
     // Fill in missing days on the trend so the chart has no gaps
     const trendMap = new Map(salesTrend.map((d) => [d._id, d]));
@@ -483,7 +483,7 @@ export const getInventoryReport = async (req, res) => {
       name: o.oil_name,
       quantity: o.oil_quantity,
       cost: o.oil_cost,
-      value: round2(o.oil_quantity * o.oil_cost),
+      value: round2(Math.max(0, o.oil_quantity) * o.oil_cost),
       status: o.status,
       low_stock: o.oil_quantity <= oilThreshold,
     }));
@@ -494,7 +494,7 @@ export const getInventoryReport = async (req, res) => {
       capacity: b.capacity,
       quantity: b.quantity,
       cost: b.cost,
-      value: round2(b.quantity * b.cost),
+      value: round2(Math.max(0, b.quantity) * b.cost),
       low_stock: b.quantity <= bottleThreshold,
     }));
 
@@ -504,15 +504,15 @@ export const getInventoryReport = async (req, res) => {
       type: a.type,
       quantity: a.quantity,
       cost: a.cost,
-      value: round2(a.quantity * a.cost),
+      value: round2(Math.max(0, a.quantity) * a.cost),
     }));
 
     const totals = {
-      oil_quantity: round2(oilRows.reduce((s, o) => s + o.quantity, 0)),
+      oil_quantity: round2(oilRows.reduce((s, o) => s + Math.max(0, o.quantity), 0)),
       oil_capital: round2(oilRows.reduce((s, o) => s + o.value, 0)),
-      bottle_quantity: round2(bottleRows.reduce((s, b) => s + b.quantity, 0)),
+      bottle_quantity: round2(bottleRows.reduce((s, b) => s + Math.max(0, b.quantity), 0)),
       bottle_capital: round2(bottleRows.reduce((s, b) => s + b.value, 0)),
-      alcohol_quantity: round2(alcoholRows.reduce((s, a) => s + a.quantity, 0)),
+      alcohol_quantity: round2(alcoholRows.reduce((s, a) => s + Math.max(0, a.quantity), 0)),
       alcohol_capital: round2(alcoholRows.reduce((s, a) => s + a.value, 0)),
     };
     totals.total_capital = round2(totals.oil_capital + totals.bottle_capital + totals.alcohol_capital);

@@ -1,4 +1,5 @@
 import Bottle from '../models/bottle.model.js';
+import { stockUpdate } from '../utils/restock.js';
 
 export const createBottle = async (req, res) => {
     const { name, capacity, cost, quantity } = req.body;
@@ -18,7 +19,7 @@ export const createBottle = async (req, res) => {
 
 export const updateBottle = async (req, res) => {
     const { id } = req.params;
-    const update = req.body;
+    const update = stockUpdate(req.body, "quantity");
     const updatedBottle = await Bottle.findByIdAndUpdate(id, update, { new: true });
     if (!updatedBottle) {
         return res.status(404).json({
@@ -89,11 +90,11 @@ export const calculateBottleCapital = async (req, res) => {
   }
 
   const totalQuantity = bottleData.reduce(
-    (sum, bottle) => sum + bottle.quantity,
+    (sum, bottle) => sum + Math.max(0, bottle.quantity),
     0
   );
   const totalCapital = bottleData.reduce(
-    (sum, bottle) => sum + bottle.quantity * bottle.cost,
+    (sum, bottle) => sum + Math.max(0, bottle.quantity) * bottle.cost,
     0
   );
 

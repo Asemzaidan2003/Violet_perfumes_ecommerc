@@ -88,11 +88,11 @@ test("online order is not deducted until confirmed, and confirms once", async ()
   assert.equal((await changeStatus(order._id, "completed")).status, "completed");
 });
 
-test("shortage never blocks: stock floors at 0 and cancel returns only what was taken", async () => {
+test("shortage never blocks: stock goes negative (owed) and cancel restores it", async () => {
   await Oil.updateOne({ id: "OIL1" }, { oil_quantity: 5 });
   const { order, shortages } = await placeOrder({ products: [line()] }, "pos");
   assert.deepEqual(shortages, [{ item: "Test Oil", needed: 12, available: 5 }]);
-  assert.equal((await stock()).oil, 0);
+  assert.equal((await stock()).oil, -7);
   await changeStatus(order._id, "canceled");
   assert.deepEqual(await stock(), { oil: 5, alcohol: 1000, bottle: 10 });
 });
