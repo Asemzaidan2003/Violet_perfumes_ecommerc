@@ -18,6 +18,7 @@
         <span class="eyebrow">نقطة البيع</span>
         <h2>نظام المبيعات</h2>
       </div>
+      <a href="orders.html?filter=unconfirmed" class="btn btn-primary" id="unconfirmedLink" style="display: none;"></a>
     </div>
 
     <!-- قسم الزبون -->
@@ -125,6 +126,20 @@
 
   <script>
     const baseURL = "/api";
+
+    // طلبات الموقع التي لم تُؤكَّد بعد (لم يُخصم مخزونها)
+    fetch(`${baseURL}/orders`)
+      .then((r) => r.json())
+      .then(({ data }) => {
+        const n = (data || []).filter((o) => o.stock_deducted === false && o.status !== "canceled").length;
+        const link = document.getElementById("unconfirmedLink");
+        if (n) {
+          link.textContent = `طلبات بانتظار التأكيد (${n})`;
+          link.style.display = "";
+        }
+      })
+      .catch((err) => console.error("Error fetching orders:", err));
+
     let products = [];
     const cart = [];
     let bottles = [];
