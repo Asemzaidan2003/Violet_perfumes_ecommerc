@@ -15,9 +15,11 @@ export const updateShopSettings = async (req, res) => {
 
 // GET /api/interests?status=
 export const getInterests = async (req, res) => {
-  const filter = {};
-  if (req.query.status) filter.status = req.query.status;
-  const interests = await Interest.find(filter).sort({ createdAt: -1 }).limit(500);
+  const { status } = req.query;
+  if (status && !INTEREST_STATUSES.includes(status)) {
+    return res.status(400).json({ success: false, message: "حالة غير صالحة" });
+  }
+  const interests = await Interest.find(status ? { status } : {}).sort({ createdAt: -1 }).limit(500);
   res.status(200).json({ success: true, data: interests });
 };
 

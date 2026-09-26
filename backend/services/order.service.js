@@ -9,14 +9,13 @@ import Customer from "../models/customer.model.js";
 import { normalizeSize } from "../../storefront/js/shared/vocab.js";
 import { normalizePhone } from "../../storefront/js/shared/phone.js";
 import { effectivePrice } from "../catalog/pricing.js";
+import { fail } from "../utils/fail.js";
 
 // Business rule: an order is never blocked for stock. Stock is deducted only when an
 // order is confirmed through the POS; it may go negative (what the shop owes) and any
 // gap is returned as a shortage. The next restock (add_quantity -> $inc) covers the debt.
 
 const round2 = (n) => Math.round(n * 100) / 100;
-// The central error handler returns `message` for exposed 4xx errors.
-const fail = (status, message) => Object.assign(new Error(message), { status, expose: true });
 const NEEDS_CONFIRMATION = ["completed", "ready for delivery", "in delivery", "uncollected payment"];
 const MAX_LINES = 50;
 const MAX_QTY = 1000;
@@ -206,7 +205,7 @@ export async function confirmOrder(id, edits = [], { delivery_fee } = {}) {
       if (edit.bottle_id) line.bottle = { bottle_id: edit.bottle_id };
     });
 
-    if (delivery_fee != null) {
+    if (delivery_fee != null && delivery_fee !== "") {
       const fee = Number(delivery_fee);
       if (!Number.isFinite(fee) || fee < 0) throw fail(400, "رسوم التوصيل غير صالحة");
       order.delivery_fee = fee;

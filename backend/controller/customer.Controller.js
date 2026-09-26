@@ -13,14 +13,19 @@ export const getCustomerById = async (req, res) => {
   res.json(customer);
 };
 
+// Normalized the same way as the storefront's delivery snapshot, so an online order's
+// confirm-time phone lookup (see order.service.js) finds a customer created here too.
+const withNormalizedPhone = (body) =>
+  body?.phone != null ? { ...body, phone: normalizePhone(body.phone) } : body;
+
 export const addCustomer = async (req, res) => {
-  const customer = new Customer(req.body);
+  const customer = new Customer(withNormalizedPhone(req.body));
   await customer.save();
   res.status(201).json(customer);
 };
 
 export const updateCustomer = async (req, res) => {
-  const updated = await Customer.findByIdAndUpdate(req.params.id, req.body, {
+  const updated = await Customer.findByIdAndUpdate(req.params.id, withNormalizedPhone(req.body), {
     new: true,
   });
   if (!updated)

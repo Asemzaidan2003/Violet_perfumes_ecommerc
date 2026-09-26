@@ -11,13 +11,14 @@ import Interest from "../backend/models/interest.model.js";
 import Oil from "../backend/models/oil.model.js";
 import Bottle from "../backend/models/bottle.model.js";
 import Alcohol from "../backend/models/alcohol.model.js";
+import Setting from "../backend/models/setting.model.js";
 
 let t, cookie, ids;
 
 before(async () => {
   t = await startTestApp({ limits: { orders: { max: 1000 }, interest: { max: 1000 } } });
   cookie = await loginAs(t.url);
-  await Order.init(); // rebuild the unique client_key/public_ref indexes dropped with the test db
+  await Order.createIndexes(); // rebuild the client_key/public_ref unique indexes dropped by startTestApp's dropDatabase()
 });
 after(() => t.close());
 
@@ -135,6 +136,8 @@ test("two concurrent requests with the same client_key create exactly one order"
   const [a, b] = await Promise.all([storeApi("/orders", body), storeApi("/orders", body)]);
   assert.ok([201, 200].includes(a.status));
   assert.ok([201, 200].includes(b.status));
+  const [aBody, bBody] = await Promise.all([a.json(), b.json()]);
+  assert.equal(aBody.data.ref, bBody.data.ref);
   assert.equal(await Order.countDocuments(), 1);
 });
 
@@ -153,6 +156,30 @@ test("validation rejects bad phone, bad city, too many items, zero quantity, and
     assert.equal(json.success, false);
     assert.match(json.message, /[؀-ۿ]/);
   }
+});
+
+test("validation rejects wrong-typed fields: an object name, a boolean quantity, an array quantity", async () => {
+  const cases = [
+    validBody({ customer: customer({ name: {} }) }),
+    validBody({ items: [{ product_id: ids.product, size: "30", quantity: true }] }),
+    validBody({ items: [{ product_id: ids.product, size: "30", quantity: [3] }] }),
+  ];
+  for (const body of cases) {
+    const res = await storeApi("/orders", body);
+    assert.equal(res.status, 400, JSON.stringify(body));
+  }
+});
+
+test("`<` and `>` are stripped from customer text fields", async () => {
+  const res = await storeApi("/orders", validBody({
+    customer: customer({ name: "<b>Sara</b>", address: "<script>street</script> 12", notes: "<i>note</i>" }),
+  }));
+  assert.equal(res.status, 201);
+  const { data } = await res.json();
+  const order = await Order.findOne({ public_ref: data.ref });
+  assert.equal(order.delivery.name, "bSara/b");
+  assert.equal(order.delivery.address, "scriptstreet/script 12");
+  assert.equal(order.delivery.notes, "inote/i");
 });
 
 test("Arabic-Indic phone digits are accepted", async () => {
@@ -193,6 +220,40 @@ test("a third order from the same client is rate-limited with a WhatsApp link in
   }
 });
 
+test("the interest rate-limit message reflects the WhatsApp number with no order ever placed, and updates after a settings change", async () => {
+  const rlApp = createApp({ limits: { orders: { max: 1000 }, interest: { max: 2 } } });
+  const server = rlApp.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const url = `http://127.0.0.1:${server.address().port}`;
+  try {
+    // A freshly booted shop that already has a WhatsApp number configured, written directly
+    // (bypassing saveSettings) so this doesn't itself warm the process-wide settings cache.
+    await Setting.findByIdAndUpdate("shop", { $set: { whatsapp: "962700000001" } }, { upsert: true });
+
+    const interest = (phone) => fetch(`${url}/api/store/interest`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ product_id: ids.product, name: "لينا", phone }),
+    });
+    assert.equal((await interest("0791111111")).status, 201);
+    assert.equal((await interest("0792222222")).status, 201);
+    const blocked = await interest("0793333333");
+    assert.equal(blocked.status, 429);
+    assert.match((await blocked.json()).message, /wa\.me\/962700000001/);
+
+    const put = await fetch(`${url}/api/settings`, {
+      method: "PUT", headers: { cookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ whatsapp: "962700000002" }),
+    });
+    assert.equal(put.status, 200);
+
+    const blockedAgain = await interest("0794444444");
+    assert.equal(blockedAgain.status, 429);
+    assert.match((await blockedAgain.json()).message, /wa\.me\/962700000002/);
+  } finally {
+    await new Promise((r) => server.close(r));
+  }
+});
+
 test("admin confirm links an existing customer by normalized phone and applies a delivery_fee edit", async () => {
   const existing = await Customer.create({ name: "Sara (existing)", phone: "0791234567" });
   const placeRes = await storeApi("/orders", validBody());
@@ -224,6 +285,42 @@ test("admin confirm creates a new customer when none matches the delivery phone"
   assert.equal(String((await confirmRes.json()).data.customer_id), String(created._id));
 });
 
+test("admin confirm sets a newly-created customer's address to 'city — address'", async () => {
+  const placeRes = await storeApi("/orders", validBody({
+    customer: customer({ phone: "0799999999", city: "إربد", address: "شارع 5" }),
+  }));
+  const { data } = await placeRes.json();
+  const order = await Order.findOne({ public_ref: data.ref });
+
+  await adminApi(`/orders/${order._id}/confirm`, {
+    method: "POST", body: JSON.stringify({ lines: [{ bottle_id: ids.bottle }] }),
+  });
+  const created = await Customer.findOne({ phone: "0799999999" });
+  assert.equal(created.address, "إربد — شارع 5");
+});
+
+test("confirm with delivery_fee: '' keeps the existing fee; a negative or non-numeric value is 400", async () => {
+  const placeRes = await storeApi("/orders", validBody());
+  const { data } = await placeRes.json();
+  const order = await Order.findOne({ public_ref: data.ref });
+  const originalFee = order.delivery_fee;
+
+  const bad1 = await adminApi(`/orders/${order._id}/confirm`, {
+    method: "POST", body: JSON.stringify({ lines: [{ bottle_id: ids.bottle }], delivery_fee: -1 }),
+  });
+  assert.equal(bad1.status, 400);
+  const bad2 = await adminApi(`/orders/${order._id}/confirm`, {
+    method: "POST", body: JSON.stringify({ lines: [{ bottle_id: ids.bottle }], delivery_fee: "abc" }),
+  });
+  assert.equal(bad2.status, 400);
+
+  const confirmRes = await adminApi(`/orders/${order._id}/confirm`, {
+    method: "POST", body: JSON.stringify({ lines: [{ bottle_id: ids.bottle }], delivery_fee: "" }),
+  });
+  assert.equal(confirmRes.status, 200);
+  assert.equal((await confirmRes.json()).data.delivery_fee, originalFee);
+});
+
 test("POST /api/store/interest creates a request; a duplicate while 'new' updates it instead of duplicating", async () => {
   const body = { product_id: ids.product, size: "30", name: "لينا", phone: "0791234567", note: "متوفر قريبًا؟" };
   const first = await storeApi("/interest", body);
@@ -239,6 +336,28 @@ test("POST /api/store/interest creates a request; a duplicate while 'new' update
 test("interest for a discontinued product is 404", async () => {
   const res = await storeApi("/interest", { product_id: ids.discontinued, name: "لينا", phone: "0791234567" });
   assert.equal(res.status, 404);
+});
+
+test("interest validation rejects a bad phone and the honeypot", async () => {
+  const badPhone = await storeApi("/interest", { product_id: ids.product, name: "لينا", phone: "123" });
+  assert.equal(badPhone.status, 400);
+
+  const honeypot = await storeApi("/interest", {
+    product_id: ids.product, name: "لينا", phone: "0791234567", website: "http://spam.example",
+  });
+  assert.equal(honeypot.status, 400);
+});
+
+test("interest with a size that doesn't exist on the product is 400", async () => {
+  const res = await storeApi("/interest", { product_id: ids.product, size: "999", name: "لينا", phone: "0791234567" });
+  assert.equal(res.status, 400);
+});
+
+test("interest with an overlong size string is 400", async () => {
+  const res = await storeApi("/interest", {
+    product_id: ids.product, size: "x".repeat(21), name: "لينا", phone: "0791234567",
+  });
+  assert.equal(res.status, 400);
 });
 
 test("admin can list interests by status and update status", async () => {
@@ -259,6 +378,11 @@ test("admin can list interests by status and update status", async () => {
   assert.equal((await filtered.json()).data.length, 0);
 });
 
+test("GET /api/interests?status=bogus is 400", async () => {
+  const res = await adminApi("/interests?status=bogus");
+  assert.equal(res.status, 400);
+});
+
 test("the order response body exposes no internal fields", async () => {
   const res = await storeApi("/orders", validBody());
   const { data } = await res.json();
@@ -266,4 +390,33 @@ test("the order response body exposes no internal fields", async () => {
   for (const key of ["_id", "total_cost", "total_profit", "oil"]) {
     assert.ok(!new RegExp(`"${key}"`).test(serialized), `unexpected key "${key}" in response`);
   }
+});
+
+test("POST /api/customers normalizes the phone, so confirm-time matching finds a POS-created customer", async () => {
+  const create = await adminApi("/customers", {
+    method: "POST", body: JSON.stringify({ name: "Sara POS", phone: "٠٧٩١٢٣٤٥٦٧" }),
+  });
+  assert.equal(create.status, 201);
+  const created = await create.json();
+  assert.equal(created.phone, "0791234567");
+
+  const placeRes = await storeApi("/orders", validBody({ customer: customer({ phone: "0791234567" }) }));
+  const { data } = await placeRes.json();
+  const order = await Order.findOne({ public_ref: data.ref });
+  const confirmRes = await adminApi(`/orders/${order._id}/confirm`, {
+    method: "POST", body: JSON.stringify({ lines: [{ bottle_id: ids.bottle }] }),
+  });
+  assert.equal((await confirmRes.json()).data.customer_id, created._id);
+  assert.equal(await Customer.countDocuments(), 1); // no second customer created
+});
+
+test("PUT /api/customers/:id also normalizes the phone", async () => {
+  const create = await adminApi("/customers", { method: "POST", body: JSON.stringify({ name: "Existing", phone: "0790000000" }) });
+  const created = await create.json();
+
+  const upd = await adminApi(`/customers/${created._id}`, {
+    method: "PUT", body: JSON.stringify({ phone: "+962 79 111 2222" }),
+  });
+  assert.equal(upd.status, 200);
+  assert.equal((await upd.json()).phone, "0791112222");
 });

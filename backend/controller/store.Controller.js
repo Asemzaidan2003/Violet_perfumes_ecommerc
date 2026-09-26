@@ -4,7 +4,8 @@ import Interest from "../models/interest.model.js";
 import { getCatalog, compactIndex, invalidateCatalog } from "../store/catalog.js";
 import { getSettings, getCachedSettings } from "../services/settings.service.js";
 import { placeOrder, publicOrder } from "../services/order.service.js";
-import { validateOrderBody, validateInterestBody, fail } from "../store/validate.js";
+import { validateOrderBody, validateInterestBody } from "../store/validate.js";
+import { fail } from "../utils/fail.js";
 
 // GET /api/store/catalog — public compact index for the search overlay and cart pricing.
 export const getPublicCatalog = async (req, res) => {
@@ -19,10 +20,22 @@ export const waLimitMessage = (base) => () => {
   return whatsapp ? `${base} — تواصل معنا على واتساب: https://wa.me/${whatsapp}` : base;
 };
 
+// Runs before `limit(...)` on every public store route, so the settings cache behind
+// `waLimitMessage` is always fresh by the time the limiter can fire — including for the very
+// request that gets blocked, and even if the shop has never placed an order.
+export const warmSettings = async (req, res, next) => {
+  try {
+    req.settings = await getSettings();
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
 // POST /api/store/orders — place an online order (public, no auth).
 export const createStoreOrder = async (req, res) => {
   const { items, customer, client_key } = validateOrderBody(req.body);
-  const settings = await getSettings();
+  const settings = req.settings ?? await getSettings();
   try {
     const { order, replay } = await placeOrder({
       products: items,
@@ -46,6 +59,7 @@ export const createStoreInterest = async (req, res) => {
   const { product_id, size, name, phone, note } = validateInterestBody(req.body);
   const product = await Product.findById(product_id);
   if (!product || product.status === "discontinued") throw fail(404, "المنتج غير متوفر");
+  if (size && !product.size_list.some((s) => s.size === size)) throw fail(400, "الحجم غير متوفر لهذا العطر");
 
   await Interest.findOneAndUpdate(
     { phone, product_id, size: size ?? null, status: "new" },

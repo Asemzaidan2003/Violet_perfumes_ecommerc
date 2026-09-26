@@ -1,9 +1,7 @@
 import mongoose from "mongoose";
 import { normalizeSize } from "../../storefront/js/shared/vocab.js";
 import { normalizePhone, isJordanMobile } from "../../storefront/js/shared/phone.js";
-
-// The central error handler returns `message` for exposed 4xx errors (see middleware/error.js).
-export const fail = (status, message) => Object.assign(new Error(message), { status, expose: true });
+import { fail } from "../utils/fail.js";
 
 // Amman first, as shown to customers in the city select.
 export const GOVERNORATES = [
@@ -14,9 +12,13 @@ export const GOVERNORATES = [
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_ITEMS = 20;
 const MAX_QTY = 20;
+const MAX_SIZE_LEN = 20;
 
 // Trims, strips `<`/`>` (customer text is rendered on admin pages) and enforces a length range.
+// `v` must be a string; `null`/`undefined` are treated as empty (fine for optional fields whose
+// `min` is 0), but any other non-string (object, array, number, boolean) is a 400.
 export function cleanText(v, { min, max, field }) {
+  if (v != null && typeof v !== "string") throw fail(400, `${field} يجب أن يكون نصًا`);
   const s = String(v ?? "").trim().replace(/[<>]/g, "");
   if (s.length < min || s.length > max) throw fail(400, `${field} يجب أن يكون بين ${min} و ${max} حرفًا`);
   return s;
@@ -37,8 +39,10 @@ export function validateOrderBody(body = {}) {
   const items = rawItems.map((item, i) => {
     const n = i + 1;
     if (!mongoose.isValidObjectId(item?.product_id)) throw fail(400, `السطر ${n}: معرّف المنتج غير صالح`);
-    const quantity = Number(item?.quantity);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY) throw fail(400, `السطر ${n}: الكمية يجب أن تكون بين 1 و ${MAX_QTY}`);
+    const quantity = item?.quantity;
+    if (typeof quantity !== "number" || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_QTY) {
+      throw fail(400, `السطر ${n}: الكمية يجب أن تكون بين 1 و ${MAX_QTY}`);
+    }
     const size = normalizeSize(item?.size);
     if (!size) throw fail(400, `السطر ${n}: الحجم مطلوب`);
     return { product_id: item.product_id, size, quantity };
@@ -59,11 +63,19 @@ export function validateOrderBody(body = {}) {
 }
 
 // { product_id, size?, name, phone, note? }
+// `size` here is only format-checked (string, capped length); whether it's one of the product's
+// actual sizes needs the product record, so the controller checks that against `size_list`.
 export function validateInterestBody(body = {}) {
   if (body.website) throw fail(400, "تعذر إرسال الطلب"); // honeypot
 
   if (!mongoose.isValidObjectId(body.product_id)) throw fail(400, "معرّف المنتج غير صالح");
-  const size = body.size ? normalizeSize(body.size) : null;
+
+  let size = null;
+  if (body.size) {
+    if (typeof body.size !== "string" || body.size.length > MAX_SIZE_LEN) throw fail(400, "الحجم غير صالح");
+    size = normalizeSize(body.size);
+  }
+
   const name = cleanText(body.name, { min: 2, max: 80, field: "الاسم" });
   const phone = checkPhone(body.phone);
   const note = body.note ? cleanText(body.note, { min: 0, max: 300, field: "الملاحظة" }) : "";

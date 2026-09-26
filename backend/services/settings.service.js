@@ -32,5 +32,7 @@ export async function saveSettings(patch = {}) {
     { $set: set },
     { upsert: true, new: true, runValidators: true }
   ).lean();
-  return pick(doc);
+  const settings = pick(doc);
+  cache = settings;
+  return settings;
 }
