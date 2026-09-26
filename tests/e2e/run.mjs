@@ -20,6 +20,7 @@ import Bottle from "../../backend/models/bottle.model.js";
 import Alcohol from "../../backend/models/alcohol.model.js";
 import Product from "../../backend/models/product.model.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
+import Interest from "../../backend/models/interest.model.js";
 
 process.env.SESSION_SECRET ||= "e2e-secret-".padEnd(48, "x");
 
@@ -295,6 +296,157 @@ async function run() {
       await page.waitForLoadState("networkidle");
       const [scrollWidth, innerWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
       assert.ok(scrollWidth <= innerWidth, `horizontal scroll at ${viewport.width}px: ${scrollWidth} > ${innerWidth}`);
+      check(page);
+    }
+  });
+
+  // --- Task 5: search, collection filters, product page.
+  const YSL = "إيف سان لوران ليبر";
+  // 30 ml is in stock; there is no 100 ml bottle, so 100 ml is out of stock.
+  const ysl = await Product.create({
+    p_name: YSL, p_image: "https://example.com/seed.jpg", p_category: "Women", families: ["floral", "vanilla"],
+    keywords: "YSL Libre", oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80,
+    size_list: [{ size: "30", price: 30 }, { size: "100", price: 70 }],
+  });
+  invalidateCatalog();
+  const VIEWPORTS = [{ width: 1440, height: 900 }, { width: 375, height: 812 }];
+  const storefrontPage = async (viewport) => {
+    const page = await openPage();
+    await page.setViewportSize(viewport);
+    await page.route("https://example.com/**", (route) =>
+      route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from(PNG_BASE64, "base64") }));
+    return page;
+  };
+  const noHorizontalScroll = async (page, viewport) => {
+    const [sw, iw] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    assert.ok(sw <= iw, `horizontal scroll at ${viewport.width}px on ${page.url()}: ${sw} > ${iw}`);
+  };
+
+  await scenario("Search", async () => {
+    for (const viewport of VIEWPORTS) {
+      const page = await storefrontPage(viewport);
+      await page.goto(`${baseUrl}/`);
+      await page.waitForLoadState("networkidle");
+      if (viewport.width >= 900) await page.locator(".header-row > .search-field input").click();
+      else await page.locator(".header-actions [data-open-search]").click();
+      const input = page.locator("#so-q");
+      await input.waitFor();
+      // Typed without the hamza: "ايف" must find "إيف".
+      await input.pressSequentially("ايف");
+      await page.locator(".so-item", { hasText: YSL }).waitFor();
+      assert.equal(await page.locator(".so-item").count(), 1);
+      await input.press("ArrowDown");
+      assert.equal(await page.locator('.so-item[aria-selected="true"]').count(), 1);
+      assert.match(await input.getAttribute("aria-activedescendant"), /^so-opt-/);
+      await input.press("ArrowUp"); // back in the field: Enter goes to the full results page
+      assert.equal(await page.locator('.so-item[aria-selected="true"]').count(), 0);
+      await Promise.all([page.waitForURL(/\/search\?q=/), input.press("Enter")]);
+      assert.equal(new URL(page.url()).searchParams.get("q"), "ايف");
+      await page.locator(".grid-item:not([hidden]) .card-name", { hasText: YSL }).waitFor();
+      await noHorizontalScroll(page, viewport);
+
+      // No results: suggestions instead of a blank panel. Esc closes the overlay.
+      await page.evaluate(() => document.activeElement?.blur());
+      await page.keyboard.press("/");
+      await input.waitFor();
+      await input.fill("zzqxw");
+      await page.locator("[data-so-suggest]:not([hidden]) .chip-link").first().waitFor();
+      assert.match(await page.locator("[data-so-status]").innerText(), /لا نتائج/);
+      await input.press("Escape");
+      await page.waitForFunction(() => !document.getElementById("search-overlay").open);
+
+      // Keyboard to a product: open, type, ArrowDown, Enter.
+      await page.keyboard.press("/");
+      await input.fill("libre");
+      await page.locator(".so-item", { hasText: YSL }).waitFor();
+      await input.press("ArrowDown");
+      await Promise.all([page.waitForURL(/\/p\/[a-f0-9]{24}$/), input.press("Enter")]);
+      assert.equal(await page.locator("h1").innerText(), YSL);
+      check(page);
+    }
+  });
+
+  await scenario("Collection filter", async () => {
+    for (const viewport of VIEWPORTS) {
+      const page = await storefrontPage(viewport);
+      await page.goto(`${baseUrl}/c/women`);
+      await page.waitForLoadState("networkidle");
+      const visible = page.locator(".grid-item:not([hidden])");
+      const all = await visible.count();
+      assert.ok(all >= 3, `expected at least 3 women's products, got ${all}`);
+
+      await page.locator(".toggle", { hasText: "زهري" }).click();
+      await page.waitForFunction(() => document.querySelectorAll(".grid-item:not([hidden])").length === 1);
+      assert.match(await visible.first().innerText(), new RegExp(YSL));
+      assert.equal(new URL(page.url()).searchParams.get("f"), "floral");
+      assert.equal(await page.locator("[data-count]").innerText(), "عطر واحد");
+
+      await page.locator(".toggle", { hasText: "زهري" }).click();
+      await page.waitForFunction((n) => document.querySelectorAll(".grid-item:not([hidden])").length === n, all);
+      assert.equal(new URL(page.url()).search, "");
+
+      // Sort by price, highest first: the URL is deep-linkable and the server renders the same order.
+      await page.selectOption(".sort select", "price_desc");
+      await page.waitForFunction(() => location.search === "?sort=price_desc");
+      assert.match(await visible.first().innerText(), new RegExp(YSL));
+      await page.reload();
+      assert.equal(await page.locator(".sort select").inputValue(), "price_desc");
+      assert.match(await visible.first().innerText(), new RegExp(YSL));
+
+      // Filtering to nothing shows suggestions and a way back.
+      await page.goto(`${baseUrl}/c/women?f=floral`);
+      await page.locator(".toggle", { hasText: "المتوفر فقط" }).click();
+      await page.locator(".toggle", { hasText: "100 مل" }).click();
+      await page.locator("[data-empty]:not([hidden])").waitFor();
+      await page.locator("[data-empty] [data-clear]").click();
+      await page.waitForFunction((n) => document.querySelectorAll(".grid-item:not([hidden])").length === n, all);
+      await noHorizontalScroll(page, viewport);
+      check(page);
+    }
+  });
+
+  await scenario("Product page", async () => {
+    for (const viewport of VIEWPORTS) {
+      const page = await storefrontPage(viewport);
+      await page.goto(`${baseUrl}/p/${ysl._id}`);
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
+      assert.equal(await page.locator("h1").innerText(), YSL);
+      assert.equal(await page.locator(".bottom-bar").count(), 0, "product pages have their own action bar");
+      assert.equal(await page.locator("[data-oos]").isVisible(), false, "the in-stock size is preselected");
+
+      await page.locator(".size-opt", { hasText: "100 مل" }).click();
+      await page.locator("[data-oos]").waitFor();
+      assert.match(await page.locator("[data-oos]").innerText(), /نحضّره لك عند الطلب/);
+      assert.equal(await page.locator("[data-price] .price-final").innerText(), "70.00 د.أ");
+
+      await page.locator("[data-open-interest]").click();
+      const dialog = page.locator("[data-interest-dialog]");
+      await dialog.waitFor();
+      assert.equal(await dialog.locator("[data-interest-size]").innerText(), "100 مل");
+      await dialog.locator("[type=submit]").click();
+      await dialog.locator("#i-name-err:not([hidden])").waitFor();
+      assert.equal(await page.evaluate(() => document.activeElement.id), "i-name");
+      await dialog.locator("#i-name").fill("سارة");
+      await dialog.locator("#i-phone").fill("079 123 4567");
+      await dialog.locator("[type=submit]").click();
+      await dialog.locator("[data-interest-done]:not([hidden])").waitFor();
+      const saved = await Interest.findOne({ product_id: ysl._id, phone: "0791234567" }).lean();
+      assert.equal(saved?.size, "100");
+      await dialog.locator("[data-interest-done] [data-close]").click();
+      await page.waitForFunction(() => !document.querySelector("[data-interest-dialog]").open);
+
+      await page.locator("[data-pdp-add]").click();
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll("[data-cart-count]")].some((el) => !el.hidden && el.textContent === "1"));
+      const cart = await page.evaluate(() => JSON.parse(localStorage.getItem("nsamat_cart_v1")));
+      assert.deepEqual(cart, [{ id: String(ysl._id), size: "100", qty: 1 }]);
+      await noHorizontalScroll(page, viewport);
+
+      // Recently viewed shows up on the next product page.
+      await page.goto(`${baseUrl}/p/${seeded._id}`);
+      await page.locator("[data-recent]:not([hidden]) .card-name", { hasText: YSL }).waitFor();
+      await page.evaluate(() => { localStorage.removeItem("nsamat_cart_v1"); localStorage.removeItem("nsamat_recent_v1"); });
       check(page);
     }
   });

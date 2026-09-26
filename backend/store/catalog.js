@@ -121,6 +121,7 @@ export function compactIndex(products) {
     category: p.category,
     families: p.families,
     keywords: p.keywords,
+    notes: p.notes, // searched by the overlay exactly as by the server-rendered /search
     offer: p.offer,
     sizes: p.sizes.map((s) => ({ size: s.size, final: s.final, list: s.list, in_stock: s.in_stock })),
     rank: p.rank,

@@ -83,7 +83,7 @@ main:focus { outline: none; }
 /* ---------- Controls ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-8);
   min-height: 48px; padding: var(--s-12) var(--s-24); border-radius: var(--r-control);
-  border: 1px solid transparent; font-weight: 600; touch-action: manipulation;
+  border: 1px solid transparent; background: transparent; font-weight: 600; touch-action: manipulation;
   transition: background-color var(--dur-fast), border-color var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
 .btn:active { transform: scale(.98); }
 .btn-primary { background: var(--gold); color: var(--gold-ink); }
@@ -313,6 +313,36 @@ main:focus { outline: none; }
   border: 0; border-inline-start: 1px solid var(--line); padding: 0; background: var(--surface); color: var(--text); }
 .drawer::backdrop { background: rgb(0 0 0 / .6); }
 
+/* ---------- Dialogs: search overlay and modals ---------- */
+html:has(dialog[open]) { overflow: hidden; }
+dialog { color: var(--text); }
+dialog::backdrop { background: rgb(0 0 0 / .6); backdrop-filter: blur(4px); }
+dialog[open] { animation: rise var(--dur-base) var(--ease-out); }
+.search-overlay { margin: 0; padding: 0; border: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; background: var(--bg); }
+.so-panel { display: flex; flex-direction: column; gap: var(--s-12); height: 100%; overflow-y: auto; padding: var(--s-12) var(--gutter) var(--s-24); }
+.so-form { gap: var(--s-8); flex: none; }
+.so-form > .icon { color: var(--gold-strong); flex: none; }
+.so-status { min-height: 1.6em; color: var(--text-muted); font-size: var(--fs-14); }
+.so-results { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-4); }
+.so-item { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: var(--s-12);
+  min-height: 72px; padding: var(--s-8); border-radius: var(--r-control); transition: background-color var(--dur-fast); }
+.so-item:hover, .so-item[aria-selected="true"] { background: var(--surface-2); }
+.so-item[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--gold); }
+.so-thumb { width: 48px; height: 60px; border-radius: var(--r-control); overflow: hidden; background: var(--cream); }
+.so-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 4px; mix-blend-mode: multiply; }
+.so-thumb img.is-placeholder { padding: 0; }
+.so-name { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.so-meta { display: block; color: var(--text-muted); font-size: var(--fs-14); }
+.so-price { color: var(--gold-strong); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.so-all { display: inline-flex; align-items: center; gap: 2px; align-self: flex-start; min-height: 44px; color: var(--gold-strong); font-weight: 600; }
+.so-all .icon { width: 18px; height: 18px; }
+.so-title { font-family: var(--font-body); font-size: var(--fs-14); font-weight: 600; color: var(--text-muted); margin-block: var(--s-8); }
+.so-chips { display: flex; flex-wrap: wrap; gap: var(--s-8); list-style: none; margin: 0 0 var(--s-8); padding: 0; }
+.modal { width: 100%; max-width: none; margin: auto 0 0; padding: 0; border: 1px solid var(--line); border-block-end: 0;
+  border-radius: var(--r-card) var(--r-card) 0 0; background: var(--surface); max-height: 92dvh; overflow-y: auto; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-12); padding: var(--s-16) var(--s-24) var(--s-8); }
+.modal-title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-22); }
+
 /* ---------- Motion ---------- */
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes beam { from { opacity: .7; } to { opacity: 1; } }
@@ -349,6 +379,10 @@ main:focus { outline: none; }
   .aisle-name { font-size: var(--fs-28); }
   .shelf-track { grid-auto-columns: calc((100% - 4 * var(--s-16)) / 5); }
   .blotters { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); overflow: visible; }
+  .search-overlay { margin: 72px auto auto; width: min(680px, calc(100% - 48px)); height: fit-content; max-height: calc(100dvh - 144px);
+    border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); box-shadow: 0 32px 64px -24px var(--shadow); }
+  .so-panel { height: auto; padding: var(--s-16) var(--s-24) var(--s-24); max-height: calc(100dvh - 146px); }
+  .modal { width: min(460px, calc(100% - 48px)); margin: auto; border-block-end: 1px solid var(--line); border-radius: var(--r-card); }
 }
 @media (hover: hover) and (min-width: 900px) {
   .shelf-nav { display: flex; }

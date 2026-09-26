@@ -7,9 +7,12 @@ import Bottle from "../backend/models/bottle.model.js";
 import Product from "../backend/models/product.model.js";
 import { invalidateCatalog } from "../backend/store/catalog.js";
 import { money, sizeLabel } from "../storefront/js/shared/format.js";
+import { saveSettings } from "../backend/services/settings.service.js";
 
 const XSS = "<img src=x onerror=alert(1)>";
+const SCRIPT_XSS = "</script><img src=x onerror=alert(1)>";
 let t;
+const ids = {};
 
 before(async () => {
   t = await startTestApp();
@@ -20,6 +23,17 @@ before(async () => {
   await Product.create({ ...base, p_name: "مسك الورد", p_category: "Women", p_offer_percentage: 10,
     p_image: "https://fimgs.net/mdimg/perfume/375x500.1.jpg", size_list: [{ size: "30", price: 30 }] });
   await Product.create({ ...base, p_name: XSS, p_category: "Unisex", size_list: [{ size: "30", price: 10 }] });
+  // Collection / product fixtures. No bottle of 50 ml, so that size is out of stock.
+  ids.amber = String((await Product.create({ ...base, p_name: "عنبر الشرق", p_category: "Men", families: ["amber", "oud"],
+    keywords: "Amber Oriental", description: "دافئ\nوعميق", notes: { top: ["برغموت"], heart: [], base: ["عنبر"] },
+    size_list: [{ size: "30", price: 35 }, { size: "50", price: 50 }] }))._id);
+  ids.sandal = String((await Product.create({ ...base, p_name: "خشب الصندل", p_category: "Men", families: ["woody"],
+    status: "out of stock", size_list: [{ size: "30", price: 15 }] }))._id);
+  ids.car = String((await Product.create({ ...base, p_name: "نسمة السيارة", p_category: "Car", size_list: [{ size: "30", price: 5 }] }))._id);
+  ids.gone = String((await Product.create({ ...base, p_name: "عطر متوقف", p_category: "Men", status: "discontinued",
+    size_list: [{ size: "30", price: 5 }] }))._id);
+  ids.script = String((await Product.create({ ...base, p_name: SCRIPT_XSS, p_category: "Unisex",
+    description: SCRIPT_XSS, size_list: [{ size: "30", price: 10 }] }))._id);
 });
 after(() => t.close());
 
@@ -45,6 +59,7 @@ test("GET / renders the boutique home in Arabic RTL with real products", async (
   assert.ok(body.includes("20.00 د.أ"));
   assert.ok(body.includes('href="/family/oud"'), "tester bar lists families that have products");
   assert.ok(!body.includes('href="/family/musk"'), "families without products are hidden");
+  assert.ok(!body.includes(SCRIPT_XSS), "script-breaking name never appears raw");
 });
 
 test("storefront CSP forbids inline handlers", async () => {
@@ -110,5 +125,136 @@ test("a failing page renders the styled 500 page, never JSON", async () => {
     console.error = orig;
     await Product.collection.deleteOne({ _id: insertedId });
     invalidateCatalog();
+  }
+});
+
+const page = async (path) => {
+  const res = await fetch(`${t.url}${path}`);
+  return { status: res.status, body: await res.text() };
+};
+// Visible product names in grid order. The server renders every card of the aisle and hides the
+// filtered-out ones, so client-side filtering can bring them back instantly.
+const gridNames = (body) => (body.split("data-grid")[1] || "").split("</ul>")[0].split('<li class="grid-item"').slice(1)
+  .filter((li) => !/^[^>]* hidden>/.test(li))
+  .map((li) => li.match(/class="card-link" href="\/p\/[^"]+">([^<]*)</)[1]);
+const jsonLd = (body) => JSON.parse(body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+
+test("collection /c/:category lists that category only, with an aisle header", async () => {
+  const { status, body } = await page("/c/men");
+  assert.equal(status, 200);
+  assert.equal(body.match(/<h1[\s>]/g)?.length, 1);
+  assert.match(body, /<h1[^>]*>رجالي<\/h1>/);
+  assert.deepEqual(gridNames(body).sort(), ["خشب الصندل", "عنبر الشرق", "عود الليل"].sort());
+  assert.ok(!body.includes("عطر متوقف"), "discontinued products are hidden");
+  assert.match(body, /data-families="amber oud"/, "cards carry data-* for client filtering");
+  assert.match(body, /<link rel="canonical" href="http:\/\/127\.0\.0\.1:\d+\/c\/men">/);
+  assert.ok(body.includes("/assets/js/collection.js?v="));
+});
+
+test("collection filters and sort come from the query string", async () => {
+  assert.deepEqual(gridNames((await page("/c/men?f=oud")).body).sort(), ["عنبر الشرق", "عود الليل"].sort());
+  assert.deepEqual(gridNames((await page("/c/men?f=woody,amber")).body).sort(), ["خشب الصندل", "عنبر الشرق"].sort());
+  assert.deepEqual(gridNames((await page("/c/men?f=woody&f=amber")).body).sort(), ["خشب الصندل", "عنبر الشرق"].sort(),
+    "repeated params (the no-JS form) work too");
+  assert.deepEqual(gridNames((await page("/c/men?s=50")).body), ["عنبر الشرق"]);
+  assert.deepEqual(gridNames((await page("/c/men?stock=1")).body).sort(), ["عنبر الشرق", "عود الليل"].sort());
+  assert.deepEqual(gridNames((await page("/c/men?s=50&stock=1")).body), [], "the selected size itself must be in stock");
+  assert.deepEqual(gridNames((await page("/c/men?sort=price_asc")).body), ["خشب الصندل", "عود الليل", "عنبر الشرق"]);
+  assert.deepEqual(gridNames((await page("/c/men?sort=price_desc")).body), ["عنبر الشرق", "عود الليل", "خشب الصندل"]);
+  const checked = (await page("/c/men?f=oud&sort=price_asc")).body;
+  assert.match(checked, /value="oud" checked/, "active filters are pre-checked");
+  assert.match(checked, /<option value="price_asc" selected>/);
+  const junk = await page("/c/men?f=%3Cx%3E&s=abc&sort=nope&stock=yes");
+  assert.equal(junk.status, 200, "unknown filter values are ignored");
+  assert.equal(gridNames(junk.body).length, 3);
+  assert.ok(!junk.body.includes("<x>"));
+});
+
+test("empty collections show suggestions, never a blank grid", async () => {
+  const { status, body } = await page("/c/men?f=citrus");
+  assert.equal(status, 200);
+  assert.deepEqual(gridNames(body), []);
+  assert.match(body, /<div class="empty" data-empty>/, "empty state is visible");
+  assert.match(body.split("data-empty")[1], /href="\/c\/women"/, "with suggestions");
+  assert.match((await page("/c/men")).body, /<div class="empty" data-empty hidden>/, "hidden when there are results");
+});
+
+test("unknown category and family are 404; family, offers, new, best-sellers render", async () => {
+  assert.equal((await page("/c/nope")).status, 404);
+  assert.equal((await page("/family/nope")).status, 404);
+  const fam = await page("/family/oud");
+  assert.equal(fam.status, 200);
+  assert.deepEqual(gridNames(fam.body).sort(), ["عنبر الشرق", "عود الليل"].sort());
+  assert.deepEqual(gridNames((await page("/offers")).body), ["مسك الورد"]);
+  assert.equal((await page("/new")).status, 200);
+  assert.equal((await page("/best-sellers")).status, 200);
+});
+
+test("/c/home and /c/car link to each other", async () => {
+  assert.match((await page("/c/home")).body, /href="\/c\/car"/);
+  const car = await page("/c/car");
+  assert.match(car.body, /href="\/c\/home"/);
+  assert.deepEqual(gridNames(car.body), ["نسمة السيارة"]);
+});
+
+test("/search uses the shared Arabic search and escapes the query", async () => {
+  const { status, body } = await page(`/search?q=${encodeURIComponent("العَنبر")}`);
+  assert.equal(status, 200);
+  assert.equal(gridNames(body)[0], "عنبر الشرق");
+  const hostile = await page(`/search?q=${encodeURIComponent(XSS)}`);
+  assert.equal(hostile.status, 200);
+  assert.ok(!hostile.body.includes(XSS));
+  assert.equal((await page("/search")).status, 200, "an empty query still renders");
+});
+
+test("/p/:id is 404 for a malformed, unknown or discontinued id", async () => {
+  assert.equal((await page("/p/not-an-id")).status, 404);
+  assert.equal((await page("/p/64b000000000000000000000")).status, 404);
+  assert.equal((await page(`/p/${ids.gone}`)).status, 404);
+});
+
+test("product page: sizes with stock state, notes, related shelf, no bottom bar", async () => {
+  const { status, body } = await page(`/p/${ids.amber}`);
+  assert.equal(status, 200);
+  assert.equal(body.match(/<h1[\s>]/g)?.length, 1);
+  assert.match(body, /<h1[^>]*>عنبر الشرق<\/h1>/);
+  assert.match(body, /name="size" value="30"[^>]*checked/, "the in-stock size is preselected");
+  assert.match(body, /name="size" value="50"[^>]*data-stock="0"/);
+  assert.ok(body.includes("غير متوفر حاليًا"));
+  assert.ok(body.includes("نحضّره لك عند الطلب وقد يستغرق وقتًا أطول"));
+  assert.ok(body.includes("أعلمني عند التوفر"));
+  assert.ok(body.includes('action="/api/store/interest"'));
+  assert.ok(body.includes("برغموت"), "notes pyramid");
+  assert.match(body, /class="section shelf"/, "related shelf");
+  assert.ok(body.split('class="section shelf"')[1].includes("عود الليل"), "related by family");
+  assert.ok(!body.includes('class="bottom-bar"'), "product pages have their own action bar");
+  assert.ok(body.includes('fetchpriority="high"'), "main image is the LCP");
+  assert.ok(!body.includes("wa.me"), "no WhatsApp link without a number");
+  assert.ok(body.includes("/assets/js/product.js?v="));
+});
+
+test("product page: JSON-LD is inert and marks out-of-stock sizes MadeToOrder", async () => {
+  const { status, body } = await page(`/p/${ids.script}`);
+  assert.equal(status, 200);
+  assert.ok(!body.includes(SCRIPT_XSS), "hostile name/description never appear raw");
+  const ld = body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1];
+  assert.ok(!ld.includes("<") && !ld.includes(">"), "no raw < or > in JSON-LD");
+  const data = JSON.parse(ld);
+  assert.equal(data["@type"], "Product");
+  assert.equal(data.name, SCRIPT_XSS);
+  assert.equal(data.offers[0].priceCurrency, "JOD");
+  assert.equal(data.offers[0].availability, "https://schema.org/InStock");
+  const amber = jsonLd((await page(`/p/${ids.amber}`)).body);
+  assert.deepEqual(amber.offers.map((o) => o.availability), ["https://schema.org/InStock", "https://schema.org/MadeToOrder"]);
+});
+
+test("product page: Open Graph image and WhatsApp inquiry when a number is set", async () => {
+  const rose = await Product.findOne({ p_name: "مسك الورد" });
+  assert.match((await page(`/p/${rose._id}`)).body, /<meta property="og:image" content="https:\/\/fimgs\.net\/mdimg\/perfume\/375x500\.1\.jpg">/);
+  await saveSettings({ whatsapp: "962791234567" });
+  try {
+    assert.match((await page(`/p/${ids.amber}`)).body, /href="https:\/\/wa\.me\/962791234567\?text=[^"]+"/);
+  } finally {
+    await saveSettings({ whatsapp: "" });
   }
 });

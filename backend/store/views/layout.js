@@ -57,6 +57,38 @@ function header(path, families) {
 </header>`;
 }
 
+// Search overlay shell, filled by search.js. Family and category suggestions are server-rendered.
+function searchOverlay(families) {
+  return html`<dialog class="search-overlay" id="search-overlay" aria-label="البحث في المتجر">
+  <div class="so-panel">
+    <form class="search-field so-form" action="/search" method="get" role="search">
+      ${icon("search")}
+      <label class="sr-only" for="so-q">ابحث عن عطر</label>
+      <input id="so-q" name="q" type="search" placeholder="اسم العطر أو نوتة أو عائلة" autocomplete="off" enterkeyhint="search"
+        spellcheck="false" role="combobox" aria-expanded="false" aria-controls="so-results" aria-autocomplete="list">
+      <button class="btn-icon" type="button" data-close-search aria-label="إغلاق البحث">${icon("close")}</button>
+    </form>
+    <p class="so-status" data-so-status role="status" aria-live="polite"></p>
+    <ul class="so-results" id="so-results" role="listbox" aria-label="نتائج البحث"></ul>
+    <a class="so-all" href="/search" data-so-all hidden>عرض كل النتائج ${icon("chevron")}</a>
+    <div class="so-suggest" data-so-suggest>
+      ${families.length ? html`<h2 class="so-title">تصفّح حسب العائلة</h2>
+      <ul class="so-chips" role="list">${families.map((f) => html`<li><a class="chip chip-link" href="/family/${f.key}"><span class="swatch" style="--swatch: ${f.swatch}"></span>${f.ar}</a></li>`)}</ul>` : ""}
+      <h2 class="so-title">الأقسام</h2>
+      <ul class="so-chips" role="list">
+        ${CATEGORIES.map((c) => html`<li><a class="chip chip-link" href="/c/${c.slug}">${c.ar}</a></li>`)}
+        <li><a class="chip chip-link" href="/offers">العروض</a></li>
+      </ul>
+    </div>
+  </div>
+  <template data-so-item><li role="presentation"><a class="so-item" role="option" aria-selected="false" href="">
+    <span class="so-thumb"><img alt="" width="48" height="60" decoding="async" referrerpolicy="no-referrer"></span>
+    <span class="so-text"><span class="so-name"></span><span class="so-meta"></span></span>
+    <bdi class="so-price"></bdi>
+  </a></li></template>
+</dialog>`;
+}
+
 function bottomBar(path, wa) {
   return html`<nav class="bottom-bar" aria-label="التنقل السريع">
   <ul role="list">
@@ -98,7 +130,7 @@ function footer(settings, wa) {
 
 export function layout({
   title, description, canonicalPath, ogImage, body, bodyClass = "", hideBottomBar = false,
-  settings = {}, assetV = "", origin = "", families = [],
+  settings = {}, assetV = "", origin = "", families = [], styles = [], scripts = [],
 }) {
   const base = (process.env.PUBLIC_URL || origin).replace(/\/+$/, "");
   const abs = (p) => (/^https?:/.test(p) ? p : base + p);
@@ -123,7 +155,10 @@ ${ogImage ? html`<meta property="og:image" content="${abs(ogImage)}">` : ""}
 <link rel="icon" href="${LOGO}" type="image/svg+xml">
 <link rel="preload" href="/vendor/fonts/plex-arabic/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/store.css?v=${assetV}">
+${styles.map((f) => html`<link rel="stylesheet" href="/assets/css/${f}?v=${assetV}">`)}
 <script type="module" src="/assets/js/store.js?v=${assetV}"></script>
+<script type="module" src="/assets/js/search.js?v=${assetV}"></script>
+${scripts.map((f) => html`<script type="module" src="/assets/js/${f}?v=${assetV}"></script>`)}
 </head>
 <body class="${[bodyClass, hideBottomBar ? "no-bottom-bar" : ""].filter(Boolean).join(" ")}">
 <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
@@ -133,6 +168,7 @@ ${body}
 </main>
 ${footer(settings, wa)}
 ${hideBottomBar ? "" : bottomBar(path, wa)}
+${searchOverlay(families)}
 <dialog id="cart-drawer" class="drawer" aria-label="سلة التسوق"></dialog>
 <div id="live-region" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>
