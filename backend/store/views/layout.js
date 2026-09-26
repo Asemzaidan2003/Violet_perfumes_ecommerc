@@ -1,6 +1,6 @@
 // Page shell for every storefront page: head (SEO, Open Graph), header, bottom bar, footer.
-import { html } from "../html.js";
-import { icon } from "./components.js";
+import { html, json } from "../html.js";
+import { icon, slot } from "./components.js";
 import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { num } from "../../../storefront/js/shared/format.js";
 import { asset } from "../assets.js";
@@ -128,6 +128,57 @@ function footer(settings, wa) {
 </footer>`;
 }
 
+// Cart drawer shell, filled by cart.js from the <template> (textContent only, never innerHTML).
+function cartDrawer() {
+  return html`<dialog id="cart-drawer" class="drawer" aria-labelledby="cart-title">
+  <div class="drawer-panel">
+    <div class="drawer-head">
+      <h2 id="cart-title" class="modal-title">سلة التسوق <bdi class="muted" data-cart-heading></bdi></h2>
+      <button class="btn-icon" type="button" data-close-cart aria-label="إغلاق السلة">${icon("close")}</button>
+    </div>
+    <div class="drawer-body">
+      <p class="muted" data-cart-status role="status"></p>
+      <div class="cart-empty" data-cart-empty hidden>
+        <span class="cart-empty-icon" aria-hidden="true">${icon("cart")}</span>
+        <p class="modal-title">سلتك فارغة</p>
+        <p class="muted">اختر عطرك من الأقسام، ونوصله لك لأي مكان في الأردن.</p>
+        <div class="error-links">${CATEGORIES.slice(0, 3).map((c) => html`<a class="chip chip-link" href="/c/${c.slug}">${c.ar}</a>`)}</div>
+      </div>
+      <ul class="cart-lines" role="list" data-cart-lines></ul>
+      ${slot("cart_upsell")}
+    </div>
+    <div class="drawer-foot" data-cart-foot hidden>
+      <div class="free-progress" data-free hidden>
+        <p data-free-text></p>
+        <progress data-free-bar max="1" value="0" aria-hidden="true"></progress>
+      </div>
+      <dl class="totals">
+        <div><dt>المجموع الفرعي</dt><dd><bdi data-cart-subtotal></bdi></dd></div>
+        <div><dt>التوصيل</dt><dd><bdi data-cart-delivery></bdi></dd></div>
+        <div class="totals-grand"><dt>الإجمالي</dt><dd><bdi data-cart-total></bdi></dd></div>
+      </dl>
+      <a class="btn btn-primary btn-block" href="/checkout" data-checkout-link>إتمام الطلب ${icon("chevron")}</a>
+      <p class="drawer-note muted">${icon("wallet")} الدفع نقدًا عند الاستلام</p>
+    </div>
+  </div>
+  <template data-cart-line><li class="cart-line">
+    <a class="cl-thumb" href="" tabindex="-1" aria-hidden="true"><img alt="" width="64" height="80" decoding="async" referrerpolicy="no-referrer"></a>
+    <div class="cl-info">
+      <a class="cl-name" href=""></a>
+      <span class="cl-meta"></span>
+      <span class="cl-note" hidden></span>
+    </div>
+    <bdi class="cl-total"></bdi>
+    <div class="stepper cl-stepper" role="group">
+      <button class="btn-icon" type="button" data-cart-step="-1">${icon("minus")}</button>
+      <output class="cl-qty"></output>
+      <button class="btn-icon" type="button" data-cart-step="1">${icon("plus")}</button>
+    </div>
+    <button class="link-btn cl-remove" type="button" data-cart-remove>${icon("close")}<span>إزالة</span></button>
+  </li></template>
+</dialog>`;
+}
+
 // Absolute site origin for canonical, Open Graph, share and JSON-LD URLs: PUBLIC_URL, else the request's.
 export const siteBase = (origin = "") => (process.env.PUBLIC_URL || origin).replace(/\/+$/, "");
 
@@ -162,6 +213,7 @@ ${ogImage ? html`<meta property="og:image" content="${abs(ogImage)}">` : ""}
 ${styles.map((f) => html`<link rel="stylesheet" href="/assets/css/${f}?v=${assetV}">`)}
 <script type="module" src="/assets/js/store.js?v=${assetV}"></script>
 <script type="module" src="/assets/js/search.js?v=${assetV}"></script>
+<script type="module" src="/assets/js/cart.js?v=${assetV}"></script>
 ${scripts.map((f) => html`<script type="module" src="/assets/js/${f}?v=${assetV}"></script>`)}
 </head>
 <body class="${[bodyClass, hideBottomBar ? "no-bottom-bar" : ""].filter(Boolean).join(" ")}">
@@ -173,7 +225,8 @@ ${body}
 ${footer(settings, wa)}
 ${hideBottomBar ? "" : bottomBar(path, wa)}
 ${searchOverlay(families)}
-<dialog id="cart-drawer" class="drawer" aria-label="سلة التسوق"></dialog>
+${cartDrawer()}
+<script type="application/json" id="shop-settings">${json({ delivery_fee: settings.delivery_fee ?? 0, free_delivery_over: settings.free_delivery_over ?? 0, whatsapp: settings.whatsapp ?? "" })}</script>
 <div id="live-region" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>`;

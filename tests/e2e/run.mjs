@@ -22,6 +22,7 @@ import Product from "../../backend/models/product.model.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
 import Interest from "../../backend/models/interest.model.js";
 import { registerAdminOnlineScenarios } from "./admin-online.mjs";
+import { registerCheckoutScenarios } from "./checkout.mjs";
 
 process.env.SESSION_SECRET ||= "e2e-secret-".padEnd(48, "x");
 
@@ -455,6 +456,9 @@ async function run() {
       check(page);
     }
   });
+
+  // Task 6 (cart drawer, checkout, confirmation) — see checkout.mjs.
+  await registerCheckoutScenarios({ scenario, openPage, check, baseUrl, png: Buffer.from(PNG_BASE64, "base64"), admin: { username: ADMIN_USER, password: ADMIN_PASS } });
 
   // Task 7 (admin interests/settings/online-order pages) — see admin-online.mjs.
   await registerAdminOnlineScenarios({ scenario, openPage, check, baseUrl });

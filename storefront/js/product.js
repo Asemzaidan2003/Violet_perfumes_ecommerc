@@ -1,6 +1,7 @@
 // Product page: size/price/stock state, quantity stepper, cart buttons, gallery thumbnails,
 // share, the "notify me" interest dialog and recently viewed. Entry module, no exports.
-import { CART_KEY, readCart, announce } from "./shared/cart-store.js";
+// "أضف إلى السلة" opens the drawer (cart.js, via cart:open); "اطلب الآن" goes straight to checkout.
+import { add, announce } from "./shared/cart-store.js";
 import { money, sizeLabel } from "./shared/format.js";
 import { normalizePhone, isJordanMobile } from "./shared/phone.js";
 import { loadCatalog } from "./shared/catalog-client.js";
@@ -50,23 +51,11 @@ function clampQty() {
   return v;
 }
 
-// ponytail: until Task 6's cart module takes over [data-pdp-add] / [data-buy-now], the buttons
-// write the cart line here and fire cart:change so store.js updates the badge.
+// Adds the selected size and quantity through the shared cart store (fires cart:change).
 function addToCart() {
   const r = selected();
-  if (!r) return false;
-  const { id, name } = root.dataset;
-  const n = clampQty();
-  const cart = readCart();
-  const line = cart.find((l) => l.id === id && l.size === r.value);
-  if (line) line.qty = Math.min(MAX_QTY, (Number(line.qty) || 0) + n);
-  else cart.push({ id, size: r.value, qty: n });
-  try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch {
-    announce("تعذّر حفظ السلة على هذا الجهاز");
-    return false;
-  }
-  dispatchEvent(new Event("cart:change"));
-  announce(`أُضيف ${name} بحجم ${sizeLabel(r.value)} إلى السلة`);
+  if (!r || !add(root.dataset.id, r.value, clampQty())) return false;
+  announce(`أُضيف ${root.dataset.name} بحجم ${sizeLabel(r.value)} إلى السلة`);
   return true;
 }
 
@@ -229,8 +218,14 @@ if (root) {
       qty.value = clampQty() + Number(step.dataset.step);
       return clampQty();
     }
-    const add = e.target.closest("[data-pdp-add]");
-    if (add) return addToCart() && flash(add, "أُضيف إلى السلة");
+    const addBtn = e.target.closest("[data-pdp-add]");
+    if (addBtn) {
+      if (addToCart()) {
+        flash(addBtn, "أُضيف إلى السلة");
+        dispatchEvent(new Event("cart:open"));
+      }
+      return;
+    }
     if (e.target.closest("[data-buy-now]")) return addToCart() && location.assign("/checkout");
     const shareBtn = e.target.closest("[data-share]");
     if (shareBtn) share(shareBtn);

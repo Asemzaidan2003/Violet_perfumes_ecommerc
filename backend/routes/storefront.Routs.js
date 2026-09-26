@@ -11,6 +11,9 @@ import { product } from "../store/views/product.js";
 import { CATEGORIES, FAMILIES, FAMILY_KEYS } from "../../storefront/js/shared/vocab.js";
 import { searchProducts } from "../../storefront/js/shared/search.js";
 import { notFound, serverError } from "../store/views/errors.js";
+import { checkout, cartPage } from "../store/views/checkout.js";
+import { orderConfirmation } from "../store/views/order.js";
+import { getOrderByRef, publicOrder } from "../services/order.service.js";
 
 const router = express.Router();
 
@@ -142,6 +145,31 @@ router.get("/p/:id", async (req, res, next) => {
     styles: ["pages.css"],
     scripts: ["product.js"],
     body: product({ p, related, relatedHref, settings, base: siteBase(origin(req)) }),
+  });
+});
+
+router.get("/cart", async (req, res) => {
+  const settings = await getSettings();
+  send(req, res, 200, { title: "سلة التسوق | نسمات", canonicalPath: "/cart", noindex: true, settings, body: cartPage() });
+});
+
+router.get("/checkout", async (req, res) => {
+  const settings = await getSettings();
+  send(req, res, 200, {
+    title: "إتمام الطلب | نسمات", canonicalPath: "/checkout", noindex: true, hideBottomBar: true, settings,
+    styles: ["pages.css"], scripts: ["checkout.js"], body: checkout(),
+  });
+});
+
+// Public refs are 10 characters of the order service's base32 alphabet; anything else is a 404.
+router.get("/order/:ref", async (req, res, next) => {
+  if (!/^[A-Z2-9]{10}$/.test(req.params.ref)) return next();
+  const [order, settings] = await Promise.all([getOrderByRef(req.params.ref), getSettings()]);
+  if (!order) return next();
+  res.set("Cache-Control", "no-store");
+  send(req, res, 200, {
+    title: "شكرًا لطلبك | نسمات", noindex: true, hideBottomBar: true, settings,
+    styles: ["pages.css"], body: orderConfirmation({ order: publicOrder(order), settings }),
   });
 });
 

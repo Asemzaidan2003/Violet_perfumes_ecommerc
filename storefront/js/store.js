@@ -1,7 +1,7 @@
 // Storefront entry module (every page). Entry file only: it has side effects and NO exports —
 // shared helpers live in ./shared/*.js. No inline handlers: everything is delegated from here.
 import { num } from "./shared/format.js";
-import { CART_KEY, readCart, cartCount, announce } from "./shared/cart-store.js";
+import { CART_KEY, cartCount } from "./shared/cart-store.js";
 
 const PLACEHOLDER_PATH = "/assets/img/placeholder-bottle.svg";
 const PLACEHOLDER = PLACEHOLDER_PATH + new URL(import.meta.url).search; // same ?v= as this file
@@ -66,26 +66,9 @@ function updateCartCount() {
 addEventListener("storage", (e) => { if (e.key === CART_KEY) updateCartCount(); });
 addEventListener("cart:change", updateCartCount);
 
-// ponytail: temporary quick-add — Task 6 MUST delete this function and its click branch below when
-// cart.js takes over [data-add-to-cart]; the defaultPrevented guard does not prevent double adds.
-function quickAdd(btn) {
-  const { id, size, name } = btn.dataset;
-  const cart = readCart();
-  const line = cart.find((l) => l.id === id && l.size === size);
-  if (line) line.qty = Math.min(20, (Number(line.qty) || 0) + 1);
-  else cart.push({ id, size, qty: 1 });
-  try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch { return announce("تعذّر حفظ السلة على هذا الجهاز"); }
-  dispatchEvent(new Event("cart:change"));
-  announce(`أُضيف ${name} إلى السلة`);
-  btn.classList.add("is-added");
-  setTimeout(() => btn.classList.remove("is-added"), 1200);
-}
-
 document.addEventListener("click", (e) => {
   const shelfBtn = e.target.closest("[data-shelf-prev], [data-shelf-next]");
   if (shelfBtn) return scrollShelf(shelfBtn);
-  const addBtn = e.target.closest("[data-add-to-cart]");
-  if (addBtn && !e.defaultPrevented) return quickAdd(addBtn);
   // Close open disclosure menus (families panel) when clicking elsewhere.
   for (const d of document.querySelectorAll("details[data-dismissable][open]")) if (!d.contains(e.target)) d.open = false;
 });

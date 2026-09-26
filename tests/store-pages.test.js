@@ -8,6 +8,8 @@ import Product from "../backend/models/product.model.js";
 import { invalidateCatalog } from "../backend/store/catalog.js";
 import { money, sizeLabel } from "../storefront/js/shared/format.js";
 import { saveSettings } from "../backend/services/settings.service.js";
+import { GOVERNORATES } from "../backend/store/validate.js";
+import { priceCart } from "../storefront/js/shared/cart-store.js";
 
 const XSS = "<img src=x onerror=alert(1)>";
 const SCRIPT_XSS = "</script><img src=x onerror=alert(1)>";
@@ -282,4 +284,96 @@ test("product page: Open Graph image and WhatsApp inquiry when a number is set",
   } finally {
     await saveSettings({ whatsapp: "" });
   }
+});
+
+// --- Task 6: cart, checkout, order confirmation.
+test("every page embeds the shop settings as inert JSON and the cart drawer template", async () => {
+  await saveSettings({ delivery_fee: 2, free_delivery_over: 30 });
+  try {
+    const { body } = await page("/");
+    const raw = body.match(/<script type="application\/json" id="shop-settings">([\s\S]*?)<\/script>/)[1];
+    assert.deepEqual(JSON.parse(raw), { delivery_fee: 2, free_delivery_over: 30, whatsapp: "" });
+    assert.match(body, /<dialog id="cart-drawer"[^>]*aria-labelledby="cart-title"/);
+    assert.match(body, /<template data-cart-line>/);
+    assert.ok(body.includes("/assets/js/cart.js?v="));
+  } finally {
+    await saveSettings({ delivery_fee: 0, free_delivery_over: 0 });
+  }
+});
+
+test("store.js no longer handles quick-add (cart.js owns [data-add-to-cart])", async () => {
+  const src = await (await fetch(`${t.url}/assets/js/store.js`)).text();
+  assert.doesNotMatch(src, /quickAdd|data-add-to-cart/);
+});
+
+test("/cart renders the layout (the drawer opens on load) and is not indexed", async () => {
+  const { status, body } = await page("/cart");
+  assert.equal(status, 200);
+  assert.equal(body.match(/<h1[\s>]/g)?.length, 1);
+  assert.match(body, /<meta name="robots" content="noindex">/);
+});
+
+test("/checkout: one-screen form with the governorate list, no bottom bar", async () => {
+  const { status, body } = await page("/checkout");
+  assert.equal(status, 200);
+  assert.match(body, /<meta name="robots" content="noindex">/);
+  assert.ok(!body.includes('class="bottom-bar"'));
+  const options = [...body.match(/<select id="co-city"[\s\S]*?<\/select>/)[0].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]);
+  assert.deepEqual(options, ["", ...GOVERNORATES], "a placeholder, then Amman first");
+  assert.match(body, /<input id="co-name"[^>]*autocomplete="name"/);
+  assert.match(body, /<input id="co-phone"[^>]*type="tel"[^>]*inputmode="numeric"[^>]*dir="ltr"[^>]*autocomplete="tel"/);
+  assert.match(body, /<textarea id="co-address"[^>]*autocomplete="street-address"/);
+  assert.match(body, /name="website"[^>]*tabindex="-1"[^>]*autocomplete="off"/, "honeypot");
+  assert.match(body, /name="remember"[^>]*checked/, "remember my details is on by default");
+  assert.ok(body.includes("الدفع عند الاستلام"));
+  assert.ok(body.includes("/assets/js/checkout.js?v="));
+});
+
+test("/order/:ref: unknown or malformed refs are 404", async () => {
+  assert.equal((await page("/order/ABCDEFGHJK")).status, 404);
+  assert.equal((await page("/order/nope")).status, 404);
+});
+
+test("/order/:ref shows the ref, items and totals, never the delivery details", async () => {
+  await saveSettings({ whatsapp: "962791234567", delivery_fee: 3, free_delivery_over: 0 });
+  try {
+    const res = await fetch(`${t.url}/api/store/orders`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ product_id: ids.amber, size: "30", quantity: 2 }],
+        customer: { name: "سارة المصري", phone: "٠٧٩١٢٣٤٥٦٧", city: "إربد", address: "شارع الجامعة، عمارة 7", notes: "بعد العصر" },
+        client_key: crypto.randomUUID(),
+      }),
+    });
+    assert.equal(res.status, 201);
+    const { ref } = (await res.json()).data;
+    const r = await fetch(`${t.url}/order/${ref}`);
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get("cache-control"), /no-store/);
+    const body = await r.text();
+    assert.match(body, /<meta name="robots" content="noindex">/);
+    assert.ok(body.includes(`<bdi dir="ltr">NS-${ref}</bdi>`));
+    assert.ok(body.includes("عنبر الشرق"));
+    assert.ok(body.includes(money(70)) && body.includes(money(3)) && body.includes(money(73)));
+    for (const secret of ["سارة المصري", "0791234567", "٠٧٩١٢٣٤٥٦٧", "شارع الجامعة", "بعد العصر"]) {
+      assert.ok(!body.includes(secret), `confirmation leaks ${secret}`);
+    }
+    const wa = body.match(/href="https:\/\/wa\.me\/962791234567\?text=([^"]+)"/);
+    assert.ok(wa, "WhatsApp button when a number is set");
+    assert.ok(decodeURIComponent(wa[1]).includes(`NS-${ref}`));
+  } finally {
+    await saveSettings({ whatsapp: "", delivery_fee: 0, free_delivery_over: 0 });
+  }
+});
+
+test("priceCart: vanished lines are excluded; free delivery at or above the threshold", () => {
+  const catalog = [{ id: "a", sizes: [{ size: "30", final: 10.1 }] }];
+  const lines = [{ id: "a", size: "30", qty: 3 }, { id: "a", size: "99", qty: 1 }, { id: "gone", size: "30", qty: 1 }];
+  const r = priceCart(lines, catalog, { delivery_fee: 2, free_delivery_over: 30.3 });
+  assert.equal(r.subtotal, 30.3);
+  assert.equal(r.delivery, 0);
+  assert.deepEqual(r.rows.map((x) => x.product && x.total), [30.299999999999997, null, null]);
+  assert.equal(priceCart(lines, catalog, { delivery_fee: 2, free_delivery_over: 31 }).total, 32.3);
+  assert.equal(priceCart(lines, catalog, { delivery_fee: 2, free_delivery_over: 0 }).delivery, 2, "0 turns free delivery off");
+  assert.equal(priceCart([{ id: "a", size: "30", qty: 99 }], catalog).rows[0].qty, 20, "quantities are clamped to 20");
 });
