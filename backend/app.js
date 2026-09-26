@@ -17,7 +17,7 @@ import authRouter from "./routes/auth.Routs.js";
 import uploadRouter from "./routes/upload.Routs.js";
 import imageRouter from "./routes/image.Routs.js";
 import storeRouter from "./routes/store.Routs.js";
-import adminSettingsRouter from "./routes/admin.Routs.js";
+import adminRouter from "./routes/admin.Routs.js";
 import { requireAdmin } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
 
@@ -73,7 +73,7 @@ export function createApp({ limits = {} } = {}) {
   app.use("/api/customers", customerRouter);
   app.use("/api/reports", reportRouter);
   app.use("/api/uploads", uploadRouter);
-  app.use("/api/settings", adminSettingsRouter);
+  app.use("/api", adminRouter); // defines /settings and /interests
   app.use("/api", (req, res) => res.status(404).json({ success: false, message: "Not found" }));
 
   app.get("/admin", (req, res) => res.redirect("/admin/html/index.html"));

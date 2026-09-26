@@ -1,7 +1,56 @@
-import { getCatalog, compactIndex } from "../store/catalog.js";
+import Order from "../models/order.model.js";
+import Product from "../models/product.model.js";
+import Interest from "../models/interest.model.js";
+import { getCatalog, compactIndex, invalidateCatalog } from "../store/catalog.js";
+import { getSettings, getCachedSettings } from "../services/settings.service.js";
+import { placeOrder, publicOrder } from "../services/order.service.js";
+import { validateOrderBody, validateInterestBody, fail } from "../store/validate.js";
 
 // GET /api/store/catalog — public compact index for the search overlay and cart pricing.
 export const getPublicCatalog = async (req, res) => {
   const { products } = await getCatalog();
   res.set("Cache-Control", "public, max-age=30").status(200).json({ success: true, data: compactIndex(products) });
+};
+
+// Rate-limit message for `limit()`: includes the shop's WhatsApp link when one is set, from the
+// last-loaded settings cache (the limiter middleware itself must stay synchronous).
+export const waLimitMessage = (base) => () => {
+  const { whatsapp } = getCachedSettings();
+  return whatsapp ? `${base} — تواصل معنا على واتساب: https://wa.me/${whatsapp}` : base;
+};
+
+// POST /api/store/orders — place an online order (public, no auth).
+export const createStoreOrder = async (req, res) => {
+  const { items, customer, client_key } = validateOrderBody(req.body);
+  const settings = await getSettings();
+  try {
+    const { order, replay } = await placeOrder({
+      products: items,
+      client_key,
+      delivery: customer,
+      delivery_policy: { fee: settings.delivery_fee, free_over: settings.free_delivery_over },
+    }, "online");
+    invalidateCatalog();
+    res.status(replay ? 200 : 201).json({ success: true, data: publicOrder(order) });
+  } catch (err) {
+    if (err?.code === 11000 && err.keyPattern?.client_key) {
+      const existing = await Order.findOne({ client_key });
+      return res.status(200).json({ success: true, data: publicOrder(existing) });
+    }
+    throw err;
+  }
+};
+
+// POST /api/store/interest — "I'm interested" request; dedupes while the request stays "new".
+export const createStoreInterest = async (req, res) => {
+  const { product_id, size, name, phone, note } = validateInterestBody(req.body);
+  const product = await Product.findById(product_id);
+  if (!product || product.status === "discontinued") throw fail(404, "المنتج غير متوفر");
+
+  await Interest.findOneAndUpdate(
+    { phone, product_id, size: size ?? null, status: "new" },
+    { $set: { name, note, product_name: product.p_name } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  res.status(201).json({ success: true });
 };

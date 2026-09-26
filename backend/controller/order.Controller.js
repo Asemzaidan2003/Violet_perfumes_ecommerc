@@ -35,6 +35,6 @@ export const updateOrderStatus = async (req, res) => {
 
 // POST Confirm an online order from the POS: pick bottles, deduct stock
 export const confirmOrder = async (req, res) => {
-    const { order, shortages } = await confirm(req.params.id, req.body.lines);
+    const { order, shortages } = await confirm(req.params.id, req.body.lines, { delivery_fee: req.body.delivery_fee });
     res.status(200).json({ message: "Order confirmed", data: order, shortages });
 }

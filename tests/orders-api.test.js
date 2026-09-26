@@ -40,7 +40,10 @@ test("POST /api/orders creates a confirmed POS order and reports shortages", asy
 });
 
 test("status rules and confirm endpoint over HTTP", async () => {
-  const { order } = await placeOrder({ products: [{ product_id: ids.product, size: "30", quantity: 1 }] }, "online");
+  const { order } = await placeOrder({
+    products: [{ product_id: ids.product, size: "30", quantity: 1 }], delivery: {}, client_key: "api-test-key",
+    delivery_policy: { fee: 0, free_over: 0 },
+  }, "online");
   const blocked = await api(`/orders/${order._id}`, "PUT", { status: "completed" });
   assert.equal(blocked.status, 409);
   assert.deepEqual(Object.keys(await blocked.json()).sort(), ["message", "success"]);

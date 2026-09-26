@@ -9,9 +9,19 @@ const pick = (doc) => {
   return out;
 };
 
+let cache = DEFAULTS; // ponytail: best-effort sync snapshot for the rate limiter, refreshed on every getSettings() call
+
 // No write on read: an absent "shop" doc just reads as defaults.
 export async function getSettings() {
-  return pick(await Setting.findById("shop").lean());
+  const settings = pick(await Setting.findById("shop").lean());
+  cache = settings;
+  return settings;
+}
+
+// Synchronous, possibly-stale read (e.g. the rate limiter's Arabic 429 message needs the shop's
+// WhatsApp number but must stay synchronous). Populated the first time getSettings() runs.
+export function getCachedSettings() {
+  return cache;
 }
 
 export async function saveSettings(patch = {}) {

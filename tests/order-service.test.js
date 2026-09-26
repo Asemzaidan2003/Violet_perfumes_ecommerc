@@ -55,7 +55,10 @@ test("POS may override price; online uses list price with offer and cannot overr
   const pos = await placeOrder({ products: [line({ price: 15 })] }, "pos");
   assert.equal(pos.order.products[0].selling_price, 15);
   await Product.updateOne({ _id: ids.product }, { p_offer_percentage: 10 });
-  const online = await placeOrder({ products: [line({ price: 1 })] }, "online");
+  const online = await placeOrder({
+    products: [line({ price: 1 })], delivery: {}, client_key: "key-1",
+    delivery_policy: { fee: 0, free_over: 0 },
+  }, "online");
   assert.equal(online.order.products[0].selling_price, 18);
   assert.equal(online.order.products[0].bottle?.bottle_id, undefined);
 });
@@ -73,7 +76,10 @@ test("quantity and line-count limits are enforced", async () => {
 });
 
 test("online order is not deducted until confirmed, and confirms once", async () => {
-  const { order } = await placeOrder({ products: [line({ bottle_id: undefined })] }, "online");
+  const { order } = await placeOrder({
+    products: [line({ bottle_id: undefined })], delivery: {}, client_key: "key-2",
+    delivery_policy: { fee: 0, free_over: 0 },
+  }, "online");
   assert.equal(order.stock_deducted, false);
   assert.equal(order.source, "online");
   assert.equal(order.total_cost, 0);

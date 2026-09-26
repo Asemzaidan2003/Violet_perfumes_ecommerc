@@ -72,6 +72,18 @@ const orderSchema = new mongoose.Schema(
     // Legacy orders were deducted in the browser at creation, so the default
     // `true` makes them read as confirmed without a migration.
     stock_deducted: { type: Boolean, default: true },
+
+    // Online orders only: public tracking ref, idempotency key, and a snapshot of the
+    // delivery details as submitted (the phone is unverified — no customer record yet).
+    public_ref: { type: String, unique: true, sparse: true },
+    client_key: { type: String, unique: true, sparse: true },
+    delivery: {
+      name: String,
+      phone: String,
+      city: String,
+      address: String,
+      notes: String,
+    },
   },
   { timestamps: true }
 );

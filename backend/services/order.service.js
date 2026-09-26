@@ -1,10 +1,13 @@
+import crypto from "node:crypto";
 import mongoose from "mongoose";
 import Order from "../models/order.model.js";
 import Product from "../models/product.model.js";
 import Oil from "../models/oil.model.js";
 import Bottle from "../models/bottle.model.js";
 import Alcohol from "../models/alcohol.model.js";
+import Customer from "../models/customer.model.js";
 import { normalizeSize } from "../../storefront/js/shared/vocab.js";
+import { normalizePhone } from "../../storefront/js/shared/phone.js";
 import { effectivePrice } from "../catalog/pricing.js";
 
 // Business rule: an order is never blocked for stock. Stock is deducted only when an
@@ -17,6 +20,16 @@ const fail = (status, message) => Object.assign(new Error(message), { status, ex
 const NEEDS_CONFIRMATION = ["completed", "ready for delivery", "in delivery", "uncollected payment"];
 const MAX_LINES = 50;
 const MAX_QTY = 1000;
+
+// Base32-ish alphabet, no ambiguous chars (0/O, 1/I/L); 32 entries so one random byte % 32 is
+// unbiased. Displayed to customers as "NS-XXXXXXXXXX".
+const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function newRef() {
+  const bytes = crypto.randomBytes(10);
+  let ref = "";
+  for (const b of bytes) ref += REF_ALPHABET[b % REF_ALPHABET.length];
+  return ref;
+}
 
 // Order + stock changes commit or roll back together. A concurrent write to the same
 // stock record raises a write conflict, which connection.transaction() retries.
@@ -39,6 +52,7 @@ async function priceLines(items, source, session) {
     if (!mongoose.isValidObjectId(item.product_id)) throw fail(400, `السطر ${n}: معرّف المنتج غير صالح`);
     const product = await Product.findById(item.product_id).session(session);
     if (!product) throw fail(404, `السطر ${n}: المنتج غير موجود`);
+    if (source === "online" && product.status === "discontinued") throw fail(404, "المنتج غير متوفر");
     const size = normalizeSize(item.size);
     const ml = parseFloat(size);
     const listed = product.size_list.find((s) => s.size === size);
@@ -125,28 +139,48 @@ async function restock(order, session) {
 
 export async function placeOrder(input = {}, source) {
   if (source !== "pos" && source !== "online") throw fail(400, "مصدر الطلب غير صالح");
-  const deliveryFee = Number(input.delivery_fee ?? 0);
-  if (!Number.isFinite(deliveryFee) || deliveryFee < 0) throw fail(400, "رسوم التوصيل غير صالحة");
+  const online = source === "online";
+  let deliveryFee = 0;
+  if (online) {
+    const p = input.delivery_policy;
+    if (!p || !(Number(p.fee) >= 0) || !(Number(p.free_over) >= 0) || !input.delivery || typeof input.client_key !== "string") {
+      // Programmer error: the public controller must always supply these. Not a user-facing 4xx.
+      throw new Error("placeOrder(online) requires delivery_policy, delivery and client_key");
+    }
+  } else {
+    deliveryFee = Number(input.delivery_fee ?? 0);
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) throw fail(400, "رسوم التوصيل غير صالحة");
+  }
   return inTransaction(async (session) => {
+    if (online) {
+      const existing = await Order.findOne({ client_key: input.client_key }).session(session);
+      if (existing) return { order: existing, shortages: [], replay: true };
+    }
     const order = new Order({
       products: await priceLines(input.products, source, session),
       source,
-      customer_id: input.customer_id || undefined,
-      payment_method: input.payment_method || "Cash",
-      delivery_fee: deliveryFee,
-      order_notes: input.order_notes || "",
-      created_by: source === "pos" ? "admin" : "online",
+      customer_id: online ? undefined : input.customer_id || undefined,
+      payment_method: online ? "Cash" : input.payment_method || "Cash",
+      delivery_fee: online ? 0 : deliveryFee,
+      order_notes: online ? "" : input.order_notes || "",
+      created_by: online ? "online" : "admin",
+      ...(online && { delivery: input.delivery, client_key: input.client_key, public_ref: newRef() }),
       stock_deducted: false,
       total_items: 0, total_revenue: 0, total_cost: 0, total_profit: 0, final_total: 0,
     });
     setTotals(order);
-    const shortages = source === "pos" ? await deductAndCost(order, session) : [];
+    if (online) {
+      const { fee, free_over } = input.delivery_policy;
+      order.delivery_fee = Number(free_over) > 0 && order.total_revenue >= Number(free_over) ? 0 : Number(fee);
+      setTotals(order);
+    }
+    const shortages = online ? [] : await deductAndCost(order, session);
     await order.save({ session });
-    return { order, shortages };
+    return { order, shortages, replay: false };
   });
 }
 
-export async function confirmOrder(id, edits = []) {
+export async function confirmOrder(id, edits = [], { delivery_fee } = {}) {
   if (!Array.isArray(edits)) throw fail(400, "بيانات الأسطر غير صالحة");
   return inTransaction(async (session) => {
     const order = await Order.findById(id).session(session);
@@ -172,10 +206,52 @@ export async function confirmOrder(id, edits = []) {
       if (edit.bottle_id) line.bottle = { bottle_id: edit.bottle_id };
     });
 
+    if (delivery_fee != null) {
+      const fee = Number(delivery_fee);
+      if (!Number.isFinite(fee) || fee < 0) throw fail(400, "رسوم التوصيل غير صالحة");
+      order.delivery_fee = fee;
+    }
+
+    // Online orders arrive with an unverified phone snapshot, not a customer record. Link (or
+    // create) the customer only now, at confirmation.
+    if (order.source === "online" && !order.customer_id && order.delivery?.phone) {
+      const phone = normalizePhone(order.delivery.phone);
+      let customer = await Customer.findOne({ phone }).session(session);
+      if (!customer) {
+        [customer] = await Customer.create([{
+          name: order.delivery.name, phone,
+          address: [order.delivery.city, order.delivery.address].filter(Boolean).join(" — "),
+        }], { session });
+      }
+      order.customer_id = customer._id;
+    }
+
     const shortages = await deductAndCost(order, session);
     await order.save({ session });
     return { order, shortages };
   });
+}
+
+// Public, storefront-safe projection of an order: no ids, costs or stock data.
+export function publicOrder(order) {
+  return {
+    ref: order.public_ref,
+    subtotal: order.total_revenue,
+    delivery_fee: order.delivery_fee,
+    discount: order.discount ?? 0,
+    total: order.final_total,
+    items: order.products.map(({ p_name, product_size, quantity, selling_price, total_revenue }) => ({
+      name: p_name,
+      size: product_size,
+      quantity,
+      price: selling_price,
+      line_total: total_revenue,
+    })),
+  };
+}
+
+export async function getOrderByRef(ref) {
+  return Order.findOne({ public_ref: ref });
 }
 
 export async function changeStatus(id, status) {
