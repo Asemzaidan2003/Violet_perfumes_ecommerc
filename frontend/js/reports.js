@@ -470,7 +470,7 @@ function renderCustomersStats(data) {
   document.getElementById("customersStats").innerHTML = `
     <div class="stat-card"><div class="label">إجمالي عدد الزبائن</div><div class="value">${num(data.total_customers)}</div></div>
     <div class="stat-card"><div class="label">طلبات بدون زبون مسجل</div><div class="value">${num(data.walk_in_orders_in_range)}</div></div>
-    <div class="stat-card accent"><div class="label">أعلى زبون إنفاقًا</div><div class="value">${topSpender ? money(topSpender.total_spent) : "-"}</div><div class="sub-label">${topSpender ? topSpender.name || "-" : ""}</div></div>
+    <div class="stat-card accent"><div class="label">أعلى زبون إنفاقًا</div><div class="value">${topSpender ? money(topSpender.total_spent) : "-"}</div><div class="sub-label">${topSpender ? esc(topSpender.name || "-") : ""}</div></div>
   `;
 }
 
@@ -519,8 +519,8 @@ function renderCustomersTable(customers) {
     .map(
       (c) => `
     <tr>
-      <td class="cell-strong">${c.name || "-"}</td>
-      <td class="num">${c.phone || "-"}</td>
+      <td class="cell-strong">${esc(c.name || "-")}</td>
+      <td class="num">${esc(c.phone || "-")}</td>
       <td>${typeLabels[c.type] || c.type || "-"}</td>
       <td>${num(c.orders_count)}</td>
       <td class="num">${money(c.total_spent)}</td>

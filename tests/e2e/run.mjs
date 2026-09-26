@@ -21,6 +21,7 @@ import Alcohol from "../../backend/models/alcohol.model.js";
 import Product from "../../backend/models/product.model.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
 import Interest from "../../backend/models/interest.model.js";
+import { registerAdminOnlineScenarios } from "./admin-online.mjs";
 
 process.env.SESSION_SECRET ||= "e2e-secret-".padEnd(48, "x");
 
@@ -454,6 +455,9 @@ async function run() {
       check(page);
     }
   });
+
+  // Task 7 (admin interests/settings/online-order pages) — see admin-online.mjs.
+  await registerAdminOnlineScenarios({ scenario, openPage, check, baseUrl });
 }
 
 try {

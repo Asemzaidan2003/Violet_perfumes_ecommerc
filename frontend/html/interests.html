@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>طلبات الاهتمام</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <script src="../js/navbar.js"></script>
+</head>
+<body>
+  <div id="navbar"></div>
+
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">لوحة التحكم</span>
+        <h2>طلبات الاهتمام</h2>
+      </div>
+    </div>
+
+    <div class="filters">
+      <label>
+        الحالة
+        <select id="statusFilter">
+          <option value="">الكل</option>
+          <option value="new">جديد</option>
+          <option value="contacted">تم التواصل</option>
+          <option value="closed">مغلق</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table id="interestsTable">
+          <thead>
+            <tr>
+              <th>المنتج</th>
+              <th>الحجم</th>
+              <th>الاسم</th>
+              <th>الهاتف</th>
+              <th>الملاحظة</th>
+              <th>التاريخ</th>
+              <th>الحالة</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="interestsBody">
+            <tr class="loading-row"><td colspan="8"><span class="spinner"></span>جاري التحميل...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const el = (tag, props = {}, ...children) => {
+      const node = Object.assign(document.createElement(tag), props);
+      node.append(...children);
+      return node;
+    };
+
+    const STATUS_LABEL = { new: "جديد", contacted: "تم التواصل", closed: "مغلق" };
+    const STATUS_BADGE = { new: "badge-pending", contacted: "badge-available", closed: "badge-out" };
+
+    async function setStatus(id, status) {
+      try {
+        const res = await fetch(`/api/interests/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          alert(data.message || "تعذر تحديث الحالة");
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error("Error updating interest status:", err);
+        alert("تعذر تحديث الحالة");
+        return false;
+      }
+    }
+
+    function buildRow(interest) {
+      const statusSpan = el("span", {
+        className: `badge ${STATUS_BADGE[interest.status] || ""}`,
+        textContent: STATUS_LABEL[interest.status] || interest.status,
+      });
+
+      const actions = el("td", {});
+      if (interest.phone) {
+        actions.append(el("a", {
+          className: "btn btn-ghost btn-sm", href: waLink(interest.phone), target: "_blank", rel: "noopener",
+          textContent: "واتساب", ariaLabel: `واتساب ${interest.name}`,
+        }));
+      }
+      if (interest.status !== "contacted") {
+        const btn = el("button", { className: "btn btn-secondary btn-sm", textContent: "تم التواصل", ariaLabel: `تم التواصل مع ${interest.name}` });
+        btn.addEventListener("click", async () => { if (await setStatus(interest._id, "contacted")) loadInterests(); });
+        actions.append(btn);
+      }
+      if (interest.status !== "closed") {
+        const btn = el("button", { className: "btn btn-ghost btn-sm", textContent: "إغلاق", ariaLabel: `إغلاق طلب ${interest.name}` });
+        btn.addEventListener("click", async () => { if (await setStatus(interest._id, "closed")) loadInterests(); });
+        actions.append(btn);
+      }
+
+      return el("tr", {},
+        el("td", { className: "cell-strong", textContent: interest.product_name || "-" }),
+        el("td", {}, interest.size || "-"),
+        el("td", { textContent: interest.name }),
+        el("td", { className: "num", textContent: interest.phone }),
+        el("td", { textContent: interest.note || "-" }),
+        el("td", { className: "date-cell", textContent: new Date(interest.createdAt).toLocaleDateString() }),
+        el("td", {}, statusSpan),
+        actions);
+    }
+
+    function emptyRow() {
+      return el("tr", {}, el("td", { colSpan: 8 },
+        el("div", { className: "empty-state" },
+          el("div", { className: "icon", textContent: "🗒️" }),
+          el("div", { className: "title", textContent: "لا توجد طلبات اهتمام" }))));
+    }
+
+    async function loadInterests() {
+      const status = document.getElementById("statusFilter").value;
+      const tbody = document.getElementById("interestsBody");
+      try {
+        const res = await fetch(`/api/interests${status ? `?status=${status}` : ""}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "تعذر تحميل الطلبات");
+        const interests = data.data || [];
+        tbody.replaceChildren(...(interests.length ? interests.map(buildRow) : [emptyRow()]));
+      } catch (err) {
+        tbody.replaceChildren(el("tr", {}, el("td", { colSpan: 8, className: "text-muted", textContent: err.message })));
+      }
+    }
+
+    document.getElementById("statusFilter").addEventListener("change", loadInterests);
+
+    loadInterests();
+  </script>
+</body>
+</html>

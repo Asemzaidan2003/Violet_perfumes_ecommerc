@@ -162,9 +162,12 @@
       const customerMap = new Map(customerEntries);
 
       for (const order of orders) {
-        order.customer = order.customer_id
-          ? (customerMap.get(order.customer_id) || { name: "-", phone: "-" })
-          : { name: "-", phone: "-" };
+        const linked = order.customer_id ? customerMap.get(order.customer_id) : null;
+        // Online orders keep an unverified delivery snapshot; show it, falling back to the
+        // linked customer once confirmation has matched/created one.
+        order.customer = order.source === "online"
+          ? { name: order.delivery?.name || linked?.name || "-", phone: order.delivery?.phone || linked?.phone || "-" }
+          : (linked || { name: "-", phone: "-" });
       }
 
       const today = new Date();
@@ -218,11 +221,18 @@
           totalProfit += order.total_profit;
         }
 
+        const name = order.customer && order.customer.name ? order.customer.name : "-";
+        const phone = order.customer && order.customer.phone ? order.customer.phone : "-";
+        const sourceBadge = order.source === "online" ? ' <span class="badge badge-available">الموقع</span>' : "";
+        const waBadge = order.source === "online" && phone !== "-"
+          ? ` <a class="btn btn-ghost btn-sm" href="${esc(waLink(phone))}" target="_blank" rel="noopener" aria-label="${esc(`واتساب ${name}`)}">واتساب</a>`
+          : "";
+
         return `
           <tr>
             <td>${index + 1}</td>
-            <td class="cell-strong">${order.customer && order.customer.name ? order.customer.name : "-"}${order.stock_deducted === false && order.status !== "canceled" ? ' <span class="badge badge-pending">بانتظار التأكيد</span>' : ""}</td>
-            <td class="num">${order.customer && order.customer.phone ? order.customer.phone : "-"}</td>
+            <td class="cell-strong">${esc(name)}${sourceBadge}${order.stock_deducted === false && order.status !== "canceled" ? ' <span class="badge badge-pending">بانتظار التأكيد</span>' : ""}</td>
+            <td class="num">${esc(phone)}${waBadge}</td>
             <td>${order.total_items}</td>
             <td class="num">${order.final_total.toFixed(2)} JOD</td>
             <td class="num">${order.status === "completed" ? order.total_profit.toFixed(2) + " JOD" : "-"}</td>
@@ -237,7 +247,7 @@
               </select>
             </td>
             <td class="date-cell">${new Date(order.createdAt).toLocaleDateString()}</td>
-            <td><button class="btn btn-ghost btn-sm" onclick="goToDetails('${order._id}')">عرض</button></td>
+            <td><button class="btn btn-ghost btn-sm" onclick="goToDetails('${order._id}')" aria-label="${esc(`عرض طلب ${name}`)}">عرض</button></td>
           </tr>
         `;
       }).join("");
