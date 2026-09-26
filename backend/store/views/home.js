@@ -32,7 +32,8 @@ const HERO_ART = raw(`<svg class="hero-art" viewBox="0 0 400 480" aria-hidden="t
 <g class="hero-glints" fill="#F2D27A"><circle cx="96" cy="150" r="2"/><circle cx="318" cy="112" r="1.6"/><circle cx="300" cy="236" r="2.2"/><circle cx="84" cy="276" r="1.4"/></g>
 </svg>`);
 
-function hero() {
+// Window display (spec §2): slide 1 is always this brand welcome; admin hero placements follow.
+function hero(placements = []) {
   return html`<section class="hero" aria-labelledby="hero-title">
   <div class="container hero-inner">
     <div class="hero-copy">
@@ -46,6 +47,7 @@ function hero() {
     </div>
     <div class="hero-display">${HERO_ART}</div>
   </div>
+  ${slot("hero", placements)}
 </section>`;
 }
 

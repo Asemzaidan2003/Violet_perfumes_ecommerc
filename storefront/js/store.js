@@ -1,42 +1,37 @@
-// Storefront entry module (every page). No inline handlers: everything is delegated from here.
+// Storefront entry module (every page). Entry file only: it has side effects and NO exports —
+// shared helpers live in ./shared/*.js. No inline handlers: everything is delegated from here.
 import { num } from "./shared/format.js";
+import { CART_KEY, readCart, cartCount, announce } from "./shared/cart-store.js";
 
-export const CART_KEY = "nsamat_cart_v1";
-const PLACEHOLDER = "/assets/img/placeholder-bottle.svg";
+const PLACEHOLDER_PATH = "/assets/img/placeholder-bottle.svg";
+const PLACEHOLDER = PLACEHOLDER_PATH + new URL(import.meta.url).search; // same ?v= as this file
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
-// Screen-reader announcements through the layout's live region.
-export function announce(message) {
-  const el = document.getElementById("live-region");
-  if (!el) return;
-  el.textContent = "";
-  requestAnimationFrame(() => { el.textContent = message; });
+// One broken feature must never stop the others from initialising.
+function safely(fn) {
+  try { fn(); } catch (err) { console.error(err); }
 }
 
 // --- Image fallback: hotlinked photos can vanish; show the branded bottle instead.
 function useFallback(img) {
-  if (img.src.endsWith(PLACEHOLDER)) return;
+  if (img.src.includes(PLACEHOLDER_PATH)) return;
   img.removeAttribute("srcset");
   img.src = PLACEHOLDER;
   img.classList.add("is-placeholder");
 }
 document.addEventListener("error", (e) => { if (e.target instanceof HTMLImageElement) useFallback(e.target); }, true);
-// Images may have failed before this module ran (lazy ones not yet requested have no currentSrc).
-for (const img of document.images) if (img.complete && img.currentSrc && !img.naturalWidth) useFallback(img);
 
 // --- Header compaction on scroll.
-const header = document.querySelector("[data-header]");
 let ticking = false;
 function onScroll() {
   if (ticking) return;
   ticking = true;
   requestAnimationFrame(() => {
-    header?.classList.toggle("is-compact", scrollY > 16);
+    document.querySelector("[data-header]")?.classList.toggle("is-compact", scrollY > 16);
     ticking = false;
   });
 }
 addEventListener("scroll", onScroll, { passive: true });
-onScroll();
 
 // --- Shelves: arrow buttons scroll one "page"; RTL tracks scroll towards negative scrollLeft.
 function updateShelfNav(track) {
@@ -48,10 +43,6 @@ function updateShelfNav(track) {
   nav.querySelector("[data-shelf-prev]").disabled = pos <= 4;
   nav.querySelector("[data-shelf-next]").disabled = pos >= max - 4;
 }
-for (const track of document.querySelectorAll(".shelf-track")) {
-  track.addEventListener("scroll", () => updateShelfNav(track), { passive: true });
-  updateShelfNav(track);
-}
 addEventListener("resize", () => document.querySelectorAll(".shelf-track").forEach(updateShelfNav));
 
 function scrollShelf(btn) {
@@ -62,25 +53,21 @@ function scrollShelf(btn) {
   track.scrollBy({ left: step, behavior: reducedMotion.matches ? "auto" : "smooth" });
 }
 
-// --- Cart count badge (the cart itself lives in localStorage; the drawer arrives with cart.js).
-export function readCart() {
-  try {
-    const lines = JSON.parse(localStorage.getItem(CART_KEY));
-    return Array.isArray(lines) ? lines : [];
-  } catch { return []; }
-}
+// --- Cart count badge (the cart lives in localStorage via shared/cart-store.js).
 function updateCartCount() {
-  const n = readCart().reduce((sum, l) => sum + (Number(l.qty) || 0), 0);
-  for (const el of document.querySelectorAll("[data-cart-count]")) {
-    el.textContent = num(n);
-    el.hidden = n === 0;
-  }
+  safely(() => {
+    const n = cartCount();
+    for (const el of document.querySelectorAll("[data-cart-count]")) {
+      el.textContent = num(n);
+      el.hidden = n === 0;
+    }
+  });
 }
 addEventListener("storage", (e) => { if (e.key === CART_KEY) updateCartCount(); });
 addEventListener("cart:change", updateCartCount);
-updateCartCount();
 
-// ponytail: minimal quick-add until cart.js (Task 6) takes over the cart and its drawer.
+// ponytail: temporary quick-add — Task 6 MUST delete this function and its click branch below when
+// cart.js takes over [data-add-to-cart]; the defaultPrevented guard does not prevent double adds.
 function quickAdd(btn) {
   const { id, size, name } = btn.dataset;
   const cart = readCart();
@@ -109,3 +96,15 @@ document.addEventListener("keydown", (e) => {
     d.querySelector("summary").focus();
   }
 });
+
+// --- Initial state, after every listener is registered.
+// Images may have failed before this module ran (lazy ones not yet requested have no currentSrc).
+safely(() => { for (const img of document.images) if (img.complete && img.currentSrc && !img.naturalWidth) useFallback(img); });
+safely(onScroll);
+safely(() => {
+  for (const track of document.querySelectorAll(".shelf-track")) {
+    track.addEventListener("scroll", () => updateShelfNav(track), { passive: true });
+    updateShelfNav(track);
+  }
+});
+updateCartCount();

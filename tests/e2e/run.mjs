@@ -267,7 +267,7 @@ async function run() {
 
       await page.locator('img[alt="عطر صورته مكسورة"]').first().scrollIntoViewIfNeeded();
       await page.waitForFunction(() =>
-        document.querySelector('img[alt="عطر صورته مكسورة"]')?.src.endsWith("/assets/img/placeholder-bottle.svg"));
+        document.querySelector('img[alt="عطر صورته مكسورة"]')?.src.includes("/assets/img/placeholder-bottle.svg?v="));
 
       const mobile = viewport.width < 900;
       assert.equal(await page.locator(".bottom-bar").isVisible(), mobile);
@@ -276,6 +276,19 @@ async function run() {
       await page.locator(".card-add").first().click();
       await page.waitForFunction(() =>
         [...document.querySelectorAll("[data-cart-count]")].some((el) => !el.hidden && el.textContent === "1"));
+      await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
+
+      // A malformed stored cart never breaks the page: bad lines are dropped, the rest still counts.
+      const badge = (n) => page.waitForFunction((want) =>
+        [...document.querySelectorAll("[data-cart-count]")].some((el) => !el.hidden && el.textContent === want), String(n));
+      for (const [stored, before] of [[JSON.stringify([null, 5, "x", { id: "a", size: "30", qty: 2 }]), 2], ["{not json", 0]]) {
+        await page.evaluate((v) => localStorage.setItem("nsamat_cart_v1", v), stored);
+        await page.reload();
+        await page.waitForLoadState("networkidle");
+        if (before) await badge(before);
+        await page.locator(".card-add").first().click();
+        await badge(before + 1);
+      }
       await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
 
       await page.evaluate(() => scrollTo(0, document.body.scrollHeight));

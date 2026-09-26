@@ -3,8 +3,9 @@
 import { html, raw } from "../html.js";
 import { FAMILIES } from "../../../storefront/js/shared/vocab.js";
 import { money, num } from "../../../storefront/js/shared/format.js";
+import { asset } from "../assets.js";
 
-export const PLACEHOLDER_IMG = "/assets/img/placeholder-bottle.svg";
+export const PLACEHOLDER_IMG = asset("img/placeholder-bottle.svg");
 const NEW_FOR_MS = 30 * 24 * 60 * 60_000;
 const FAMILY_BY_KEY = new Map(FAMILIES.map((f) => [f.key, f]));
 

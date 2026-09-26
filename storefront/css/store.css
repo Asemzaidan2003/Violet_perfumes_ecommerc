@@ -66,7 +66,7 @@ button { cursor: pointer; }
 :where(ul[role="list"]) { list-style: none; margin: 0; padding: 0; }
 del { text-decoration-thickness: 1px; }
 bdi { unicode-bidi: isolate; }
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 main:focus { outline: none; }
 .muted { color: var(--text-muted); }
 .container { width: 100%; max-width: 1240px; margin-inline: auto; padding-inline: var(--gutter); }
@@ -167,7 +167,8 @@ main:focus { outline: none; }
 .hero::after { content: ""; position: absolute; inset: auto 0 0; height: 1px; z-index: -1;
   background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .5; }
 .hero-inner { display: grid; gap: var(--s-24); padding-block: var(--s-48) var(--s-32); align-items: center; }
-.hero-copy { animation: rise var(--dur-slow) var(--ease-out) both; }
+/* The h1 is the LCP element: it is never animated; the lines around it rise in. */
+.hero-copy > :not(h1) { animation: rise var(--dur-slow) var(--ease-out) both; }
 .eyebrow { color: var(--gold); font-weight: 600; font-size: var(--fs-14); margin-block-end: var(--s-12); }
 .hero-title { font-size: var(--fs-display); line-height: 1.25; color: var(--text); }
 .hero-sub { margin-block: var(--s-16) var(--s-24); color: var(--text-muted); font-size: var(--fs-18); max-width: 34em; text-wrap: pretty; }
@@ -200,13 +201,14 @@ main:focus { outline: none; }
 .shelf-nav { display: none; gap: var(--s-8); order: 3; }
 .shelf-track { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - var(--s-12)) / 2.15);
   gap: var(--s-12); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
-  padding-block: var(--s-4) var(--s-12); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  /* Room for the hover lift and the 5px focus ring, which the scroller would otherwise clip. */
+  padding: var(--s-8) var(--s-8) var(--s-12); margin-inline: calc(-1 * var(--s-8)); scroll-padding-inline: var(--s-8);
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .shelf-track > li { scroll-snap-align: start; min-width: 0; }
 .card { position: relative; display: flex; flex-direction: column; height: 100%; border-radius: var(--r-card);
   background: var(--surface); border: 1px solid var(--line); overflow: hidden;
   transition: border-color var(--dur-base), transform var(--dur-base) var(--ease-out); }
 .card:hover { border-color: color-mix(in srgb, var(--gold) 60%, var(--line)); transform: translateY(-3px); }
-.card:has(.card-link:focus-visible) { outline: 2px solid var(--focus); outline-offset: 3px; }
 .plinth { position: relative; aspect-ratio: 4 / 5;
   background: radial-gradient(90% 60% at 50% 0%, var(--plinth-hi), var(--cream) 55%, var(--plinth-lo)); }
 .plinth::after { content: ""; position: absolute; inset-inline: 18%; inset-block-end: 7%; height: 8%; border-radius: 50%;
@@ -228,9 +230,13 @@ main:focus { outline: none; }
 .card-name { font-family: var(--font-body); font-weight: 600; font-size: var(--fs-16); line-height: 1.5;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .card-link::after { content: ""; position: absolute; inset: 0; z-index: 1; }
-.card-link:focus-visible { outline: none; }
+/* Ring the whole card instead of the name link — only where :has() exists, else keep the link ring. */
+@supports selector(:has(*)) {
+  .card:has(.card-link:focus-visible) { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .card-link:focus-visible { outline: none; }
+}
 .chips { display: flex; flex-wrap: wrap; gap: var(--s-4); }
-.chips .chip { font-size: .8125rem; padding-inline: 8px; }
+.chips .chip { font-size: var(--fs-14); padding-inline: 8px; }
 .card-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--s-8); margin-block-start: auto; }
 .price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; font-variant-numeric: tabular-nums; }
 .price-from { color: var(--text-muted); font-size: var(--fs-14); }
@@ -243,7 +249,8 @@ main:focus { outline: none; }
 /* ---------- Tester bar (scent families as perfume blotters) ---------- */
 .testers { background: linear-gradient(180deg, transparent, var(--surface) 30%, var(--surface) 70%, transparent); }
 .blotters { display: grid; grid-auto-flow: column; grid-auto-columns: 96px; gap: var(--s-12); overflow-x: auto;
-  scroll-snap-type: x proximity; padding-block-end: var(--s-12); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  scroll-snap-type: x proximity; padding: var(--s-8) var(--s-8) var(--s-12); margin-inline: calc(-1 * var(--s-8));
+  scroll-padding-inline: var(--s-8); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .blotters > li { scroll-snap-align: start; }
 .blotter { display: grid; justify-items: center; gap: 2px; padding: var(--s-16) var(--s-8) var(--s-12);
   border-radius: var(--r-card); border: 1px solid var(--line); background: var(--bg); text-align: center;
@@ -263,7 +270,8 @@ main:focus { outline: none; }
   border-radius: var(--r-card); border: 1px solid var(--line); background: var(--surface); }
 .service strong { display: block; font-weight: 600; }
 .service .muted { display: block; font-size: var(--fs-14); }
-.service a { color: var(--gold-strong); text-decoration: underline; text-underline-offset: 4px; }
+.service a { display: inline-flex; align-items: center; min-height: 44px; color: var(--gold-strong);
+  text-decoration: underline; text-underline-offset: 4px; }
 .service-icon { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 50%;
   background: var(--glow-gold); color: var(--gold-strong); }
 

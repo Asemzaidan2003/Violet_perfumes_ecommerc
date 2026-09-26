@@ -47,15 +47,9 @@ router.get("/", async (req, res) => {
   });
 });
 
-// Catch-all (Express 5 rejects "*" paths).
-router.use(async (req, res) => {
-  const [{ products }, settings] = await Promise.all([getCatalog(), getSettings()]);
-  send(req, res, 404, {
-    title: "الصفحة غير موجودة | نسمات",
-    settings,
-    families: familyCounts(products),
-    body: notFound(),
-  });
+// Catch-all (Express 5 rejects "*" paths). No DB work: bots probing random URLs stay cheap.
+router.use((req, res) => {
+  send(req, res, 404, { title: "الصفحة غير موجودة | نسمات", settings: getCachedSettings(), body: notFound() });
 });
 
 // Page errors render the styled 500 page (never JSON). Uses no DB, which may be what failed.

@@ -3,6 +3,9 @@ import { html } from "../html.js";
 import { icon } from "./components.js";
 import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { num } from "../../../storefront/js/shared/format.js";
+import { asset } from "../assets.js";
+
+const LOGO = asset("img/logo.svg");
 
 const NAV = [
   { href: "/c/men", label: "رجالي" },
@@ -35,7 +38,7 @@ function header(path, families) {
   return html`<header class="site-header" data-header>
   <div class="container header-row">
     <a class="brand" href="/" aria-label="نسمات، الصفحة الرئيسية">
-      <img class="brand-mark" src="/assets/img/logo.svg" width="24" height="36" alt="">
+      <img class="brand-mark" src="${LOGO}" width="24" height="36" alt="">
       <span class="wordmark">نسمات</span>
     </a>
     ${searchForm("q")}
@@ -70,7 +73,7 @@ function footer(settings, wa) {
   return html`<footer class="site-footer">
   <div class="container footer-grid">
     <div class="footer-brand">
-      <a class="brand" href="/"><img class="brand-mark" src="/assets/img/logo.svg" width="24" height="36" alt=""><span class="wordmark">نسمات</span></a>
+      <a class="brand" href="/"><img class="brand-mark" src="${LOGO}" width="24" height="36" alt=""><span class="wordmark">نسمات</span></a>
       <p>عطور مختارة بعناية، تُحضَّر لك في عمّان وتصلك إلى أي مكان في الأردن.</p>
     </div>
     <nav aria-labelledby="footer-aisles">
@@ -94,7 +97,7 @@ function footer(settings, wa) {
 }
 
 export function layout({
-  title, description = "", canonicalPath, ogImage, body, bodyClass = "", hideBottomBar = false,
+  title, description, canonicalPath, ogImage, body, bodyClass = "", hideBottomBar = false,
   settings = {}, assetV = "", origin = "", families = [],
 }) {
   const base = (process.env.PUBLIC_URL || origin).replace(/\/+$/, "");
@@ -107,17 +110,17 @@ export function layout({
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${title}</title>
-<meta name="description" content="${description}">
+${description ? html`<meta name="description" content="${description}">
+<meta property="og:description" content="${description}">` : ""}
 ${canonicalPath != null ? html`<link rel="canonical" href="${abs(canonicalPath)}">
 <meta property="og:url" content="${abs(canonicalPath)}">` : ""}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="نسمات">
 <meta property="og:locale" content="ar_JO">
 <meta property="og:title" content="${title}">
-<meta property="og:description" content="${description}">
 ${ogImage ? html`<meta property="og:image" content="${abs(ogImage)}">` : ""}
 <meta name="theme-color" content="#0E0C0A">
-<link rel="icon" href="/assets/img/logo.svg?v=${assetV}" type="image/svg+xml">
+<link rel="icon" href="${LOGO}" type="image/svg+xml">
 <link rel="preload" href="/vendor/fonts/plex-arabic/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/store.css?v=${assetV}">
 <script type="module" src="/assets/js/store.js?v=${assetV}"></script>

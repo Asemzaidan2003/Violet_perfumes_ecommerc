@@ -4,8 +4,8 @@ import cors from "cors";
 import compression from "compression";
 import mongoose from "mongoose";
 import { fileURLToPath } from "node:url";
-import pkg from "../package.json" with { type: "json" };
 import { createLimiter } from "./middleware/rateLimit.js";
+import { ASSET_V } from "./store/assets.js";
 import productRouter from "./routes/product.Routs.js";
 import oilRouter from "./routes/oil.Routs.js";
 import bottleRouter from "./routes/bottle.Routs.js";
@@ -38,7 +38,7 @@ export function createApp({ limits = {} } = {}) {
     orders: createLimiter({ windowMs: 60 * 60_000, max: 10, ...limits.orders }),
     interest: createLimiter({ windowMs: 60 * 60_000, max: 20, ...limits.interest }),
   };
-  app.locals.assetV = `${pkg.version}-${Date.now().toString(36)}`;
+  app.locals.assetV = ASSET_V;
 
   app.use(helmet({
     contentSecurityPolicy: {
@@ -79,10 +79,11 @@ export function createApp({ limits = {} } = {}) {
 
   app.get("/admin", (req, res) => res.redirect("/admin/html/index.html"));
   app.use("/admin", express.static(frontendDir));
-  app.use("/assets", (req, res, next) => {
-    res.set("Cache-Control", "v" in req.query ? "public, max-age=31536000, immutable" : "no-cache");
-    next();
-  }, express.static(storefrontDir, { cacheControl: false }));
+  // Cache headers only on a hit: a missing file must never be cached immutable.
+  app.use("/assets", express.static(storefrontDir, {
+    cacheControl: false,
+    setHeaders: (res) => res.set("Cache-Control", "v" in res.req.query ? "public, max-age=31536000, immutable" : "no-cache"),
+  }));
   const fontsDir = (pkgName) => fileURLToPath(new URL(`../node_modules/@fontsource/${pkgName}/files`, import.meta.url));
   app.use("/vendor/fonts/el-messiri", express.static(fontsDir("el-messiri"), { maxAge: "1y", immutable: true }));
   app.use("/vendor/fonts/plex-arabic", express.static(fontsDir("ibm-plex-sans-arabic"), { maxAge: "1y", immutable: true }));

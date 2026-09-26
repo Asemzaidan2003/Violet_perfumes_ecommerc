@@ -6,6 +6,10 @@ import { seedAdmin } from "./controller/auth.Controller.js";
 for (const key of ["MONGO_URI", "SESSION_SECRET"]) {
   if (!process.env[key]) { console.error(`Missing required env var ${key}`); process.exit(1); }
 }
+if (process.env.NODE_ENV === "production" && !/^https?:\/\/[^/]+/.test(process.env.PUBLIC_URL || "")) {
+  // Canonical/Open Graph URLs must not come from the (spoofable) request Host header in production.
+  console.error("PUBLIC_URL is required in production (e.g. https://nsamat.jo)"); process.exit(1);
+}
 if (process.env.SESSION_SECRET.length < 32) {
   console.error("SESSION_SECRET must be at least 32 characters"); process.exit(1);
 }

@@ -1,5 +1,6 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import mongoose from "mongoose";
 import { startTestApp } from "./helpers.js";
 import Oil from "../backend/models/oil.model.js";
 import Bottle from "../backend/models/bottle.model.js";
@@ -59,6 +60,33 @@ test("unknown storefront path is a styled 404 page", async () => {
   const body = await res.text();
   assert.match(body, /dir="rtl"/);
   assert.match(body, /href="\/c\/men"/);
+  assert.ok(!body.includes('name="description"'), "no empty description meta");
+});
+
+test("the 404 page does no database work", async () => {
+  const queries = [];
+  mongoose.set("debug", (collection, method) => queries.push(`${collection}.${method}`));
+  try {
+    assert.equal((await fetch(`${t.url}/nope-${Date.now()}`)).status, 404);
+  } finally {
+    mongoose.set("debug", false);
+  }
+  assert.deepEqual(queries, []);
+});
+
+test("a missing /assets file is never cached immutable", async () => {
+  const res = await fetch(`${t.url}/assets/js/nope.js?v=1`);
+  assert.equal(res.status, 404);
+  assert.doesNotMatch(res.headers.get("cache-control") || "", /immutable|max-age/);
+  const hit = await fetch(`${t.url}/assets/js/store.js?v=1`);
+  assert.equal(hit.status, 200);
+  assert.match(hit.headers.get("cache-control"), /immutable/);
+});
+
+test("store.js is an entry file with no exports; shared modules are imported from ./shared", async () => {
+  const src = await (await fetch(`${t.url}/assets/js/store.js`)).text();
+  assert.doesNotMatch(src, /^\s*export\s/m);
+  assert.match(src, /from "\.\/shared\/cart-store\.js"/);
 });
 
 test("unknown API paths stay JSON", async () => {
