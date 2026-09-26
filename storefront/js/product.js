@@ -3,6 +3,7 @@
 import { CART_KEY, readCart, announce } from "./shared/cart-store.js";
 import { money, sizeLabel } from "./shared/format.js";
 import { normalizePhone, isJordanMobile } from "./shared/phone.js";
+import { loadCatalog } from "./shared/catalog-client.js";
 
 const MAX_QTY = 20;
 const RECENT_KEY = "nsamat_recent_v1";
@@ -117,7 +118,8 @@ function initInterest() {
     const el = document.getElementById(input.getAttribute("aria-describedby"));
     el.textContent = message || "";
     el.hidden = !message;
-    input.toggleAttribute("aria-invalid", Boolean(message));
+    if (message) input.setAttribute("aria-invalid", "true");
+    else input.removeAttribute("aria-invalid");
     return Boolean(message);
   };
   const checks = {
@@ -195,9 +197,7 @@ async function initRecent() {
   const others = readRecent().filter((x) => x !== id);
   try { localStorage.setItem(RECENT_KEY, JSON.stringify([id, ...others].slice(0, RECENT_MAX))); } catch { /* private mode */ }
   if (!others.length) return;
-  const res = await fetch("/api/store/catalog");
-  if (!res.ok) return;
-  const byId = new Map((await res.json()).data.map((p) => [p.id, p]));
+  const byId = new Map((await loadCatalog()).map((p) => [p.id, p]));
   const products = others.map((x) => byId.get(x)).filter(Boolean).slice(0, 8);
   const section = document.querySelector("[data-recent]");
   if (!products.length || !section) return;

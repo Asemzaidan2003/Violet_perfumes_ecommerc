@@ -55,7 +55,7 @@ function interestDialog(p, size) {
     <input type="hidden" name="size" value="${size.size}">
     <div class="field">
       <label for="i-name">الاسم</label>
-      <input id="i-name" name="name" autocomplete="name" required minlength="2" maxlength="80" aria-describedby="i-name-err">
+      <input id="i-name" name="name" autocomplete="name" required minlength="2" maxlength="80" aria-describedby="i-name-err" autofocus>
       <p class="field-error" id="i-name-err" hidden></p>
     </div>
     <div class="field">
@@ -93,7 +93,7 @@ function recentlyViewed() {
   return html`<section class="section recent" data-recent hidden aria-labelledby="recent-title">
   <div class="container">
     <div class="section-head"><h2 id="recent-title" class="section-title">شاهدتها مؤخرًا</h2></div>
-    <ul class="shelf-track" role="list" data-recent-list></ul>
+    <ul class="shelf-track" role="list" tabindex="0" aria-label="شاهدتها مؤخرًا" data-recent-list></ul>
   </div>
   <template data-recent-card><li><article class="card">
     <div class="plinth"><img alt="" width="400" height="500" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>

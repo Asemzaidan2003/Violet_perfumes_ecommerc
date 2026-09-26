@@ -55,3 +55,14 @@ test("searchProducts returns nothing for garbage or an empty query", () => {
   assert.deepEqual(searchProducts(PRODUCTS, "   "), []);
   assert.deepEqual(searchProducts(PRODUCTS, "!!!"), []);
 });
+
+test("searchProducts matches words starting with ال / وال / بال while they are still being typed", () => {
+  const list = [p("balmain", "بالمان"), p("oud-al", "العود الملكي"), p("valentino", "والنتينو"), p("amber", "عنبر")];
+  assert.deepEqual(ids(searchProducts(list, "بال")), ["balmain"]);
+  assert.deepEqual(ids(searchProducts(list, "بالما")), ["balmain"]);
+  assert.deepEqual(ids(searchProducts(list, "الع")), ["oud-al"]);
+  assert.deepEqual(ids(searchProducts(list, "العود")), ["oud-al"]);
+  assert.deepEqual(ids(searchProducts(list, "عود")), ["oud-al"], "a stripped query still finds the full word");
+  assert.deepEqual(ids(searchProducts(list, "والنت")), ["valentino"]);
+  assert.deepEqual(ids(searchProducts(list, "وال")), ["valentino"]);
+});

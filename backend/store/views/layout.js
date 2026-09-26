@@ -128,11 +128,14 @@ function footer(settings, wa) {
 </footer>`;
 }
 
+// Absolute site origin for canonical, Open Graph, share and JSON-LD URLs: PUBLIC_URL, else the request's.
+export const siteBase = (origin = "") => (process.env.PUBLIC_URL || origin).replace(/\/+$/, "");
+
 export function layout({
-  title, description, canonicalPath, ogImage, body, bodyClass = "", hideBottomBar = false,
+  title, description, canonicalPath, ogImage, body, bodyClass = "", hideBottomBar = false, noindex = false,
   settings = {}, assetV = "", origin = "", families = [], styles = [], scripts = [],
 }) {
-  const base = (process.env.PUBLIC_URL || origin).replace(/\/+$/, "");
+  const base = siteBase(origin);
   const abs = (p) => (/^https?:/.test(p) ? p : base + p);
   const wa = settings.whatsapp ? `https://wa.me/${settings.whatsapp}` : "";
   const path = canonicalPath ?? "";
@@ -142,6 +145,7 @@ export function layout({
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${title}</title>
+${noindex ? html`<meta name="robots" content="noindex">` : ""}
 ${description ? html`<meta name="description" content="${description}">
 <meta property="og:description" content="${description}">` : ""}
 ${canonicalPath != null ? html`<link rel="canonical" href="${abs(canonicalPath)}">

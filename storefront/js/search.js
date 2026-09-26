@@ -4,6 +4,7 @@
 import { searchProducts } from "./shared/search.js";
 import { money, perfumeCount } from "./shared/format.js";
 import { CATEGORIES, FAMILIES } from "./shared/vocab.js";
+import { loadCatalog } from "./shared/catalog-client.js";
 
 const MAX_RESULTS = 8;
 const PLACEHOLDER = "/assets/img/placeholder-bottle.svg" + new URL(import.meta.url).search;
@@ -20,16 +21,13 @@ const itemTpl = dialog?.querySelector("template[data-so-item]");
 const headerInput = document.querySelector(".header-row .search-field input");
 
 let catalog = null; // compact index, fetched once per page view
-let loading = null;
 let active = -1;
 const nodes = new Map(); // product id -> <li>, reused so thumbnails don't flicker while typing
 
 function load() {
-  loading ??= fetch("/api/store/catalog")
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`catalog ${r.status}`))))
-    .then((body) => { catalog = body.data; render(); })
-    .catch((err) => { loading = null; console.warn(err); if (dialog.open && input.value.trim()) say("تعذّر تحميل البحث الفوري — اضغط Enter للبحث"); });
-  return loading;
+  loadCatalog()
+    .then((data) => { if (!catalog) { catalog = data; render(); } })
+    .catch((err) => { console.warn(err); if (dialog.open && input.value.trim()) say("تعذّر تحميل البحث الفوري — اضغط Enter للبحث"); });
 }
 
 const say = (text) => { status.textContent = text; };

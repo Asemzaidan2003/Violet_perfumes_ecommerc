@@ -34,11 +34,11 @@ const dbName = `nsamat_e2e_${process.pid}`;
 const uri = `mongodb://127.0.0.1:27017/${dbName}?replicaSet=rs0`;
 const pngPath = path.join(os.tmpdir(), `nsamat-e2e-${process.pid}.png`);
 
-let server, browser, context;
+let server, browser, context, mobileContext;
 const results = [];
 
-async function openPage() {
-  const page = await context.newPage();
+async function openPage({ mobile = false } = {}) {
+  const page = await (mobile ? mobileContext : context).newPage();
   const errors = [];
   page.on("console", (msg) => {
     if (msg.type() !== "error" && !msg.text().includes("Content Security Policy")) return;
@@ -129,6 +129,7 @@ async function run() {
 
   browser = await chromium.launch({ channel: "msedge", headless: true });
   context = await browser.newContext();
+  mobileContext = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
   await installFetchCapture(context);
 
   let addedProductId;
@@ -251,7 +252,7 @@ async function run() {
     invalidateCatalog();
 
     for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 }]) {
-      const page = await openPage();
+      const page = await openPage({ mobile: viewport.width < 900 });
       await page.setViewportSize(viewport);
       // Offline-safe external images: the seed photo is a real PNG, broken.jpg is undecodable bytes.
       await page.route("https://example.com/**", (route) => route.fulfill(route.request().url().endsWith("broken.jpg")
@@ -311,7 +312,7 @@ async function run() {
   invalidateCatalog();
   const VIEWPORTS = [{ width: 1440, height: 900 }, { width: 375, height: 812 }];
   const storefrontPage = async (viewport) => {
-    const page = await openPage();
+    const page = await openPage({ mobile: viewport.width < 900 });
     await page.setViewportSize(viewport);
     await page.route("https://example.com/**", (route) =>
       route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from(PNG_BASE64, "base64") }));
@@ -320,6 +321,8 @@ async function run() {
   const noHorizontalScroll = async (page, viewport) => {
     const [sw, iw] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     assert.ok(sw <= iw, `horizontal scroll at ${viewport.width}px on ${page.url()}: ${sw} > ${iw}`);
+    // With isMobile, overflow widens the layout viewport instead of scrolling it.
+    assert.equal(iw, viewport.width, `layout viewport grew on ${page.url()}`);
   };
 
   await scenario("Search", async () => {

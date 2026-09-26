@@ -170,8 +170,31 @@ test("collection filters and sort come from the query string", async () => {
   assert.ok(!junk.body.includes("<x>"));
 });
 
+test("inherited object keys in ?sort= fall back to the default sort", async () => {
+  for (const key of ["__proto__", "constructor", "toString", "hasOwnProperty"]) {
+    const { status, body } = await page(`/c/men?sort=${key}`);
+    assert.equal(status, 200, `sort=${key}`);
+    assert.match(body, /<option value="best" selected>/, `sort=${key} uses the default`);
+  }
+});
+
+test("filters the page doesn't offer are ignored, so server and client agree", async () => {
+  // /family/oud offers no "oud" chip (every card has it), and /c/car offers no size chips (one size).
+  assert.deepEqual(gridNames((await page("/family/oud?f=oud")).body).sort(), ["عنبر الشرق", "عود الليل"].sort());
+  assert.deepEqual(gridNames((await page("/family/oud?f=citrus")).body).sort(), ["عنبر الشرق", "عود الليل"].sort());
+  assert.deepEqual(gridNames((await page("/c/car?s=50")).body), ["نسمة السيارة"]);
+  assert.deepEqual(gridNames((await page("/c/men?f=citrus")).body).length, 3);
+});
+
+test("/search is noindex with a canonical that drops the query", async () => {
+  const { body } = await page(`/search?q=${encodeURIComponent("عنبر")}`);
+  assert.match(body, /<meta name="robots" content="noindex">/);
+  assert.match(body, /<link rel="canonical" href="http:\/\/127\.0\.0\.1:\d+\/search">/);
+  assert.ok(!(await page("/c/men")).body.includes('name="robots"'), "aisles stay indexable");
+});
+
 test("empty collections show suggestions, never a blank grid", async () => {
-  const { status, body } = await page("/c/men?f=citrus");
+  const { status, body } = await page("/c/men?f=woody&s=50");
   assert.equal(status, 200);
   assert.deepEqual(gridNames(body), []);
   assert.match(body, /<div class="empty" data-empty>/, "empty state is visible");
@@ -230,6 +253,8 @@ test("product page: sizes with stock state, notes, related shelf, no bottom bar"
   assert.ok(!body.includes('class="bottom-bar"'), "product pages have their own action bar");
   assert.ok(body.includes('fetchpriority="high"'), "main image is the LCP");
   assert.ok(!body.includes("wa.me"), "no WhatsApp link without a number");
+  assert.match(body, /<input id="i-name"[^>]* autofocus/, "the interest dialog focuses the name field");
+  assert.match(body, /<ul class="shelf-track" role="list" tabindex="0" aria-label="[^"]+" data-recent-list>/);
   assert.ok(body.includes("/assets/js/product.js?v="));
 });
 

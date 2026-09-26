@@ -39,9 +39,15 @@ const toggle = (name, value, checked, label) => html`<label class="toggle">
   <span class="toggle-face">${label}</span>
 </label>`;
 
-function filters({ path, q, base, filter, sort, sorts, defaultSort, hideFamily }) {
+// The chips a page renders: families present in the aisle (minus the aisle's own family), and sizes
+// when there are at least two. Filters for anything else are dropped, so server and client agree.
+function options(base, hideFamily) {
   const families = familyCounts(base).filter((f) => f.key !== hideFamily);
   const sizes = [...new Set(base.flatMap((p) => p.sizes.map((s) => s.size)))].sort((a, b) => a - b);
+  return { families, sizes: sizes.length > 1 ? sizes : [] };
+}
+
+function filters({ path, q, filter, sort, sorts, defaultSort, families, sizes }) {
   return html`<form class="filters" action="${path}" method="get" data-filters data-default-sort="${defaultSort}" aria-label="تصفية وترتيب">
   ${q ? html`<input type="hidden" name="q" value="${q}">` : ""}
   ${families.length ? html`<fieldset class="filter-group">
@@ -49,7 +55,7 @@ function filters({ path, q, base, filter, sort, sorts, defaultSort, hideFamily }
     <div class="filter-chips">${families.map((f) => toggle("f", f.key, filter.f.includes(f.key),
       html`<span class="swatch" style="--swatch: ${f.swatch}"></span>${f.ar}`))}</div>
   </fieldset>` : ""}
-  ${sizes.length > 1 ? html`<fieldset class="filter-group">
+  ${sizes.length ? html`<fieldset class="filter-group">
     <legend class="filter-label">الحجم</legend>
     <div class="filter-chips">${sizes.map((s) => toggle("s", s, filter.s.includes(s), html`<bdi>${sizeLabel(s)}</bdi>`))}</div>
   </fieldset>` : ""}
@@ -85,7 +91,14 @@ const gridItem = ({ p, best, rel }, shown, i) => html`<li class="grid-item" data
 
 // page: { path, eyebrow, title, intro, switcher, q, base, catalog, filter, sort, defaultSort, hideFamily }
 export function collection(page) {
-  const { path, eyebrow, title, intro, switcher, q, base, catalog, filter, sort, defaultSort, hideFamily } = page;
+  const { path, eyebrow, title, intro, switcher, q, base, catalog, defaultSort, hideFamily } = page;
+  const { families, sizes } = options(base, hideFamily);
+  const filter = {
+    f: page.filter.f.filter((k) => families.some((f) => f.key === k)),
+    s: page.filter.s.filter((x) => sizes.includes(x)),
+    stock: page.filter.stock,
+  };
+  const sort = Object.hasOwn(COMPARE, page.sort) ? page.sort : "best";
   const bestIndex = new Map(catalog.map((p, i) => [p.id, i]));
   const items = base.map((p, rel) => ({ p, rel, best: bestIndex.get(p.id) }));
   items.sort(COMPARE[sort]);
@@ -109,7 +122,7 @@ export function collection(page) {
   </div>
 </section>
 <div class="container aisle-body">
-  ${base.length ? filters({ path, q, base, filter, sort, sorts, defaultSort, hideFamily }) : ""}
+  ${base.length ? filters({ path, q, filter, sort, sorts, defaultSort, families, sizes }) : ""}
   <ul class="grid" role="list" data-grid>${items.map((it) => {
     const shown = matches(it.p, filter);
     return gridItem(it, shown, shown ? visible++ : 99);

@@ -39,7 +39,7 @@ if (form && grid) {
       li.hidden = !matches(li, filter);
       if (!li.hidden) shown++;
     }
-    grid.append(...items.sort(COMPARE[sort] || COMPARE.best));
+    grid.append(...items.sort(Object.hasOwn(COMPARE, sort) ? COMPARE[sort] : COMPARE.best));
     count.textContent = perfumeCount(shown);
     empty.hidden = shown > 0;
     if (clear) clear.hidden = !(filter.f.length || filter.s.length || filter.stock);

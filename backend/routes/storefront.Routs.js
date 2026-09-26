@@ -3,7 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import { getCatalog } from "../store/catalog.js";
 import { getSettings, getCachedSettings } from "../services/settings.service.js";
-import { layout } from "../store/views/layout.js";
+import { layout, siteBase } from "../store/views/layout.js";
 import { familyCounts } from "../store/views/components.js";
 import { home } from "../store/views/home.js";
 import { collection, SORTS } from "../store/views/collection.js";
@@ -31,14 +31,13 @@ router.use(helmet.contentSecurityPolicy({
   },
 }));
 
-// Absolute site origin for canonical/Open Graph/JSON-LD URLs.
-const siteBase = (req) => (process.env.PUBLIC_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
+const origin = (req) => `${req.protocol}://${req.get("host")}`;
 
 function send(req, res, status, page) {
   res.status(status).type("html").send(String(layout({
     ...page,
     assetV: req.app.locals.assetV,
-    origin: `${req.protocol}://${req.get("host")}`,
+    origin: origin(req),
   })));
 }
 
@@ -62,11 +61,13 @@ const aislePage = (resolve) => async (req, res, next) => {
   const a = resolve(req, products);
   if (!a) return next();
   const q = a.q ?? "";
-  const sort = SORTS[req.query.sort] && (req.query.sort !== "relevance" || q) ? req.query.sort : a.defaultSort;
+  const asked = req.query.sort; // own keys only: "__proto__" or "constructor" must not index SORTS
+  const sort = typeof asked === "string" && Object.hasOwn(SORTS, asked) && (asked !== "relevance" || q) ? asked : a.defaultSort;
   send(req, res, 200, {
     title: `${a.title} | نسمات`,
     description: a.description ?? `تسوّق ${a.title} من نسمات: عطور مختارة، توصيل لكل الأردن والدفع عند الاستلام.`,
-    canonicalPath: q ? `${a.path}?q=${encodeURIComponent(q)}` : a.path,
+    canonicalPath: a.path, // /search results: canonical without q, and not indexed
+    noindex: a.path === "/search",
     settings,
     families: familyCounts(products),
     styles: ["pages.css"],
@@ -140,7 +141,7 @@ router.get("/p/:id", async (req, res, next) => {
     families: familyCounts(products),
     styles: ["pages.css"],
     scripts: ["product.js"],
-    body: product({ p, related, relatedHref, settings, base: siteBase(req) }),
+    body: product({ p, related, relatedHref, settings, base: siteBase(origin(req)) }),
   });
 });
 

@@ -24,7 +24,11 @@ const stripPrefix = (t) => {
   return p ? t.slice(p.length) : t;
 };
 
-export const tokens = (s) => normalize(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean).map(stripPrefix);
+const words = (s) => normalize(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+export const tokens = (s) => words(s).map(stripPrefix);
+// Each word in both spellings, raw and prefix-stripped: a half-typed "الع" is still raw (too short
+// to strip) and must reach "العود", while a fully typed "الشانيل" must reach "شانيل".
+const forms = (s) => words(s).map((w) => [...new Set([w, stripPrefix(w)])]);
 
 // Field tokens per product, computed once per object (the overlay searches on every keystroke).
 const fieldCache = new WeakMap();
@@ -32,23 +36,26 @@ function fields(p) {
   let f = fieldCache.get(p);
   if (!f) {
     const notes = p.notes ? [p.notes.top, p.notes.heart, p.notes.base].flat().filter(Boolean).join(" ") : "";
+    const nameWords = forms(p.name);
     f = {
-      name: tokens(p.name),
-      keywords: tokens(p.keywords),
-      other: tokens(`${(p.families || []).map((k) => FAMILY_LABELS.get(k) || "").join(" ")} ${notes}`),
+      nameWords,
+      name: nameWords.flat(),
+      keywords: forms(p.keywords).flat(),
+      other: forms(`${(p.families || []).map((k) => FAMILY_LABELS.get(k) || "").join(" ")} ${notes}`).flat(),
     };
     fieldCache.set(p, f);
   }
   return f;
 }
 
-const hit = (list, q) => list.some((t) => t.startsWith(q));
+// `q` is one query word in its forms; it hits when any form prefixes any field token.
+const hit = (list, q) => list.some((t) => q.some((x) => t.startsWith(x)));
 const byRank = (a, b) => (a.rank ?? 1e9) - (b.rank ?? 1e9);
 
 // Every query token must prefix-match a token of the name, keywords, family labels or notes.
 // Tier: 0 name-prefix, 1 name, 2 keywords, 3 families/notes (a product takes its weakest token's tier).
 export function searchProducts(products, query) {
-  const q = tokens(query);
+  const q = forms(query);
   if (!q.length) return [];
   const scored = [];
   for (const p of products) {
@@ -60,7 +67,7 @@ export function searchProducts(products, query) {
       tier = Math.max(tier, best);
     }
     if (tier < 0) continue;
-    const namePrefix = q.every((t, i) => f.name[i]?.startsWith(t));
+    const namePrefix = q.every((t, i) => f.nameWords[i] && hit(f.nameWords[i], t));
     scored.push({ p, tier: namePrefix ? 0 : tier });
   }
   return scored.sort((a, b) => a.tier - b.tier || byRank(a.p, b.p)).map((s) => s.p);
