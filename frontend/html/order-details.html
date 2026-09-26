@@ -46,7 +46,11 @@
       </div>
     </div>
 
-    <div class="form-actions" id="confirmBar" style="display: none; margin-top: 16px;">
+    <div class="form-actions" id="confirmBar" style="display: none; margin-top: 16px; align-items: center; gap: 12px;">
+      <label>
+        رسوم التوصيل
+        <input type="number" min="0" step="0.01" id="deliveryFeeInput" style="width: 100px;">
+      </label>
       <button class="btn btn-primary" id="confirmBtn">تأكيد الطلب وخصم المخزون</button>
     </div>
   </div>
@@ -85,22 +89,46 @@
       return map[status] || status;
     }
 
+    // Normalized phones are stored as "07XXXXXXXX"; wa.me needs the international form.
+    function waLink(phone) {
+      const digits = String(phone).replace(/\D/g, "");
+      return `https://wa.me/962${digits.replace(/^0/, "")}`;
+    }
+
     function renderOrderDetails(order) {
       const summaryDiv = document.getElementById("orderSummary");
       summaryDiv.innerHTML = `
         <div class="summary-grid">
-          <div class="item"><div class="label">الحالة</div><div class="val">${statusLabel(order.status)}</div></div>
-          <div class="item"><div class="label">طريقة الدفع</div><div class="val">${order.payment_method}</div></div>
+          <div class="item"><div class="label">الحالة</div><div class="val">${esc(statusLabel(order.status))}</div></div>
+          <div class="item"><div class="label">طريقة الدفع</div><div class="val">${esc(order.payment_method)}</div></div>
           <div class="item"><div class="label">عدد المنتجات</div><div class="val num">${order.total_items}</div></div>
           <div class="item"><div class="label">الإجمالي</div><div class="val num">${order.final_total.toFixed(2)} JOD</div></div>
           <div class="item"><div class="label">الربح</div><div class="val num">${order.total_profit.toFixed(2)} JOD</div></div>
           <div class="item"><div class="label">التكلفة الإجمالية</div><div class="val num">${order.total_cost} JOD</div></div>
           <div class="item"><div class="label">تاريخ الإنشاء</div><div class="val num">${new Date(order.createdAt).toLocaleDateString()}</div></div>
-          <div class="item"><div class="label">ملاحظات</div><div class="val">${order.order_notes || "-"}</div></div>
+          <div class="item"><div class="label">ملاحظات</div><div class="val">${esc(order.order_notes) || "-"}</div></div>
           <div class="item"><div class="label">المصدر</div><div class="val">${order.source === "online" ? "الموقع" : "نقطة البيع"}</div></div>
           <div class="item"><div class="label">المخزون</div><div class="val">${order.status === "canceled" ? "ملغي (أُعيد المخزون)" : order.stock_deducted === false ? "بانتظار التأكيد" : "تم الخصم"}</div></div>
         </div>
       `;
+
+      if (order.source === "online" && order.delivery) {
+        const d = order.delivery;
+        const card = document.createElement("div");
+        card.className = "card card-pad mb-16";
+        card.id = "deliveryInfo";
+        card.innerHTML = `
+          <h3>معلومات التوصيل</h3>
+          <div class="summary-grid">
+            <div class="item"><div class="label">الاسم</div><div class="val">${esc(d.name) || "-"}</div></div>
+            <div class="item"><div class="label">الهاتف</div><div class="val">${esc(d.phone) || "-"}${d.phone ? ` <a class="btn btn-ghost btn-sm" href="${esc(waLink(d.phone))}" target="_blank" rel="noopener">واتساب</a>` : ""}</div></div>
+            <div class="item"><div class="label">المحافظة</div><div class="val">${esc(d.city) || "-"}</div></div>
+            <div class="item"><div class="label">العنوان</div><div class="val">${esc(d.address) || "-"}</div></div>
+            <div class="item"><div class="label">ملاحظات التوصيل</div><div class="val">${esc(d.notes) || "-"}</div></div>
+          </div>
+        `;
+        summaryDiv.after(card);
+      }
 
       const tbody = document.getElementById("productsTable");
       tbody.innerHTML = order.products.map((product, index) => `
@@ -142,7 +170,8 @@
             <td class="num">-</td>
           </tr>`;
       }).join("");
-      document.getElementById("confirmBar").style.display = "";
+      document.getElementById("confirmBar").style.display = "flex";
+      document.getElementById("deliveryFeeInput").value = order.delivery_fee ?? 0;
       document.getElementById("confirmBtn").onclick = () => submitConfirm(order);
     }
 
@@ -153,10 +182,11 @@
         price: document.getElementById(`price-${i}`).value,
       }));
       if (lines.some((l) => !l.bottle_id)) return alert("يرجى اختيار زجاجة لكل منتج");
+      const delivery_fee = document.getElementById("deliveryFeeInput").value;
       const res = await fetch(`${baseURL}/orders/${order._id}/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines }),
+        body: JSON.stringify({ lines, delivery_fee }),
       });
       const data = await res.json();
       if (!res.ok) return alert(data.message || "تعذر تأكيد الطلب");

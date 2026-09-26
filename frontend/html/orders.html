@@ -162,9 +162,12 @@
       const customerMap = new Map(customerEntries);
 
       for (const order of orders) {
-        order.customer = order.customer_id
-          ? (customerMap.get(order.customer_id) || { name: "-", phone: "-" })
-          : { name: "-", phone: "-" };
+        const linked = order.customer_id ? customerMap.get(order.customer_id) : null;
+        // Online orders keep an unverified delivery snapshot; show it, falling back to the
+        // linked customer once confirmation has matched/created one.
+        order.customer = order.source === "online"
+          ? { name: order.delivery?.name || linked?.name || "-", phone: order.delivery?.phone || linked?.phone || "-" }
+          : (linked || { name: "-", phone: "-" });
       }
 
       const today = new Date();
@@ -218,11 +221,18 @@
           totalProfit += order.total_profit;
         }
 
+        const name = order.customer && order.customer.name ? order.customer.name : "-";
+        const phone = order.customer && order.customer.phone ? order.customer.phone : "-";
+        const sourceBadge = order.source === "online" ? ' <span class="badge badge-available">الموقع</span>' : "";
+        const waBadge = order.source === "online" && phone !== "-"
+          ? ` <a class="btn btn-ghost btn-sm" href="${esc(waLink(phone))}" target="_blank" rel="noopener">واتساب</a>`
+          : "";
+
         return `
           <tr>
             <td>${index + 1}</td>
-            <td class="cell-strong">${order.customer && order.customer.name ? order.customer.name : "-"}${order.stock_deducted === false && order.status !== "canceled" ? ' <span class="badge badge-pending">بانتظار التأكيد</span>' : ""}</td>
-            <td class="num">${order.customer && order.customer.phone ? order.customer.phone : "-"}</td>
+            <td class="cell-strong">${esc(name)}${sourceBadge}${order.stock_deducted === false && order.status !== "canceled" ? ' <span class="badge badge-pending">بانتظار التأكيد</span>' : ""}</td>
+            <td class="num">${esc(phone)}${waBadge}</td>
             <td>${order.total_items}</td>
             <td class="num">${order.final_total.toFixed(2)} JOD</td>
             <td class="num">${order.status === "completed" ? order.total_profit.toFixed(2) + " JOD" : "-"}</td>
@@ -312,6 +322,13 @@
         }
       }
       renderOrders(window._filteredOrders); // on failure this reverts the select
+    }
+
+    // Normalized phones are stored as "07XXXXXXXX" (see backend/../phone.js); wa.me needs the
+    // international form with no leading zero.
+    function waLink(phone) {
+      const digits = String(phone).replace(/\D/g, "");
+      return `https://wa.me/962${digits.replace(/^0/, "")}`;
     }
 
     function getStatusClass(status) {

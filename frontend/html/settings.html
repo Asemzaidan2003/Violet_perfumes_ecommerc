@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>إعدادات المتجر</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <script src="../js/navbar.js"></script>
+</head>
+<body>
+  <div id="navbar"></div>
+
+  <div class="page page-narrow">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">لوحة التحكم</span>
+        <h2>إعدادات المتجر</h2>
+      </div>
+    </div>
+
+    <form id="settingsForm" class="form-card">
+      <div class="field">
+        <label for="whatsapp">رقم واتساب (أرقام فقط، مثال: 962791234567)</label>
+        <input type="text" id="whatsapp" name="whatsapp" placeholder="962791234567" />
+      </div>
+
+      <div class="field">
+        <label for="instagram">رابط انستغرام</label>
+        <input type="text" id="instagram" name="instagram" placeholder="https://instagram.com/nsamat" />
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="delivery_fee">رسوم التوصيل (دينار)</label>
+          <input type="number" min="0" step="0.01" id="delivery_fee" name="delivery_fee" />
+        </div>
+        <div class="field">
+          <label for="free_delivery_over">توصيل مجاني فوق (دينار، 0 = معطّل)</label>
+          <input type="number" min="0" step="0.01" id="free_delivery_over" name="free_delivery_over" />
+        </div>
+      </div>
+
+      <p id="error" role="alert" hidden></p>
+      <p id="success" hidden></p>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-block">حفظ الإعدادات</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById("settingsForm");
+    const errorEl = document.getElementById("error");
+    const successEl = document.getElementById("success");
+
+    async function loadSettings() {
+      const res = await fetch("/api/settings");
+      const { data } = await res.json();
+      form.whatsapp.value = data.whatsapp || "";
+      form.instagram.value = data.instagram || "";
+      form.delivery_fee.value = data.delivery_fee ?? 0;
+      form.free_delivery_over.value = data.free_delivery_over ?? 0;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.hidden = true;
+      successEl.hidden = true;
+
+      const body = {
+        whatsapp: form.whatsapp.value.trim(),
+        instagram: form.instagram.value.trim(),
+        delivery_fee: Number(form.delivery_fee.value),
+        free_delivery_over: Number(form.free_delivery_over.value),
+      };
+
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errorEl.textContent = data.message || "تعذر حفظ الإعدادات";
+        errorEl.hidden = false;
+        return;
+      }
+      successEl.textContent = "تم حفظ الإعدادات ✓";
+      successEl.hidden = false;
+    });
+
+    loadSettings();
+  </script>
+</body>
+</html>

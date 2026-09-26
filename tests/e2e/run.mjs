@@ -6,6 +6,7 @@
 // sequence below; each fn gets a fresh page via openPage() and should end with
 // check(page) to fail on any console/pageerror/CSP noise.
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { once } from "node:events";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -297,6 +298,145 @@ async function run() {
       assert.ok(scrollWidth <= innerWidth, `horizontal scroll at ${viewport.width}px: ${scrollWidth} > ${innerWidth}`);
       check(page);
     }
+  });
+
+  // Places an online order directly against the public API (server-to-server — the storefront
+  // checkout UI itself is exercised by an earlier task's own scenario). Used by the two
+  // admin-side scenarios below.
+  async function placeOnlineOrder({ productId, size, name, phone, city, address, notes }) {
+    const res = await fetch(`${baseUrl}/api/store/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ product_id: productId, size, quantity: 1 }],
+        customer: { name, phone, city, address, notes },
+        client_key: crypto.randomUUID(),
+      }),
+    });
+    const body = await res.json().catch(() => null);
+    assert.equal(res.status, 201, `order placement failed: ${JSON.stringify(body)}`);
+    return body.data;
+  }
+
+  async function findOrderIdByRef(page, ref) {
+    const id = await page.evaluate(async (r) => {
+      const res = await fetch("/api/orders");
+      const { data } = await res.json();
+      return data.find((o) => o.public_ref === r)?._id;
+    }, ref);
+    assert.ok(id, `no order found for ref ${ref}`);
+    return id;
+  }
+
+  await scenario("Settings round trip", async () => {
+    const page = await openPage();
+    await page.goto(`${baseUrl}/admin/html/settings.html`);
+    await page.waitForLoadState("networkidle");
+    assert.equal(await page.inputValue("#delivery_fee"), "0"); // defaults — nothing has saved settings yet
+
+    await page.fill("#whatsapp", "962791234567");
+    await page.fill("#instagram", "https://instagram.com/nsamat");
+    await page.fill("#delivery_fee", "3");
+    await page.fill("#free_delivery_over", "0");
+    const saved = page.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PUT");
+    await page.click("#settingsForm button[type=submit]");
+    assert.equal((await saved).status(), 200);
+    await page.locator("#success:not([hidden])").waitFor();
+    check(page);
+
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    assert.equal(await page.inputValue("#whatsapp"), "962791234567");
+    assert.equal(await page.inputValue("#instagram"), "https://instagram.com/nsamat");
+    assert.equal(await page.inputValue("#delivery_fee"), "3");
+    assert.equal(await page.inputValue("#free_delivery_over"), "0");
+
+    // Inline server error: an invalid value is rejected without crashing the page. (A negative
+    // delivery_fee can't be used here — the number input's own min="0" blocks submission client-side.)
+    // A fresh page, because Edge itself logs a devtools "Failed to load resource" console entry for
+    // any non-2xx fetch response — expected noise here, not checked by check().
+    const errorPage = await openPage();
+    await errorPage.goto(`${baseUrl}/admin/html/settings.html`);
+    await errorPage.waitForLoadState("networkidle");
+    await errorPage.fill("#whatsapp", "not-a-number");
+    const rejected = errorPage.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PUT");
+    await errorPage.click("#settingsForm button[type=submit]");
+    assert.equal((await rejected).status(), 400);
+    await errorPage.locator("#error:not([hidden])").waitFor();
+  });
+
+  await scenario("Admin sees the online order", async () => {
+    const onlineProduct = await Product.create({
+      p_name: "عطر طلب أونلاين", p_image: "https://example.com/online.jpg", p_category: "Men",
+      oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80, size_list: [{ size: "30", price: 22 }],
+    });
+
+    const placed = await placeOnlineOrder({
+      productId: onlineProduct._id.toString(), size: "30", name: "زبون الموقع", phone: "0791234567",
+      city: "عمّان", address: "شارع الجامعة 12", notes: "الرجاء الاتصال قبل التوصيل",
+    });
+    assert.equal(placed.delivery_fee, 3, "should use the delivery fee saved in the previous scenario");
+
+    const ordersPage = await openPage();
+    await ordersPage.goto(`${baseUrl}/admin/html/orders.html`);
+    await ordersPage.waitForLoadState("networkidle");
+    assert.equal(await ordersPage.locator("#navOrdersBadge").innerText(), "1");
+    assert.match(await ordersPage.title(), /^\(1\) /);
+    await ordersPage.locator("td.cell-strong", { hasText: "زبون الموقع" }).first().waitFor();
+    await ordersPage.locator("span.badge", { hasText: "الموقع" }).first().waitFor();
+
+    const orderId = await findOrderIdByRef(ordersPage, placed.ref);
+    check(ordersPage);
+
+    const detailsPage = await openPage();
+    await detailsPage.goto(`${baseUrl}/admin/html/order-details.html?id=${orderId}`);
+    await detailsPage.waitForSelector("#deliveryInfo");
+    const deliveryText = await detailsPage.locator("#deliveryInfo").innerText();
+    assert.match(deliveryText, /زبون الموقع/);
+    assert.match(deliveryText, /عمّان/);
+    assert.match(deliveryText, /شارع الجامعة 12/);
+    assert.equal(await detailsPage.inputValue("#deliveryFeeInput"), "3");
+
+    await detailsPage.selectOption("#bottle-0", { index: 1 }); // the seeded "زجاجة 30 مل" — only match for this size
+    const confirmed = detailsPage.waitForResponse(
+      (r) => r.url().endsWith(`/orders/${orderId}/confirm`) && r.request().method() === "POST"
+    );
+    await detailsPage.click("#confirmBtn");
+    assert.equal((await confirmed).status(), 200);
+    await detailsPage.locator("text=تم الخصم").waitFor();
+    check(detailsPage);
+
+    const stored = await detailsPage.evaluate(async (id) => {
+      const res = await fetch(`/api/orders/${id}`);
+      return (await res.json()).data;
+    }, orderId);
+    assert.equal(stored.stock_deducted, true);
+    assert.ok(stored.customer_id, "confirming an online order should link/create a customer");
+  });
+
+  await scenario("XSS inert", async () => {
+    const xssProduct = await Product.create({
+      p_name: "عطر اختبار XSS", p_image: "https://example.com/xss.jpg", p_category: "Men",
+      oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80, size_list: [{ size: "30", price: 15 }],
+    });
+
+    const placed = await placeOnlineOrder({
+      productId: xssProduct._id.toString(), size: "30", name: "<img src=x onerror=window.__xss=1>",
+      phone: "0781234567", city: "إربد", address: "شارع الاختبار 5", notes: "ملاحظة",
+    });
+
+    const ordersPage = await openPage();
+    await ordersPage.goto(`${baseUrl}/admin/html/orders.html`);
+    await ordersPage.waitForLoadState("networkidle");
+    assert.equal(await ordersPage.evaluate(() => window.__xss), undefined);
+    const orderId = await findOrderIdByRef(ordersPage, placed.ref);
+    check(ordersPage);
+
+    const detailsPage = await openPage();
+    await detailsPage.goto(`${baseUrl}/admin/html/order-details.html?id=${orderId}`);
+    await detailsPage.waitForLoadState("networkidle");
+    assert.equal(await detailsPage.evaluate(() => window.__xss), undefined);
+    check(detailsPage);
   });
 }
 
