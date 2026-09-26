@@ -18,6 +18,7 @@ import uploadRouter from "./routes/upload.Routs.js";
 import imageRouter from "./routes/image.Routs.js";
 import storeRouter from "./routes/store.Routs.js";
 import adminRouter from "./routes/admin.Routs.js";
+import storefrontRouter from "./routes/storefront.Routs.js";
 import { requireAdmin } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
 
@@ -86,7 +87,7 @@ export function createApp({ limits = {} } = {}) {
   app.use("/vendor/fonts/el-messiri", express.static(fontsDir("el-messiri"), { maxAge: "1y", immutable: true }));
   app.use("/vendor/fonts/plex-arabic", express.static(fontsDir("ibm-plex-sans-arabic"), { maxAge: "1y", immutable: true }));
   app.use("/img", imageRouter);
-  app.get("/", (req, res) => res.redirect("/admin/html/index.html")); // storefront takes "/" later
+  app.use(storefrontRouter); // pages at "/", plus the storefront 404/500 pages — keep last
 
   app.use(errorHandler);
   return app;
