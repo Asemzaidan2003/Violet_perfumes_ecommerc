@@ -6,6 +6,14 @@
 const ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 window.esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ESC_MAP[c]);
 
+// Normalized phones are stored as "07XXXXXXXX" (see backend/../phone.js); wa.me needs the
+// international form with no leading zero. Shared by orders.html, order-details.html and
+// interests.html.
+window.waLink = (phone) => {
+  const digits = String(phone).replace(/\D/g, "");
+  return `https://wa.me/962${digits.replace(/^0/, "")}`;
+};
+
 // يعترض كل نداءات fetch: أي 401 من /api/* (باستثناء تسجيل الدخول) يعيد التوجيه
 // فورًا لصفحة الدخول، بدل ترك صفحات البيانات تعرض أخطاء قبل أن يلحقها navbar.js.
 const originalFetch = window.fetch.bind(window);
@@ -84,12 +92,21 @@ function buildNavbarHTML() {
 // إشارة الطلب الجديد: يستطلع عدد الطلبات غير المؤكدة (غير الملغاة) كل 60 ثانية
 // ويعرضها كشارة على رابط "الطلبات" وكبادئة "(n) " في عنوان الصفحة.
 const ORIGINAL_TITLE = document.title;
+let pollIntervalId = null;
 
 async function pollUnconfirmedOrders() {
   const badge = document.getElementById("navOrdersBadge");
   if (!badge) return;
   try {
-    const res = await fetch("/api/orders");
+    // The un-intercepted fetch: a 401 here must never yank the page out from under someone
+    // mid-edit (see the fetch wrapper above). Instead, stop polling and just hide the badge.
+    const res = await originalFetch("/api/orders");
+    if (res.status === 401) {
+      if (pollIntervalId) clearInterval(pollIntervalId);
+      badge.hidden = true;
+      document.title = ORIGINAL_TITLE;
+      return;
+    }
     if (!res.ok) return;
     const { data } = await res.json();
     const n = (data || []).filter((o) => o.stock_deducted === false && o.status !== "canceled").length;
@@ -114,6 +131,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       location.replace("login.html");
     });
     pollUnconfirmedOrders();
-    setInterval(pollUnconfirmedOrders, 60_000);
+    pollIntervalId = setInterval(pollUnconfirmedOrders, 60_000);
   }
 });

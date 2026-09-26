@@ -63,24 +63,24 @@
     const STATUS_LABEL = { new: "جديد", contacted: "تم التواصل", closed: "مغلق" };
     const STATUS_BADGE = { new: "badge-pending", contacted: "badge-available", closed: "badge-out" };
 
-    // Normalized phones are stored as "07XXXXXXXX"; wa.me needs the international form.
-    function waLink(phone) {
-      const digits = String(phone).replace(/\D/g, "");
-      return `https://wa.me/962${digits.replace(/^0/, "")}`;
-    }
-
     async function setStatus(id, status) {
-      const res = await fetch(`/api/interests/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) {
+      try {
+        const res = await fetch(`/api/interests/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
         const data = await res.json().catch(() => ({}));
-        alert(data.message || "تعذر تحديث الحالة");
+        if (!res.ok) {
+          alert(data.message || "تعذر تحديث الحالة");
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error("Error updating interest status:", err);
+        alert("تعذر تحديث الحالة");
         return false;
       }
-      return true;
     }
 
     function buildRow(interest) {
@@ -92,16 +92,17 @@
       const actions = el("td", {});
       if (interest.phone) {
         actions.append(el("a", {
-          className: "btn btn-ghost btn-sm", href: waLink(interest.phone), target: "_blank", rel: "noopener", textContent: "واتساب",
+          className: "btn btn-ghost btn-sm", href: waLink(interest.phone), target: "_blank", rel: "noopener",
+          textContent: "واتساب", ariaLabel: `واتساب ${interest.name}`,
         }));
       }
       if (interest.status !== "contacted") {
-        const btn = el("button", { className: "btn btn-secondary btn-sm", textContent: "تم التواصل" });
+        const btn = el("button", { className: "btn btn-secondary btn-sm", textContent: "تم التواصل", ariaLabel: `تم التواصل مع ${interest.name}` });
         btn.addEventListener("click", async () => { if (await setStatus(interest._id, "contacted")) loadInterests(); });
         actions.append(btn);
       }
       if (interest.status !== "closed") {
-        const btn = el("button", { className: "btn btn-ghost btn-sm", textContent: "إغلاق" });
+        const btn = el("button", { className: "btn btn-ghost btn-sm", textContent: "إغلاق", ariaLabel: `إغلاق طلب ${interest.name}` });
         btn.addEventListener("click", async () => { if (await setStatus(interest._id, "closed")) loadInterests(); });
         actions.append(btn);
       }

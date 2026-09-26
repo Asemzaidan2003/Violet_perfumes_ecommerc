@@ -32,19 +32,19 @@
       <div class="field-row">
         <div class="field">
           <label for="delivery_fee">رسوم التوصيل (دينار)</label>
-          <input type="number" min="0" step="0.01" id="delivery_fee" name="delivery_fee" />
+          <input type="number" min="0" step="0.01" id="delivery_fee" name="delivery_fee" required />
         </div>
         <div class="field">
           <label for="free_delivery_over">توصيل مجاني فوق (دينار، 0 = معطّل)</label>
-          <input type="number" min="0" step="0.01" id="free_delivery_over" name="free_delivery_over" />
+          <input type="number" min="0" step="0.01" id="free_delivery_over" name="free_delivery_over" required />
         </div>
       </div>
 
       <p id="error" role="alert" hidden></p>
-      <p id="success" hidden></p>
+      <p id="success" role="status" hidden></p>
 
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary btn-block">حفظ الإعدادات</button>
+        <button type="submit" class="btn btn-primary btn-block" id="saveBtn" disabled>حفظ الإعدادات</button>
       </div>
     </form>
   </div>
@@ -53,14 +53,25 @@
     const form = document.getElementById("settingsForm");
     const errorEl = document.getElementById("error");
     const successEl = document.getElementById("success");
+    const saveBtn = document.getElementById("saveBtn");
 
+    // The form stays disabled until the current settings actually load — saving before that
+    // would silently overwrite fields the admin never saw with client-side defaults (0/"").
     async function loadSettings() {
-      const res = await fetch("/api/settings");
-      const { data } = await res.json();
-      form.whatsapp.value = data.whatsapp || "";
-      form.instagram.value = data.instagram || "";
-      form.delivery_fee.value = data.delivery_fee ?? 0;
-      form.free_delivery_over.value = data.free_delivery_over ?? 0;
+      try {
+        const res = await fetch("/api/settings");
+        if (!res.ok) throw new Error("تعذر تحميل الإعدادات");
+        const { data } = await res.json();
+        form.whatsapp.value = data.whatsapp || "";
+        form.instagram.value = data.instagram || "";
+        form.delivery_fee.value = data.delivery_fee ?? 0;
+        form.free_delivery_over.value = data.free_delivery_over ?? 0;
+        saveBtn.disabled = false;
+      } catch (err) {
+        console.error("Error loading settings:", err);
+        errorEl.textContent = "تعذر تحميل الإعدادات — أعد تحميل الصفحة";
+        errorEl.hidden = false;
+      }
     }
 
     form.addEventListener("submit", async (e) => {

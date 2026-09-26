@@ -225,7 +225,7 @@
         const phone = order.customer && order.customer.phone ? order.customer.phone : "-";
         const sourceBadge = order.source === "online" ? ' <span class="badge badge-available">الموقع</span>' : "";
         const waBadge = order.source === "online" && phone !== "-"
-          ? ` <a class="btn btn-ghost btn-sm" href="${esc(waLink(phone))}" target="_blank" rel="noopener">واتساب</a>`
+          ? ` <a class="btn btn-ghost btn-sm" href="${esc(waLink(phone))}" target="_blank" rel="noopener" aria-label="${esc(`واتساب ${name}`)}">واتساب</a>`
           : "";
 
         return `
@@ -247,7 +247,7 @@
               </select>
             </td>
             <td class="date-cell">${new Date(order.createdAt).toLocaleDateString()}</td>
-            <td><button class="btn btn-ghost btn-sm" onclick="goToDetails('${order._id}')">عرض</button></td>
+            <td><button class="btn btn-ghost btn-sm" onclick="goToDetails('${order._id}')" aria-label="${esc(`عرض طلب ${name}`)}">عرض</button></td>
           </tr>
         `;
       }).join("");
@@ -322,13 +322,6 @@
         }
       }
       renderOrders(window._filteredOrders); // on failure this reverts the select
-    }
-
-    // Normalized phones are stored as "07XXXXXXXX" (see backend/../phone.js); wa.me needs the
-    // international form with no leading zero.
-    function waLink(phone) {
-      const digits = String(phone).replace(/\D/g, "");
-      return `https://wa.me/962${digits.replace(/^0/, "")}`;
     }
 
     function getStatusClass(status) {

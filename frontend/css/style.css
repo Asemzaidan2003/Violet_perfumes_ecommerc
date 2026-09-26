@@ -143,7 +143,7 @@ a {
 }
 
 .app-nav .nav-inner {
-  max-width: 1180px;
+  max-width: 1360px;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
@@ -182,9 +182,9 @@ a {
   display: block;
   color: rgba(255, 255, 255, 0.82);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
-  padding: 16px 12px;
+  padding: 16px 9px;
   transition: color 0.15s, background-color 0.15s;
   white-space: nowrap;
 }
@@ -212,6 +212,10 @@ a {
   font-weight: 700;
   line-height: 1.5;
   text-align: center;
+}
+
+.app-nav .nav-badge[hidden] {
+  display: none;
 }
 
 .app-nav .dropdown {
