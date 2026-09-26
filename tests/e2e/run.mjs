@@ -19,6 +19,7 @@ import Oil from "../../backend/models/oil.model.js";
 import Bottle from "../../backend/models/bottle.model.js";
 import Alcohol from "../../backend/models/alcohol.model.js";
 import Product from "../../backend/models/product.model.js";
+import { invalidateCatalog } from "../../backend/store/catalog.js";
 
 process.env.SESSION_SECRET ||= "e2e-secret-".padEnd(48, "x");
 
@@ -236,6 +237,51 @@ async function run() {
       const page = await openPage();
       await page.goto(`${baseUrl}/admin/html/${p}`);
       await page.waitForLoadState("networkidle");
+      check(page);
+    }
+  });
+
+  await scenario("Storefront home", async () => {
+    // A hotlinked photo that no longer decodes must fall back to the branded placeholder.
+    await Product.create({
+      p_name: "عطر صورته مكسورة", p_image: "https://example.com/broken.jpg", p_category: "Women",
+      oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80, size_list: [{ size: "30", price: 18 }],
+    });
+    invalidateCatalog();
+
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 }]) {
+      const page = await openPage();
+      await page.setViewportSize(viewport);
+      // Offline-safe external images: the seed photo is a real PNG, broken.jpg is undecodable bytes.
+      await page.route("https://example.com/**", (route) => route.fulfill(route.request().url().endsWith("broken.jpg")
+        ? { status: 200, contentType: "image/jpeg", body: "not an image" }
+        : { status: 200, contentType: "image/png", body: Buffer.from(PNG_BASE64, "base64") }));
+      const res = await page.goto(`${baseUrl}/`);
+      assert.equal(res.status(), 200);
+      await page.waitForLoadState("networkidle");
+
+      assert.match(await page.locator("h1").innerText(), /عطرك يحكي عنك/);
+      assert.equal(await page.locator("h1").count(), 1);
+      await page.locator(".card-name", { hasText: SEEDED_PRODUCT_NAME }).first().waitFor();
+      assert.ok(await page.locator("#families .blotter").count() >= 1, "tester bar shows families");
+
+      await page.locator('img[alt="عطر صورته مكسورة"]').first().scrollIntoViewIfNeeded();
+      await page.waitForFunction(() =>
+        document.querySelector('img[alt="عطر صورته مكسورة"]')?.src.endsWith("/assets/img/placeholder-bottle.svg"));
+
+      const mobile = viewport.width < 900;
+      assert.equal(await page.locator(".bottom-bar").isVisible(), mobile);
+      assert.equal(await page.locator(".header-row > .search-field").isVisible(), !mobile);
+
+      await page.locator(".card-add").first().click();
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll("[data-cart-count]")].some((el) => !el.hidden && el.textContent === "1"));
+      await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
+
+      await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+      await page.waitForLoadState("networkidle");
+      const [scrollWidth, innerWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+      assert.ok(scrollWidth <= innerWidth, `horizontal scroll at ${viewport.width}px: ${scrollWidth} > ${innerWidth}`);
       check(page);
     }
   });
