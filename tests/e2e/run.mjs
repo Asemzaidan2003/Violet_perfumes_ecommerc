@@ -297,6 +297,7 @@ async function run() {
       await page.waitForLoadState("networkidle");
       const [scrollWidth, innerWidth] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
       assert.ok(scrollWidth <= innerWidth, `horizontal scroll at ${viewport.width}px: ${scrollWidth} > ${innerWidth}`);
+      assert.equal(innerWidth, viewport.width, `layout viewport widened at ${viewport.width}px`); // isMobile widens instead of scrolling
       check(page);
     }
   });
