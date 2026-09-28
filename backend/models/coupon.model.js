@@ -15,11 +15,14 @@ const couponSchema = new mongoose.Schema(
       validate: {
         // `this` is the document on save; on query updates the type isn't at hand, so the
         // controller edits by load-and-save to keep the percent ≤ 100 rule on edits too.
-        validator(v) { return v > 0 && (this.type !== "percent" || v <= 100); },
+        validator(v) { return Number.isFinite(v) && v > 0 && (this.type !== "percent" || v <= 100); },
         message: "قيمة الخصم يجب أن تكون أكبر من صفر، ولا تتجاوز 100 للنسبة المئوية",
       },
     },
-    min_subtotal: { type: Number, min: [0, "الحد الأدنى للطلب لا يمكن أن يكون سالبًا"], default: 0 },
+    min_subtotal: {
+      type: Number, default: 0,
+      validate: { validator: (v) => Number.isFinite(v) && v >= 0, message: "الحد الأدنى للطلب غير صالح" },
+    },
     starts_at: { type: Date },
     ends_at: { type: Date },
     max_uses: {

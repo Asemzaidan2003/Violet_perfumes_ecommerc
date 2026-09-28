@@ -181,7 +181,7 @@ export async function placeOrder(input = {}, source) {
         if (!check.valid) throw fail(400, check.message);
         const coupon = await claimCoupon(code, session);
         if (!coupon) throw fail(400, "انتهت استخدامات هذا الكود");
-        order.coupon = { code: coupon.code, type: coupon.type, value: coupon.value };
+        order.coupon = { id: coupon._id, code: coupon.code, type: coupon.type, value: coupon.value };
       }
       const { fee, free_over } = input.delivery_policy;
       order.delivery_fee = Number(free_over) > 0 && order.total_revenue >= Number(free_over) ? 0 : Number(fee);
@@ -239,6 +239,8 @@ export async function confirmOrder(id, edits = [], { delivery_fee } = {}) {
       order.customer_id = customer._id;
     }
 
+    // deductAndCost → setTotals re-derives the discount from the edited revenue; per the spec,
+    // the code's validity and min_subtotal are checked only at placement, not re-checked here.
     const shortages = await deductAndCost(order, session);
     await order.save({ session });
     return { order, shortages };
@@ -279,7 +281,7 @@ export async function changeStatus(id, status) {
     }
     if (status === "canceled" && order.status !== "canceled") {
       await restock(order, session);
-      if (order.coupon?.code) await releaseCoupon(order.coupon.code, session);
+      if (order.coupon?.code) await releaseCoupon(order.coupon, session);
     }
     order.status = status;
     await order.save({ session, validateModifiedOnly: true });
@@ -293,7 +295,7 @@ export async function removeOrder(id) {
     if (!order) throw fail(404, "الطلب غير موجود");
     if (order.status !== "canceled") {
       await restock(order, session);
-      if (order.coupon?.code) await releaseCoupon(order.coupon.code, session);
+      if (order.coupon?.code) await releaseCoupon(order.coupon, session);
     }
     await order.deleteOne({ session });
     return order;

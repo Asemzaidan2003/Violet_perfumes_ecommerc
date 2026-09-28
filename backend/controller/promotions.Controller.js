@@ -1,6 +1,7 @@
 import Placement from "../models/placement.model.js";
 import Coupon from "../models/coupon.model.js";
 import { invalidatePlacements } from "../services/placements.service.js";
+import { normalizeCode } from "../services/coupons.service.js";
 import { fail } from "../utils/fail.js";
 
 const PLACEMENT_FIELDS = ["slot", "title", "subtitle", "image", "link", "cta", "theme", "target", "starts_at", "ends_at", "active", "sort"];
@@ -41,7 +42,9 @@ export const deletePlacement = async (req, res) => {
 };
 
 // `used` is not in the list: only orders move it (claim on placement, release on cancel/delete).
-const COUPON_FIELDS = ["code", "type", "value", "min_subtotal", "starts_at", "ends_at", "max_uses", "active"];
+// `code` is set on create only; orders release uses by the coupon's _id, and a fixed code keeps
+// what customers were told stable.
+const COUPON_FIELDS = ["type", "value", "min_subtotal", "starts_at", "ends_at", "max_uses", "active"];
 const DUPLICATE_CODE = "هذا الكود موجود مسبقًا";
 
 // Saves and maps the unique-index error to an Arabic 409 (the central handler's is generic).
@@ -62,7 +65,7 @@ export const listCoupons = async (req, res) => {
 
 // POST /api/coupons
 export const createCoupon = async (req, res) => {
-  const coupon = await saveCoupon(new Coupon(pick(req.body, COUPON_FIELDS)));
+  const coupon = await saveCoupon(new Coupon(pick(req.body, ["code", ...COUPON_FIELDS])));
   res.status(201).json({ success: true, data: coupon });
 };
 
@@ -70,6 +73,8 @@ export const createCoupon = async (req, res) => {
 export const updateCoupon = async (req, res) => {
   const coupon = await Coupon.findById(req.params.id);
   if (!coupon) throw fail(404, "الكود غير موجود");
+  // Resending the same code (e.g. a whole edit form) is fine; changing it is not.
+  if (req.body.code !== undefined && normalizeCode(req.body.code) !== coupon.code) throw fail(400, "لا يمكن تغيير الكود بعد إنشائه");
   Object.assign(coupon, pick(req.body, COUPON_FIELDS));
   res.status(200).json({ success: true, data: await saveCoupon(coupon) });
 };

@@ -13,7 +13,7 @@ export function normalizeCode(v) {
 
 // The discount formula; `setTotals` (order.service.js) and the public check both call it.
 export const couponDiscount = (coupon, revenue) =>
-  !coupon?.code ? 0 : coupon.type === "percent" ? round2((revenue * coupon.value) / 100) : Math.min(coupon.value, revenue);
+  !coupon?.code ? 0 : round2(coupon.type === "percent" ? (revenue * coupon.value) / 100 : Math.min(coupon.value, revenue));
 
 // Start inclusive, end exclusive (same rule as placements and offers).
 const isLive = (c, now) => c.active && (!c.starts_at || c.starts_at <= now) && (!c.ends_at || now < c.ends_at);
@@ -40,7 +40,10 @@ export function claimCoupon(code, session) {
   );
 }
 
-// Returns one use. A deleted coupon (or one already at 0) is a no-op.
-export function releaseCoupon(code, session) {
-  return Coupon.updateOne({ code, used: { $gt: 0 } }, { $inc: { used: -1 } }, { session, runValidators: false });
+// Returns one use to the coupon the order claimed, by its _id, so a renamed or deleted-and-
+// recreated code is never credited. Snapshots without an id fall back to the code. A deleted
+// coupon (or one already at 0) is a no-op.
+export function releaseCoupon(snapshot, session) {
+  const match = snapshot.id ? { _id: snapshot.id } : { code: snapshot.code };
+  return Coupon.updateOne({ ...match, used: { $gt: 0 } }, { $inc: { used: -1 } }, { session, runValidators: false });
 }

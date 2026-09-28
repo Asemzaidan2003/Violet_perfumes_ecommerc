@@ -74,10 +74,9 @@ export const createStoreInterest = async (req, res) => {
 // only: the order re-validates and claims the code against the server-priced subtotal.
 export const checkStoreCoupon = async (req, res) => {
   const { code, subtotal } = req.body;
-  const amount = Number(subtotal);
-  if ((code != null && typeof code !== "string") || typeof subtotal === "boolean" || subtotal === "" || !Number.isFinite(amount) || amount < 0) {
+  if ((code != null && typeof code !== "string") || typeof subtotal !== "number" || !Number.isFinite(subtotal) || subtotal < 0 || subtotal > 1e6) {
     throw fail(400, "بيانات غير صالحة");
   }
-  const { valid, discount, message } = await checkCoupon(code, amount);
+  const { valid, discount, message } = await checkCoupon(code, subtotal);
   res.status(200).json({ success: true, valid, discount, message });
 };

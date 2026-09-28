@@ -54,7 +54,7 @@ const orderSchema = new mongoose.Schema(
     // Discount-code snapshot, taken at placement (online only). `discount` is derived from it
     // by setTotals, so an edit at confirmation re-derives it from the edited revenue.
     discount: { type: Number, default: 0 },
-    coupon: { code: String, type: { type: String }, value: Number },
+    coupon: { id: mongoose.Schema.Types.ObjectId, code: String, type: { type: String }, value: Number },
 
     order_notes: { type: String, default: "" },
 

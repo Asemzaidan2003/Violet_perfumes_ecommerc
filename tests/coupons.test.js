@@ -12,7 +12,7 @@ import Bottle from "../backend/models/bottle.model.js";
 import Alcohol from "../backend/models/alcohol.model.js";
 import Setting from "../backend/models/setting.model.js";
 import { placeOrder } from "../backend/services/order.service.js";
-import { normalizeCode, claimCoupon, releaseCoupon } from "../backend/services/coupons.service.js";
+import { normalizeCode, claimCoupon, releaseCoupon, checkCoupon } from "../backend/services/coupons.service.js";
 
 const GENERIC = "الكود غير صالح أو منتهي";
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -78,9 +78,9 @@ test("claimCoupon is guarded on active and remaining uses; releaseCoupon never g
   assert.equal(await claimCoupon("OFF"), null);
   assert.equal((await claimCoupon("SAVE10")).used, 1); // max_uses 0 = unlimited
   assert.equal((await claimCoupon("SAVE10")).used, 2);
-  await releaseCoupon("OFF");
+  await releaseCoupon({ code: "OFF" }); // legacy snapshot without an id: falls back to the code
   assert.equal(await used("OFF"), 0);
-  await releaseCoupon("MISSING"); // deleted coupon: no-op, no throw
+  await releaseCoupon({ code: "MISSING" }); // deleted coupon: no-op, no throw
 });
 
 test("percent, fixed and capped fixed discounts", async () => {
@@ -119,6 +119,16 @@ test("coupon windows: start inclusive, end exclusive; inactive is invalid", asyn
   assert.equal((await check("OFF")).valid, false);
 });
 
+test("exact window edges: now === starts_at is valid, now === ends_at is invalid", async () => {
+  const start = new Date("2026-10-01T00:00:00Z");
+  const end = new Date("2026-10-02T00:00:00Z");
+  await Coupon.create({ code: "EDGE", type: "percent", value: 10, starts_at: start, ends_at: end });
+  assert.equal((await checkCoupon("EDGE", 40, new Date(start.getTime() - 1))).valid, false);
+  assert.equal((await checkCoupon("EDGE", 40, start)).valid, true);
+  assert.equal((await checkCoupon("EDGE", 40, new Date(end.getTime() - 1))).valid, true);
+  assert.equal((await checkCoupon("EDGE", 40, end)).valid, false);
+});
+
 test("unknown, inactive, expired and used-up codes give the identical message", async () => {
   await Coupon.create([
     { code: "OFF", type: "percent", value: 10, active: false },
@@ -149,16 +159,33 @@ test("a lowercase, space-padded code works at check and at order", async () => {
   assert.equal((await res.json()).data.discount, 4);
 });
 
-test("check rejects a bad subtotal", async () => {
-  const res = await post(t.url, "/api/store/coupons/check", { code: "SAVE10", subtotal: "abc" });
-  assert.equal(res.status, 400);
+test("check accepts only a finite numeric subtotal in [0, 1e6]", async () => {
+  for (const subtotal of ["abc", "40", true, null, -1, 1e6 + 1]) {
+    const res = await post(t.url, "/api/store/coupons/check", { code: "SAVE10", subtotal });
+    assert.equal(res.status, 400, JSON.stringify(subtotal));
+  }
+  assert.equal((await post(t.url, "/api/store/coupons/check", { code: "SAVE10", subtotal: 1e6 })).status, 200);
+});
+
+test("order body coupon: too long or not a string is 400; empty or spaces is no coupon", async () => {
+  for (const coupon of ["A".repeat(21), 123, ["SAVE10"], { code: "SAVE10" }]) {
+    const res = await order({ coupon });
+    assert.equal(res.status, 400, JSON.stringify(coupon));
+  }
+  for (const coupon of ["", "   "]) {
+    const res = await order({ coupon });
+    assert.equal(res.status, 201);
+    assert.equal((await res.json()).data.discount, 0);
+  }
+  assert.equal(await Order.countDocuments(), 2);
 });
 
 test("an online order stores the coupon snapshot and claims a use; a bad code fails the order", async () => {
   const res = await order({ coupon: "SAVE10" });
   assert.equal(res.status, 201);
   const o = await placed(res);
-  assert.deepEqual({ ...o.coupon.toObject() }, { code: "SAVE10", type: "percent", value: 10 });
+  const saved = await Coupon.findOne({ code: "SAVE10" });
+  assert.deepEqual({ ...o.coupon.toObject() }, { id: saved._id, code: "SAVE10", type: "percent", value: 10 });
   assert.equal(o.discount, 4);
   assert.equal(o.total_profit, 0); // unconfirmed online order
   assert.equal(await used("SAVE10"), 1);
@@ -248,6 +275,42 @@ test("cancelling an order whose coupon was deleted does not throw", async () => 
   assert.equal(await Coupon.countDocuments({ code: "SAVE10" }), 0);
 });
 
+test("a use is released to the coupon the order claimed, not a renamed or recreated one", async () => {
+  // Rename (the API forbids it, so directly in the DB): the new holder of the code keeps its count.
+  const a = await placed(await order({ coupon: "SAVE10" }));
+  await Coupon.updateOne({ code: "SAVE10" }, { $set: { code: "OLD10" } });
+  await Coupon.create({ code: "SAVE10", type: "percent", value: 10, used: 3 });
+  await admin(`/orders/${a._id}`, { method: "PUT", body: JSON.stringify({ status: "canceled" }) });
+  assert.equal(await used("SAVE10"), 3);
+  assert.equal(await used("OLD10"), 0);
+
+  // Delete and recreate the same code: cancelling an old order leaves the new coupon alone.
+  const b = await placed(await order({ coupon: "FLAT5" }));
+  await Coupon.deleteOne({ code: "FLAT5" });
+  await Coupon.create({ code: "FLAT5", type: "fixed", value: 5, used: 2 });
+  assert.equal((await admin(`/orders/${b._id}`, { method: "PUT", body: JSON.stringify({ status: "canceled" }) })).status, 200);
+  assert.equal(await used("FLAT5"), 2);
+  const c = await placed(await order({ coupon: "FLAT5" }));
+  await Coupon.deleteOne({ code: "FLAT5" });
+  await Coupon.create({ code: "FLAT5", type: "fixed", value: 5, used: 2 });
+  assert.equal((await admin(`/orders/${c._id}`, { method: "DELETE" })).status, 200);
+  assert.equal(await used("FLAT5"), 2);
+});
+
+test("a fixed code stays capped when confirmation edits the revenue down", async () => {
+  const o = await placed(await order({ coupon: "FLAT5", items: [{ product_id: ids.product, size: "30", quantity: 1 }] }));
+  assert.equal(o.discount, 5);
+  const res = await admin(`/orders/${o._id}/confirm`, {
+    method: "POST", body: JSON.stringify({ lines: [{ bottle_id: ids.bottle, price: 2 }] }),
+  });
+  assert.equal(res.status, 200);
+  const c = await Order.findById(o._id);
+  assert.equal(c.total_revenue, 2);
+  assert.equal(c.discount, 2);
+  assert.equal(c.final_total, c.delivery_fee);
+  assert.ok(c.final_total >= c.delivery_fee);
+});
+
 test("confirming with an edited quantity re-derives the discount and profit", async () => {
   const o = await placed(await order({ coupon: "SAVE10", items: [{ product_id: ids.product, size: "30", quantity: 1 }] }));
   assert.equal(o.discount, 2);
@@ -277,7 +340,7 @@ test("admin coupon API: auth, validation, uppercase storage, duplicates, update 
   assert.equal(created.used, 0);
 
   const dup = await create({ code: "new1", type: "fixed", value: 2 });
-  assert.ok([400, 409].includes(dup.status));
+  assert.equal(dup.status, 409);
   assert.match((await dup.json()).message, /[؀-ۿ]/);
 
   for (const bad of [
@@ -285,6 +348,8 @@ test("admin coupon API: auth, validation, uppercase storage, duplicates, update 
     { code: "Z2Z", type: "percent", value: 101 },
     { code: "Z3Z", type: "other", value: 5 },
     { code: "a b", type: "fixed", value: 5 },
+    { code: "Z4Z", type: "fixed", value: "Infinity" },
+    { code: "Z5Z", type: "fixed", value: 5, min_subtotal: "Infinity" },
   ]) {
     const r = await create(bad);
     assert.equal(r.status, 400, JSON.stringify(bad));
@@ -296,12 +361,16 @@ test("admin coupon API: auth, validation, uppercase storage, duplicates, update 
 
   const put = await admin(`/coupons/${created._id}`, { method: "PUT", body: JSON.stringify({ value: 150, used: 99 }) });
   assert.equal(put.status, 400); // percent > 100 is rejected on edits too
-  const put2 = await admin(`/coupons/${created._id}`, { method: "PUT", body: JSON.stringify({ value: 20, active: false, used: 99 }) });
+  const rename = await admin(`/coupons/${created._id}`, { method: "PUT", body: JSON.stringify({ code: "OTHER" }) });
+  assert.equal(rename.status, 400);
+  assert.match((await rename.json()).message, /[؀-ۿ]/);
+  const put2 = await admin(`/coupons/${created._id}`, { method: "PUT", body: JSON.stringify({ code: "new1", value: 20, active: false, used: 99 }) });
   assert.equal(put2.status, 200);
   const edited = await Coupon.findById(created._id);
   assert.equal(edited.value, 20);
   assert.equal(edited.active, false);
   assert.equal(edited.used, 0); // `used` is not admin-writable
+  assert.equal(edited.code, "NEW1");
 
   assert.equal((await admin(`/coupons/${created._id}`, { method: "DELETE" })).status, 200);
   assert.equal((await admin(`/coupons/${created._id}`, { method: "DELETE" })).status, 404);

@@ -61,9 +61,9 @@ export function validateOrderBody(body = {}) {
 
   // Only the shape is checked here; the order service normalizes, validates and claims it.
   let coupon;
-  if (body.coupon != null && body.coupon !== "") {
+  if (body.coupon != null) {
     if (typeof body.coupon !== "string" || body.coupon.trim().length > 20) throw fail(400, "كود الخصم غير صالح");
-    coupon = body.coupon;
+    coupon = body.coupon.trim() || undefined; // empty or only spaces = no coupon
   }
 
   return { items, customer: { name, phone, city, address, notes }, client_key, coupon };
