@@ -11,7 +11,9 @@
     "migrate:catalog": "node scripts/migrate-catalog.js"
   },
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -23,7 +25,8 @@
     "dotenv": "^16.4.7",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
-    "mongoose": "^8.10.1"
+    "mongoose": "^8.10.1",
+    "three": "0.186.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.9",
