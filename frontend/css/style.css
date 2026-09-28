@@ -377,6 +377,7 @@ a {
 input[type="text"],
 input[type="number"],
 input[type="date"],
+input[type="datetime-local"],
 input[type="password"],
 input[type="email"],
 input[type="search"],
@@ -1339,6 +1340,59 @@ img.row-thumb {
 
 .upload-status {
   margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--slate);
+}
+
+/* ---------------------------------------------------------
+   Promotions admin (placements + coupons)
+   --------------------------------------------------------- */
+.promo-group {
+  margin-bottom: 22px;
+}
+
+.promo-group h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.promo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.promo-row-info {
+  flex: 1;
+  min-width: 160px;
+}
+
+.promo-row-info .promo-title {
+  font-weight: 700;
+}
+
+.promo-row-info .promo-meta {
+  font-size: 12.5px;
+  color: var(--slate);
+}
+
+.promo-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.promo-active-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12.5px;
   color: var(--slate);
 }

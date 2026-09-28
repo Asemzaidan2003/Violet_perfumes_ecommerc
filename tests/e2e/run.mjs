@@ -463,7 +463,10 @@ async function run() {
 
   // Task 7 (admin interests/settings/online-order pages) — see admin-online.mjs.
   await registerAdminOnlineScenarios({ scenario, openPage, check, baseUrl });
-  await registerPromotionScenarios({ scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir() });
+  await registerPromotionScenarios({
+    scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(),
+    admin: { username: ADMIN_USER, password: ADMIN_PASS },
+  });
 }
 
 try {

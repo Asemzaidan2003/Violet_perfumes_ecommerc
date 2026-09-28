@@ -39,6 +39,7 @@ const NAV_LINKS = [
   { href: "reports.html", label: "التقارير" },
   { href: "orders.html", label: "الطلبات" },
   { href: "interests.html", label: "طلبات الاهتمام" },
+  { href: "promotions.html", label: "العروض والإعلانات" },
   { href: "all_oils.html", label: "عرض الزيوت" },
   { href: "all_bottles.html", label: "عرض الزجاجات" },
   { href: "all_products.html", label: "عرض المنتجات" },

@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import Placement from "../../backend/models/placement.model.js";
+import Coupon from "../../backend/models/coupon.model.js";
 import Product from "../../backend/models/product.model.js";
 import { invalidatePlacements } from "../../backend/services/placements.service.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
@@ -41,7 +42,18 @@ async function promoPage(openPage, viewport) {
 
 const visibleAnnouncement = (page) => page.locator(".announce-item:not([hidden])").innerText();
 
-export async function registerPromotionScenarios({ scenario, openPage, check, baseUrl, shotDir }) {
+// "Promotions render" clears the shared context's cookies at the end of each viewport pass, so
+// any admin scenario after it needs its own fresh login (the "Admin login" cookie is long gone).
+async function loginAdmin(openPage, baseUrl, admin) {
+  const page = await openPage();
+  await page.goto(`${baseUrl}/admin/html/login.html`);
+  await page.fill("#username", admin.username);
+  await page.fill("#password", admin.password);
+  await Promise.all([page.waitForURL(/index\.html/), page.click("#loginForm button[type=submit]")]);
+  return page;
+}
+
+export async function registerPromotionScenarios({ scenario, openPage, check, baseUrl, shotDir, admin }) {
   await scenario("Promotions render", async () => {
     await seed();
     try {
@@ -172,6 +184,106 @@ export async function registerPromotionScenarios({ scenario, openPage, check, ba
       invalidatePlacements();
       await Product.deleteMany({ _id: { $in: extra.map((p) => p._id) } });
       invalidateCatalog();
+    }
+  });
+
+  // Task 6: the admin promotions page itself — placements + coupons CRUD, escaping, validation.
+  await scenario("Admin promotions", async () => {
+    await Placement.deleteMany({});
+    await Coupon.deleteMany({});
+    invalidatePlacements();
+    const HOSTILE_TITLE = "عرض <b>&</b> 'خاص'";
+    try {
+      const page = await loginAdmin(openPage, baseUrl, admin);
+      await page.goto(`${baseUrl}/admin/html/promotions.html`);
+      await page.waitForLoadState("networkidle");
+
+      // --- Create an announcement with a hostile title: literal text everywhere, never markup.
+      await page.click("#addPlacementBtn");
+      await page.selectOption("#pf-slot", "announcement");
+      await page.fill("#pf-title", HOSTILE_TITLE);
+      const created = page.waitForResponse((r) => r.url().endsWith("/api/placements") && r.request().method() === "POST");
+      await page.click("#placementSave");
+      assert.equal((await created).status(), 201);
+      await page.locator("#placementModal.open").waitFor({ state: "hidden" });
+      const listedRow = page.locator(".promo-row", { hasText: HOSTILE_TITLE });
+      await listedRow.first().waitFor();
+      assert.equal(await listedRow.locator("b").count(), 0, "hostile markup must render as literal text, not an element");
+      await page.screenshot({ path: path.join(shotDir, "p6-promotions-1440.png") });
+
+      // --- The same literal text shows in the storefront announcement bar.
+      const storePage = await openPage();
+      await storePage.goto(`${baseUrl}/`);
+      await storePage.waitForLoadState("networkidle");
+      assert.ok((await storePage.locator(".announce-item").innerText()).includes(HOSTILE_TITLE));
+      assert.equal(await storePage.locator(".announce-item b").count(), 0);
+      await storePage.close();
+
+      // --- Toggling it inactive removes it from the storefront after a reload (cache invalidated).
+      const toggled = page.waitForResponse((r) => /\/api\/placements\/[a-f0-9]{24}$/.test(r.url()) && r.request().method() === "PUT");
+      await listedRow.locator(".pf-active-toggle").click();
+      assert.equal((await toggled).status(), 200);
+      await listedRow.locator("text=متوقف").waitFor();
+      const storePage2 = await openPage();
+      await storePage2.goto(`${baseUrl}/`);
+      await storePage2.waitForLoadState("networkidle");
+      assert.equal(await storePage2.locator("[data-announce]").count(), 0, "an inactive announcement must not render");
+      await storePage2.close();
+      check(page); // the happy path so far: no console/CSP noise. Below, every step deliberately
+      // triggers a 400/409 to check the error UI — Edge itself logs those failed fetches to the
+      // console (see admin-online.mjs's "Settings round trip"), so check(page) isn't called again.
+
+      // --- Coupons: create TEST20, see it listed as 0/∞, and a duplicate code is rejected.
+      await page.click(".tab-btn[data-tab=\"coupons\"]");
+      await page.click("#addCouponBtn");
+      await page.fill("#cf-code", "TEST20");
+      await page.selectOption("#cf-type", "percent");
+      await page.fill("#cf-value", "20");
+      const couponCreated = page.waitForResponse((r) => r.url().endsWith("/api/coupons") && r.request().method() === "POST");
+      await page.click("#couponSave");
+      assert.equal((await couponCreated).status(), 201);
+      await page.locator("#couponModal.open").waitFor({ state: "hidden" });
+      const couponRow = page.locator("#couponsBody tr", { hasText: "TEST20" });
+      await couponRow.first().waitFor();
+      assert.match(await couponRow.first().innerText(), /0\s*\/\s*∞/);
+
+      await page.click("#addCouponBtn");
+      await page.fill("#cf-code", "test20"); // lowercase — normalizes to the same existing code
+      await page.selectOption("#cf-type", "percent");
+      await page.fill("#cf-value", "5");
+      const dupRejected = page.waitForResponse((r) => r.url().endsWith("/api/coupons") && r.request().method() === "POST");
+      await page.click("#couponSave");
+      assert.equal((await dupRejected).status(), 409);
+      await page.locator("#couponError:not([hidden])").waitFor();
+      await page.click("#couponClose");
+
+      // --- Placements: a hostile link is rejected, and nothing is saved.
+      await page.click(".tab-btn[data-tab=\"placements\"]");
+      const beforeCount = await page.locator(".promo-row").count();
+      await page.click("#addPlacementBtn");
+      await page.selectOption("#pf-slot", "announcement");
+      await page.fill("#pf-title", "إعلان رابط خبيث");
+      await page.fill("#pf-link", "javascript:alert(1)");
+      const linkRejected = page.waitForResponse((r) => r.url().endsWith("/api/placements") && r.request().method() === "POST");
+      await page.click("#placementSave");
+      assert.equal((await linkRejected).status(), 400);
+      await page.locator("#placementError:not([hidden])").waitFor();
+      await page.click("#placementClose");
+      assert.equal(await page.locator(".promo-row").count(), beforeCount, "the rejected placement must not be saved");
+
+      // --- A hero placement with no image is rejected.
+      await page.click("#addPlacementBtn");
+      await page.selectOption("#pf-slot", "hero");
+      await page.fill("#pf-title", "شريحة بلا صورة");
+      const heroRejected = page.waitForResponse((r) => r.url().endsWith("/api/placements") && r.request().method() === "POST");
+      await page.click("#placementSave");
+      assert.equal((await heroRejected).status(), 400);
+      await page.locator("#placementError:not([hidden])").waitFor();
+      await page.close();
+    } finally {
+      await Placement.deleteMany({});
+      await Coupon.deleteMany({});
+      invalidatePlacements();
     }
   });
 }

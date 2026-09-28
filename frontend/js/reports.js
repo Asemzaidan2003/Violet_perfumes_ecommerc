@@ -542,8 +542,21 @@ function exportCustomersCsv() {
 // -----------------------------------------------------------------------
 // Init
 // -----------------------------------------------------------------------
+// Order-level revenue elsewhere in this report is net of coupon discounts (setTotals), but the
+// per-product/per-size figures here are computed straight from each order line, before any
+// coupon is applied — so a discount never gets attributed to (or split across) products.
+function addProductsDiscountNote() {
+  const filters = document.querySelector("#tab-products .filters");
+  if (!filters) return;
+  const note = document.createElement("p");
+  note.className = "text-muted mb-16";
+  note.textContent = "التقارير حسب المنتج قبل خصم الأكواد";
+  filters.before(note);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initTabs();
+  addProductsDiscountNote();
   document.querySelectorAll("#rangePresets [data-preset]").forEach((btn) => {
     btn.addEventListener("click", () => applyPreset(btn.dataset.preset));
   });
