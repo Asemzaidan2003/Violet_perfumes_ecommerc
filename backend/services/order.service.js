@@ -10,7 +10,7 @@ import { normalizeSize } from "../../storefront/js/shared/vocab.js";
 import { normalizePhone } from "../../storefront/js/shared/phone.js";
 import { effectivePrice } from "../catalog/pricing.js";
 import { fail } from "../utils/fail.js";
-import { normalizeCode, checkCoupon, claimCoupon, releaseCoupon, couponDiscount } from "./coupons.service.js";
+import { normalizeCode, checkCoupon, claimCoupon, releaseCoupon, couponDiscount, INVALID_CODE } from "./coupons.service.js";
 
 // Business rule: an order is never blocked for stock. Stock is deducted only when an
 // order is confirmed through the POS; it may go negative (what the shop owes) and any
@@ -178,9 +178,9 @@ export async function placeOrder(input = {}, source) {
       if (input.coupon_code != null && input.coupon_code !== "") {
         const code = normalizeCode(input.coupon_code);
         const check = await checkCoupon(code, order.total_revenue, new Date(), session);
-        if (!check.valid) throw fail(400, check.message);
+        if (!check.valid) throw Object.assign(fail(400, check.message), { field: "coupon" });
         const coupon = await claimCoupon(code, session);
-        if (!coupon) throw fail(400, "انتهت استخدامات هذا الكود");
+        if (!coupon) throw Object.assign(fail(400, INVALID_CODE), { field: "coupon" });
         order.coupon = { id: coupon._id, code: coupon.code, type: coupon.type, value: coupon.value };
       }
       const { fee, free_over } = input.delivery_policy;

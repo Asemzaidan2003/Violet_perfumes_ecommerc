@@ -187,6 +187,18 @@ test("Arabic-Indic phone digits are accepted", async () => {
   assert.equal(res.status, 201);
 });
 
+test("a coupon failure at order time returns field: 'coupon'; a non-coupon 400 has no field", async () => {
+  const couponRes = await storeApi("/orders", validBody({ coupon: "NOPE", client_key: crypto.randomUUID() }));
+  assert.equal(couponRes.status, 400);
+  const couponBody = await couponRes.json();
+  assert.equal(couponBody.field, "coupon");
+
+  const plainRes = await storeApi("/orders", validBody({ customer: customer({ phone: "123" }) }));
+  assert.equal(plainRes.status, 400);
+  const plainBody = await plainRes.json();
+  assert.equal(plainBody.field, undefined);
+});
+
 test("ordering a discontinued product is 404", async () => {
   const res = await storeApi("/orders", validBody({ items: [{ product_id: ids.discontinued, size: "30", quantity: 1 }] }));
   assert.equal(res.status, 404);

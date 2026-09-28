@@ -2,7 +2,7 @@
 // details, and an idempotent submit (client_key per cart contents, kept across retries).
 // Entry module, no exports. Rendering uses <template> + textContent only.
 import { readCart, clear, priceCart, shopSettings, announce, MAX_LINES, PRICE_NOTE_KEY } from "./shared/cart-store.js";
-import { loadCatalog } from "./shared/catalog-client.js";
+import { loadCatalog, resetCatalog } from "./shared/catalog-client.js";
 import { money, num, sizeLabel } from "./shared/format.js";
 import { normalizePhone, isJordanMobile } from "./shared/phone.js";
 
@@ -121,6 +121,30 @@ async function render() {
   const left = priced.freeOver - priced.subtotal;
   free.hidden = !(priced.freeOver > 0 && priced.fee > 0 && left > 0);
   free.textContent = free.hidden ? "" : `أضف ${money(left)} للحصول على توصيل مجاني`;
+  scheduleOfferExpiry();
+}
+
+// Re-prices once the earliest offer in the cart (within 24h) ends, so a stale discounted price
+// doesn't linger on-screen. One timer, refreshed on every render; a still-open tab past that is
+// simply not covered — reload picks it up. ponytail: single timer for the soonest offer only,
+// upgrade to per-line timers if that ever matters.
+let offerTimer = null;
+function scheduleOfferExpiry() {
+  clearTimeout(offerTimer);
+  offerTimer = null;
+  if (!priced) return;
+  const now = Date.now();
+  const DAY = 24 * 60 * 60 * 1000;
+  const soonest = priced.rows
+    .map((r) => (r.product?.offer_ends_at ? new Date(r.product.offer_ends_at).getTime() : null))
+    .filter((t) => t && t > now && t - now <= DAY)
+    .sort((a, b) => a - b)[0];
+  if (!soonest) return;
+  offerTimer = setTimeout(() => {
+    resetCatalog();
+    priced = null;
+    render();
+  }, soonest - now + 250);
 }
 
 // --- Coupon: a preview check only (POST /api/store/coupons/check); the order re-validates and
@@ -132,6 +156,7 @@ function clearCoupon(message = "") {
   couponApplyBtn.hidden = false;
   couponRemoveBtn.hidden = true;
   couponMsg.textContent = message;
+  couponMsg.classList.toggle("is-error", Boolean(message));
 }
 
 async function applyCoupon(rawCode) {
@@ -151,6 +176,7 @@ async function applyCoupon(rawCode) {
       couponApplyBtn.hidden = true;
       couponRemoveBtn.hidden = false;
       couponMsg.textContent = data.message || "تم تطبيق الكود";
+      couponMsg.classList.remove("is-error");
     } else {
       clearCoupon(data.message || "الكود غير صالح");
     }
@@ -164,12 +190,15 @@ async function applyCoupon(rawCode) {
 // Re-checks the applied code against the current (possibly changed) subtotal after a cart edit.
 async function recheckCoupon() {
   if (!coupon.code || !priced) return;
+  const code = coupon.code; // captured before the await: a late response must not clobber a
+  // code the customer has since changed or removed.
   try {
     const res = await fetch("/api/store/coupons/check", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: coupon.code, subtotal: priced.subtotal }),
+      body: JSON.stringify({ code, subtotal: priced.subtotal }),
     });
     const data = await res.json().catch(() => ({}));
+    if (coupon.code !== code) return;
     if (res.ok && data.valid) {
       if (data.discount !== coupon.discount) { coupon = { ...coupon, discount: Number(data.discount) || 0 }; render(); }
     } else {
@@ -183,6 +212,12 @@ couponApplyBtn.addEventListener("click", () => {
   const code = couponInput.value.trim();
   if (!code || !priced) return;
   applyCoupon(code);
+});
+couponInput.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  const code = couponInput.value.trim();
+  if (code && priced) applyCoupon(code);
 });
 couponRemoveBtn.addEventListener("click", () => {
   couponInput.value = "";
@@ -281,12 +316,10 @@ form.addEventListener("submit", async (e) => {
     return location.assign(`/order/${encodeURIComponent(data.data.ref)}`);
   }
   setBusy(false, res.status >= 500 ? "أعد المحاولة" : "تأكيد الطلب");
-  // A 400 with an applied coupon means the coupon check/claim failed inside the order transaction
-  // (the only late 400 possible once client-side validation above already passed): show it by the
-  // code field and drop it, instead of the generic banner, so the rest of the form stays filled.
-  // ponytail: assumes any 400-with-coupon is a coupon failure; add a response flag if the server
-  // ever returns other 400s alongside a coupon.
-  if (res.status === 400 && coupon.code) {
+  // A 400 flagged field:"coupon" means the coupon check/claim failed inside the order transaction:
+  // show it by the code field and drop it. Any other 400 (validation, etc.) falls through to the
+  // generic banner below and leaves the coupon applied.
+  if (res.status === 400 && data.field === "coupon") {
     couponDetails.open = true;
     clearCoupon(data.message || "تعذّر تطبيق الكود");
     return render();
@@ -309,6 +342,6 @@ form.elements.remember.addEventListener("change", (e) => {
   if (e.target.checked) return;
   try { localStorage.removeItem(DETAILS_KEY); } catch { /* private mode */ }
 });
-addEventListener("cart:change", () => { render(); recheckCoupon(); });
-addEventListener("storage", () => { render(); recheckCoupon(); });
+addEventListener("cart:change", async () => { await render(); recheckCoupon(); });
+addEventListener("storage", async () => { await render(); recheckCoupon(); });
 render();

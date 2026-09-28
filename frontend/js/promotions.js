@@ -45,7 +45,15 @@ function liveStatus(p) {
   if (p.ends_at && now >= new Date(p.ends_at)) return { label: "منتهي", cls: "badge-out" };
   return { label: "مباشر", cls: "badge-available" };
 }
-const viewLink = (p) => (TARGET_SLOTS.has(p.slot) ? `/c/${p.target?.category || "men"}` : "/");
+const viewLink = (p) => {
+  if (p.slot === "product_promo") return "/offers"; // no single product to link to
+  if (TARGET_SLOTS.has(p.slot)) {
+    if (p.target?.category) return `/c/${p.target.category}`;
+    if (p.target?.family) return `/family/${p.target.family}`;
+    return "/c/men";
+  }
+  return "/";
+};
 
 async function api(method, url, body) {
   const res = await fetch(url, {
@@ -143,6 +151,13 @@ function closePlacementModal() {
 document.getElementById("addPlacementBtn").addEventListener("click", () => openPlacementModal());
 document.getElementById("placementClose").addEventListener("click", closePlacementModal);
 
+// Esc closes whichever modal is open.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (document.getElementById("placementModal").classList.contains("open")) closePlacementModal();
+  if (document.getElementById("couponModal").classList.contains("open")) closeCouponModal();
+});
+
 document.getElementById("placementForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const errorEl = document.getElementById("placementError");
@@ -181,15 +196,18 @@ async function togglePlacementActive(p) {
   try { await api("PUT", `/api/placements/${p._id}`, { active: !p.active }); await loadPlacements(); }
   catch (err) { alert(err.message); }
 }
+// Swaps locally, then renumbers the whole group to its new positions (0, 1, 2, …): swapping raw
+// sort values is a no-op when two items tie (the common case, since the form defaults sort to 0).
 async function movePlacement(group, index, dir) {
-  const other = group[index + dir];
-  if (!other) return;
-  const a = group[index], b = other;
+  const j = index + dir;
+  if (j < 0 || j >= group.length) return;
+  const reordered = group.slice();
+  [reordered[index], reordered[j]] = [reordered[j], reordered[index]];
   try {
-    await Promise.all([
-      api("PUT", `/api/placements/${a._id}`, { sort: b.sort }),
-      api("PUT", `/api/placements/${b._id}`, { sort: a.sort }),
-    ]);
+    // Sequential, not Promise.all: only ever a couple of requests, and it keeps the writes simple.
+    for (const [i, p] of reordered.entries()) {
+      if (p.sort !== i) await api("PUT", `/api/placements/${p._id}`, { sort: i });
+    }
     await loadPlacements();
   } catch (err) { alert(err.message); }
 }
@@ -324,7 +342,7 @@ async function deleteCoupon(c) {
 }
 
 function couponRow(c) {
-  const toggle = el("input", { type: "checkbox", checked: c.active });
+  const toggle = el("input", { type: "checkbox", checked: c.active, ariaLabel: `تفعيل الكود ${c.code}` });
   toggle.addEventListener("change", () => toggleCouponActive(c));
   const editBtn = el("button", { type: "button", className: "btn btn-secondary btn-sm", textContent: "تعديل" });
   editBtn.addEventListener("click", () => openCouponModal(c));

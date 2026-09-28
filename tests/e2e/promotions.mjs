@@ -229,6 +229,35 @@ export async function registerPromotionScenarios({ scenario, openPage, check, ba
       await storePage2.waitForLoadState("networkidle");
       assert.equal(await storePage2.locator("[data-announce]").count(), 0, "an inactive announcement must not render");
       await storePage2.close();
+
+      // --- Reorder: two announcements tie on sort (the form defaults it to 0), the classic case
+      // where swapping raw sort values is a no-op. Pressing ↓ on the first must still swap them.
+      const addAnnouncement = async (title) => {
+        await page.click("#addPlacementBtn");
+        await page.selectOption("#pf-slot", "announcement");
+        await page.fill("#pf-title", title);
+        const created = page.waitForResponse((r) => r.url().endsWith("/api/placements") && r.request().method() === "POST");
+        await page.click("#placementSave");
+        assert.equal((await created).status(), 201);
+        await page.locator("#placementModal.open").waitFor({ state: "hidden" });
+      };
+      await addAnnouncement("إعلان ترتيب أ");
+      await addAnnouncement("إعلان ترتيب ب");
+
+      const announceGroup = page.locator(".promo-group", { has: page.locator("h3", { hasText: "الشريط الإعلاني" }) });
+      const orderedTitles = async () => (await announceGroup.locator(".promo-title").allInnerTexts())
+        .filter((t) => t.includes("إعلان ترتيب"));
+      assert.deepEqual(await orderedTitles(), ["إعلان ترتيب أ", "إعلان ترتيب ب"]);
+
+      await page.getByRole("button", { name: "خفض إعلان ترتيب أ" }).click();
+      await announceGroup.locator(".promo-title").first().waitFor(); // list re-rendered after the reload
+      await page.waitForFunction((expected) => {
+        const titles = [...document.querySelectorAll(".promo-title")].map((el) => el.textContent);
+        const filtered = titles.filter((t) => t.includes("إعلان ترتيب"));
+        return JSON.stringify(filtered) === JSON.stringify(expected);
+      }, ["إعلان ترتيب ب", "إعلان ترتيب أ"]);
+      assert.deepEqual(await orderedTitles(), ["إعلان ترتيب ب", "إعلان ترتيب أ"]);
+
       check(page); // the happy path so far: no console/CSP noise. Below, every step deliberately
       // triggers a 400/409 to check the error UI — Edge itself logs those failed fetches to the
       // console (see admin-online.mjs's "Settings round trip"), so check(page) isn't called again.

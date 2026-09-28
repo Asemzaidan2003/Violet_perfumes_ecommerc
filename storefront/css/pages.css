@@ -175,7 +175,8 @@
 .co-coupon-row .btn { min-height: 44px; padding-inline: var(--s-16); }
 .co-coupon-msg { min-height: 1.2em; font-size: var(--fs-14); color: var(--text-muted); }
 .co-coupon-msg:not(:empty) { color: var(--gold-strong); }
-.co-coupon-remove { min-height: 32px; font-size: var(--fs-14); }
+.co-coupon-msg.is-error { color: var(--danger); }
+.co-coupon-remove { min-height: 44px; font-size: var(--fs-14); }
 .co-coupon-remove .icon { width: 16px; height: 16px; }
 .co-form { display: grid; gap: var(--s-16); min-width: 0; }
 .co-fields { display: grid; gap: var(--s-16); min-width: 0; margin: 0; padding: 0; border: 0; }

@@ -10,3 +10,8 @@ export function loadCatalog() {
   pending.catch(() => { pending = null; });
   return pending;
 }
+
+// Forces the next loadCatalog() to fetch fresh (e.g. checkout.js re-pricing after an offer ends).
+export function resetCatalog() {
+  pending = null;
+}

@@ -238,6 +238,77 @@ export async function registerCheckoutScenarios({ scenario, openPage, check, bas
         await Coupon.deleteOne({ _id: coupon._id });
       }
     });
+
+    // I1: a non-coupon 400 at order time (e.g. a stock/validation failure inside the order
+    // transaction) must show in the normal form banner and keep the applied coupon — only a
+    // response flagged field:"coupon" drops it.
+    await scenario("Coupon: a non-coupon 400 at order time keeps the coupon", async () => {
+      const coupon = await Coupon.create({ code: "KEEP10", type: "percent", value: 10, active: true });
+      try {
+        const page = await shopPage(VIEWPORTS[1]);
+        await page.goto(`${baseUrl}/`);
+        await page.evaluate((id) => localStorage.setItem("nsamat_cart_v1", JSON.stringify([{ id, size: "30", qty: 1 }])), pid);
+        await page.goto(`${baseUrl}/checkout`);
+        await page.locator("[data-co-total-foot]", { hasText: "27.00 د.أ" }).waitFor();
+        await page.locator("[data-co-details] summary").click(); // open the order summary (mobile: collapsed by default)
+        await page.locator("[data-co-coupon] summary").click();
+        await page.fill("#co-coupon-code", "KEEP10");
+        await page.click("[data-co-coupon-apply]");
+        await page.locator("[data-co-discount-row]:not([hidden])").waitFor();
+
+        await fillCheckout(page, `زبون خطأ عام ${Date.now()}`);
+        await page.route(`**${ORDERS_API}`, (r) => r.fulfill({
+          status: 400, contentType: "application/json",
+          body: JSON.stringify({ success: false, message: "تعذّر إتمام الطلب لسبب آخر" }),
+        }), { times: 1 });
+        await page.locator("[data-co-send]").click();
+        await page.locator("[data-co-error]:not([hidden])", { hasText: "تعذّر إتمام الطلب لسبب آخر" }).waitFor();
+
+        // the coupon stays applied — no fallback to the generic invalid-code message, no removal.
+        assert.equal(await page.locator("[data-co-discount-row]:not([hidden])").count(), 1);
+        assert.equal(await page.locator("[data-co-coupon-remove]").isHidden(), false);
+        assert.equal(await page.inputValue("#co-coupon-code"), "KEEP10");
+
+        await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
+        // Edge logs a "Failed to load resource" console error for the intercepted 400 (see the
+        // same filter in "Double submit" above).
+        page.errors.splice(0, Infinity, ...page.errors.filter((e) => !/Failed to load resource/.test(e)));
+        check(page);
+      } finally {
+        await Coupon.deleteOne({ _id: coupon._id });
+      }
+    });
+
+    // I2: editing the cart re-checks the coupon against the *new* subtotal, not the stale one.
+    await scenario("Coupon re-check follows a cart edit", async () => {
+      const coupon = await Coupon.create({ code: "EDIT20", type: "percent", value: 20, active: true });
+      try {
+        const page = await shopPage(VIEWPORTS[1]);
+        await page.goto(`${baseUrl}/`);
+        await page.evaluate((id) => localStorage.setItem("nsamat_cart_v1", JSON.stringify([{ id, size: "30", qty: 1 }])), pid);
+        await page.goto(`${baseUrl}/checkout`);
+        await page.locator("[data-co-total-foot]", { hasText: "27.00 د.أ" }).waitFor();
+        await page.locator("[data-co-details] summary").click();
+        await page.locator("[data-co-coupon] summary").click();
+        await page.fill("#co-coupon-code", "EDIT20");
+        await page.click("[data-co-coupon-apply]");
+        await page.locator("[data-co-discount-row]:not([hidden])").waitFor();
+        assert.equal(await text(page, "[data-co-discount]"), "−5.00 د.أ"); // 20% of 25
+
+        // A cart edit elsewhere (drawer/another tab) fires cart:change / storage; the discount
+        // must follow the new subtotal, not the one it was applied against.
+        await page.evaluate((id) => {
+          localStorage.setItem("nsamat_cart_v1", JSON.stringify([{ id, size: "30", qty: 2 }]));
+          dispatchEvent(new Event("cart:change"));
+        }, pid);
+        await page.locator("[data-co-discount]", { hasText: "−10.00 د.أ" }).waitFor(); // 20% of 50
+
+        await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
+        check(page);
+      } finally {
+        await Coupon.deleteOne({ _id: coupon._id });
+      }
+    });
   } finally {
     await saveSettings(previous);
   }

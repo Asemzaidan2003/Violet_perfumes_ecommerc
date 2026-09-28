@@ -9,7 +9,11 @@ export function errorHandler(err, req, res, next) {
     return send(400, Object.values(err.errors).map((e) => e.message).join(", "));
   }
   if (err.code === 11000) return send(409, "Duplicate value");
-  if (err.status >= 400 && err.status < 500) return send(err.status, err.expose ? err.message : "Bad request");
+  if (err.status >= 400 && err.status < 500) {
+    const body = { success: false, message: err.expose ? err.message : "Bad request" };
+    if (err.expose && err.field) body.field = err.field;
+    return res.status(err.status).json(body);
+  }
   console.error(err);
   send(500, "Server error");
 }
