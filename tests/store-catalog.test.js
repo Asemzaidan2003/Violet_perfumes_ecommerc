@@ -178,5 +178,6 @@ test("PUT /api/settings then GET round-trips valid values", async () => {
   assert.deepEqual(getBody.data, {
     whatsapp: "962791234567", instagram: "https://instagram.com/nsamat",
     delivery_fee: 2, free_delivery_over: 50,
+    theme: { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37" },
   });
 });

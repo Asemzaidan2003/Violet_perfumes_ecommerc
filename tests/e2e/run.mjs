@@ -26,6 +26,7 @@ import { registerCheckoutScenarios } from "./checkout.mjs";
 import { registerPromotionScenarios } from "./promotions.mjs";
 import { registerFxScenarios } from "./fx.mjs";
 import { registerProductVisibilityScenarios } from "./product-visibility.mjs";
+import { registerColorScenarios } from "./colors.mjs";
 
 process.env.SESSION_SECRET ||= "e2e-secret-".padEnd(48, "x");
 
@@ -485,9 +486,11 @@ async function run() {
 
   await registerProductVisibilityScenarios({ scenario, openPage, check, baseUrl });
 
+  await registerColorScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
   // Task 1 (immersive layer: capability gate, reveals, view transitions) — see fx.mjs.
   // Runs last: use3d() swaps the shared browser context to a fresh one with no admin login.
   await registerFxScenarios({ scenario, openPage, use3d, check, baseUrl, productId: String(ysl._id) });
+
 }
 
 try {
