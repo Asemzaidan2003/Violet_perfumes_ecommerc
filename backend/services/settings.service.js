@@ -1,11 +1,19 @@
 import Setting from "../models/setting.model.js";
+import { fail } from "../utils/fail.js";
+import { DEFAULT_THEME, validateContrast } from "../store/theme.js";
 
-const DEFAULTS = { whatsapp: "", instagram: "", delivery_fee: 0, free_delivery_over: 0 };
+const DEFAULTS = { whatsapp: "", instagram: "", delivery_fee: 0, free_delivery_over: 0, theme: {} };
 const KEYS = Object.keys(DEFAULTS);
 
 const pick = (doc) => {
-  const out = { ...DEFAULTS };
-  if (doc) for (const k of KEYS) if (doc[k] !== undefined) out[k] = doc[k];
+  const out = { ...DEFAULTS, theme: { ...DEFAULT_THEME } };
+  if (doc) {
+    for (const k of KEYS) {
+      if (k === "theme") continue;
+      if (doc[k] !== undefined) out[k] = doc[k];
+    }
+    if (doc.theme) for (const k of Object.keys(DEFAULT_THEME)) if (doc.theme[k]) out.theme[k] = doc.theme[k];
+  }
   return out;
 };
 
@@ -26,7 +34,23 @@ export function getCachedSettings() {
 
 export async function saveSettings(patch = {}) {
   const set = {};
-  for (const k of KEYS) if (patch[k] !== undefined) set[k] = patch[k];
+  for (const k of KEYS) {
+    if (k === "theme") continue;
+    if (patch[k] !== undefined) set[k] = patch[k];
+  }
+
+  if (patch.theme !== undefined) {
+    const current = pick(await Setting.findById("shop").lean()).theme;
+    const merged = { ...current };
+    for (const k of Object.keys(DEFAULT_THEME)) {
+      const v = patch.theme[k];
+      if (v !== undefined && v !== "") merged[k] = v;
+    }
+    const failures = validateContrast(merged);
+    if (failures.length) throw fail(400, `تباين الألوان غير كافٍ: ${failures.join("، ")}`);
+    set.theme = merged;
+  }
+
   const doc = await Setting.findByIdAndUpdate(
     "shop",
     { $set: set },

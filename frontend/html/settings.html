@@ -40,6 +40,39 @@
         </div>
       </div>
 
+      <h3>ألوان المتجر</h3>
+      <div class="field-row">
+        <div class="field">
+          <label for="theme_bg">لون الخلفية</label>
+          <input type="color" id="theme_bg" name="theme_bg" />
+        </div>
+        <div class="field">
+          <label for="theme_surface">لون السطح</label>
+          <input type="color" id="theme_surface" name="theme_surface" />
+        </div>
+        <div class="field">
+          <label for="theme_text">لون النص</label>
+          <input type="color" id="theme_text" name="theme_text" />
+        </div>
+        <div class="field">
+          <label for="theme_accent">لون التمييز</label>
+          <input type="color" id="theme_accent" name="theme_accent" />
+        </div>
+      </div>
+
+      <div id="themePreview" class="theme-preview" style="padding:16px;border-radius:8px">
+        <p id="previewText" style="margin:0 0 8px">نص على الخلفية <span id="ratioBg"></span></p>
+        <div id="previewSurface" style="padding:12px;border-radius:6px;margin-bottom:8px">
+          <span id="previewSurfaceText">نص على السطح <span id="ratioSurface"></span></span>
+        </div>
+        <button type="button" id="previewAccentBtn" style="border:0;padding:8px 16px;border-radius:6px">زر بلون التمييز <span id="ratioAccent"></span></button>
+      </div>
+      <p id="themeWarning" role="alert" hidden></p>
+
+      <div class="form-actions">
+        <button type="button" class="btn" id="resetThemeBtn">استعادة الألوان الافتراضية</button>
+      </div>
+
       <p id="error" role="alert" hidden></p>
       <p id="success" role="status" hidden></p>
 
@@ -54,6 +87,62 @@
     const errorEl = document.getElementById("error");
     const successEl = document.getElementById("success");
     const saveBtn = document.getElementById("saveBtn");
+    const warningEl = document.getElementById("themeWarning");
+
+    const DEFAULT_THEME = { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37" };
+    const themeInputs = { bg: form.theme_bg, surface: form.theme_surface, text: form.theme_text, accent: form.theme_accent };
+
+    // Same WCAG relative-luminance/contrast math as backend/store/theme.js, duplicated here so the
+    // preview and the save-blocking check work without shipping a bundler for one small function.
+    function contrast(hexA, hexB) {
+      const lum = (hex) => {
+        const n = parseInt(hex.slice(1), 16);
+        const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+          const v = c / 255;
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const [L1, L2] = [lum(hexA), lum(hexB)].sort((a, b) => b - a);
+      return (L1 + 0.05) / (L2 + 0.05);
+    }
+
+    function currentTheme() {
+      return { bg: themeInputs.bg.value, surface: themeInputs.surface.value, text: themeInputs.text.value, accent: themeInputs.accent.value };
+    }
+
+    function updatePreview() {
+      const t = currentTheme();
+      const r = { text_bg: contrast(t.text, t.bg), text_surface: contrast(t.text, t.surface), accent_bg: contrast(t.accent, t.bg) };
+      document.getElementById("themePreview").style.background = t.bg;
+      document.getElementById("themePreview").style.color = t.text;
+      document.getElementById("previewSurface").style.background = t.surface;
+      document.getElementById("previewAccentBtn").style.background = t.accent;
+      document.getElementById("previewAccentBtn").style.color = t.text;
+      document.getElementById("ratioBg").textContent = `(${r.text_bg.toFixed(1)}:1)`;
+      document.getElementById("ratioSurface").textContent = `(${r.text_surface.toFixed(1)}:1)`;
+      document.getElementById("ratioAccent").textContent = `(${r.accent_bg.toFixed(1)}:1)`;
+
+      const failures = [];
+      if (r.text_bg < 4.5) failures.push("النص على الخلفية");
+      if (r.text_surface < 4.5) failures.push("النص على السطح");
+      if (r.accent_bg < 3) failures.push("لون التمييز على الخلفية");
+      if (failures.length) {
+        warningEl.textContent = `تباين الألوان غير كافٍ: ${failures.join("، ")}`;
+        warningEl.hidden = false;
+      } else {
+        warningEl.hidden = true;
+      }
+      return failures;
+    }
+
+    Object.values(themeInputs).forEach((input) => input.addEventListener("input", updatePreview));
+
+    document.getElementById("resetThemeBtn").addEventListener("click", async () => {
+      for (const k of Object.keys(DEFAULT_THEME)) themeInputs[k].value = DEFAULT_THEME[k];
+      updatePreview();
+      await saveTheme();
+    });
 
     // The form stays disabled until the current settings actually load — saving before that
     // would silently overwrite fields the admin never saw with client-side defaults (0/"").
@@ -66,6 +155,9 @@
         form.instagram.value = data.instagram || "";
         form.delivery_fee.value = data.delivery_fee ?? 0;
         form.free_delivery_over.value = data.free_delivery_over ?? 0;
+        const theme = { ...DEFAULT_THEME, ...(data.theme || {}) };
+        for (const k of Object.keys(DEFAULT_THEME)) themeInputs[k].value = theme[k];
+        updatePreview();
         saveBtn.disabled = false;
       } catch (err) {
         console.error("Error loading settings:", err);
@@ -74,16 +166,42 @@
       }
     }
 
+    async function saveTheme() {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: currentTheme() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      errorEl.hidden = true;
+      successEl.hidden = true;
+      if (!res.ok) {
+        errorEl.textContent = data.message || "تعذر حفظ الإعدادات";
+        errorEl.hidden = false;
+        return false;
+      }
+      successEl.textContent = "تم حفظ الإعدادات ✓";
+      successEl.hidden = false;
+      return true;
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       errorEl.hidden = true;
       successEl.hidden = true;
+
+      if (updatePreview().length) {
+        errorEl.textContent = "تباين الألوان غير كافٍ — عدّل الألوان قبل الحفظ";
+        errorEl.hidden = false;
+        return;
+      }
 
       const body = {
         whatsapp: form.whatsapp.value.trim(),
         instagram: form.instagram.value.trim(),
         delivery_fee: Number(form.delivery_fee.value),
         free_delivery_over: Number(form.free_delivery_over.value),
+        theme: currentTheme(),
       };
 
       const res = await fetch("/api/settings", {

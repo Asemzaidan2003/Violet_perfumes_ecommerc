@@ -5,6 +5,19 @@ import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { num } from "../../../storefront/js/shared/format.js";
 import { asset } from "../assets.js";
 import { IMPORT_MAP_JSON } from "../importmap.js";
+import { deriveTheme, DEFAULT_THEME, HEX_RE } from "../theme.js";
+
+// Only fixed token names and pre-validated hex values ever reach this string — never user text.
+function themeStyle(theme = {}) {
+  const picked = { ...DEFAULT_THEME, ...theme };
+  if (Object.entries(DEFAULT_THEME).every(([k, v]) => picked[k] === v)) return "";
+  const tokens = deriveTheme(picked);
+  const css = Object.entries(tokens)
+    .filter(([, v]) => HEX_RE.test(v))
+    .map(([name, v]) => `--${name}:${v}`)
+    .join(";");
+  return html`<style id="theme">:root{${raw(css)}}</style>`;
+}
 
 const LOGO = asset("img/logo.svg");
 
@@ -210,12 +223,13 @@ ${canonicalPath != null ? html`<link rel="canonical" href="${abs(canonicalPath)}
 <meta property="og:locale" content="ar_JO">
 <meta property="og:title" content="${title}">
 ${ogImage ? html`<meta property="og:image" content="${abs(ogImage)}">` : ""}
-<meta name="theme-color" content="#0E0C0A">
+<meta name="theme-color" content="${settings.theme?.bg || DEFAULT_THEME.bg}">
 <link rel="icon" href="${LOGO}" type="image/svg+xml">
 <link rel="preload" href="/vendor/fonts/plex-arabic/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/store.css?v=${assetV}">
 <link rel="stylesheet" href="/assets/css/fx.css?v=${assetV}">
 ${styles.map((f) => html`<link rel="stylesheet" href="/assets/css/${f}?v=${assetV}">`)}
+${themeStyle(settings.theme)}
 <script type="module" src="/assets/js/fx.js?v=${assetV}"></script>
 <script type="module" src="/assets/js/store.js?v=${assetV}"></script>
 <script type="module" src="/assets/js/search.js?v=${assetV}"></script>
