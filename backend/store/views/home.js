@@ -46,7 +46,7 @@ function hero(placements) {
         <a class="btn btn-secondary" href="/c/women">تسوّق النسائي</a>
       </div>
     </div>
-    <div class="hero-display">${HERO_ART}</div>
+    <div class="hero-display" data-hero3d-slot>${HERO_ART}<canvas class="hero3d-canvas" role="img" aria-label="عرض ثلاثي الأبعاد لزجاجة نسمات" hidden></canvas></div>
   </div>`;
   const { slider, body } = heroSlider(brand, placements);
   return html`<section class="hero${slider ? " is-slider" : ""}" aria-labelledby="hero-title"${slider ? html` aria-roledescription="عرض شرائح" data-hero-slider` : ""}>

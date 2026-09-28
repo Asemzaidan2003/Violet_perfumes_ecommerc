@@ -13,6 +13,23 @@ export const homeHero3d = rich3d && matchMedia("(pointer: fine) and (min-width: 
 
 if (motion) document.documentElement.classList.add("fx-motion");
 
+// Desktop home hero 3D: loaded at idle time (never render-blocking, never on mobile/no-WebGL2/
+// reduced-motion), only when the page actually has the hero slot.
+if (homeHero3d) {
+  const slot = document.querySelector("[data-hero3d-slot]");
+  if (slot) {
+    const load = () => import("./hero3d.js").then((m) => m.startHero3d(slot));
+    // A floor delay, not just an idle callback: the first WebGL frame is a single synchronous
+    // call the browser can't chunk, so it must never land inside the "doors of light" entrance's
+    // own 800ms window (or any other just-landed interaction) — idle-callback alone only promises
+    // "no other script is scheduled", not "nothing time-sensitive is mid-animation".
+    const idle = () => new Promise((resolve) => (
+      "requestIdleCallback" in window ? requestIdleCallback(resolve, { timeout: 2000 }) : setTimeout(resolve, 2000)
+    ));
+    setTimeout(() => idle().then(load), 1000);
+  }
+}
+
 // Scroll reveals: CSS drives them under @supports (animation-timeline: view()); everywhere else
 // (older Safari/Firefox) an IntersectionObserver toggles .is-in once, to the same end state.
 if (motion && !CSS.supports("animation-timeline", "view()")) {

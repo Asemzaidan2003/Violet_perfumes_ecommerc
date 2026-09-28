@@ -71,6 +71,8 @@ function initHero(hero) {
       s.inert = i !== current; // off-screen slides are neither focusable nor read out
     });
     dots.forEach((d, i) => (i === current ? d.setAttribute("aria-current", "true") : d.removeAttribute("aria-current")));
+    // hero3d.js (Task 4) listens for this to pause the 3D bottle when the brand slide isn't active.
+    hero.dispatchEvent(new CustomEvent("hero:change", { detail: { index: current, active: slides[current] } }));
   };
   const play = autoplay(hero, SLIDE_MS, () => show(current + 1));
   const go = (n) => { show(n); play.restart(); };

@@ -140,7 +140,7 @@
   aspect-ratio: 4 / 5;
   border-radius: var(--radius-lg, 12px);
   overflow: hidden;
-  background: var(--surface-2, #f4efe6);
+  background: radial-gradient(120% 100% at 50% 20%, #2a2418 0%, #14120d 70%, #0b0a07 100%);
 }
 .viewer360-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .viewer360-reset,
@@ -152,3 +152,17 @@
 }
 .viewer360-reset { inset-inline-start: .5rem; }
 .viewer360-close { inset-inline-end: .5rem; }
+
+/* ---------- Home hero 3D bottle (desktop only, Task 4) ----------
+   Absolutely positioned over the static SVG (the LCP-safe fallback, which stays underneath and
+   visible until the canvas has painted its first frame — see hero3d.js). */
+[data-hero3d-slot] { position: relative; }
+.hero3d-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity .5s var(--ease-out, ease);
+}
+.hero3d-canvas.is-in { opacity: 1; }

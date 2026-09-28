@@ -2,7 +2,7 @@
 // (product.js) — this file, and `three` itself, are never requested before that click.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { createBottle, createStage } from "./bottle3d.js";
+import { createBottle, createStage, frameCameraToObject } from "./bottle3d.js";
 
 // openViewer360(galleryEl, { tint, label }) → { close() }
 export async function openViewer360(galleryEl, { tint = "#D4AF37", label = "نسمات" } = {}) {
@@ -37,17 +37,11 @@ export async function openViewer360(galleryEl, { tint = "#D4AF37", label = "نس
   const stage = createStage(THREE, canvas);
   const bottle = await createBottle(THREE, { tint, label });
   stage.scene.add(bottle);
-  const light = new THREE.DirectionalLight(0xffffff, 1.1);
-  light.position.set(2, 4, 3);
-  stage.scene.add(light, new THREE.AmbientLight(0xffffff, 0.3));
-
-  const controls = new OrbitControls(stage.camera, canvas);
-  controls.enableZoom = false;
-  controls.enablePan = false;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 2.2;
-  controls.target.set(0, 1.1, 0);
-  controls.update();
+  const key = new THREE.DirectionalLight(0xfff4e0, 1.2);
+  key.position.set(2, 4, 3);
+  const rim = new THREE.DirectionalLight(0xd4af37, 0.9);
+  rim.position.set(-3, 2, -2);
+  stage.scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.25));
 
   function resize() {
     const rect = wrap.getBoundingClientRect();
@@ -59,6 +53,17 @@ export async function openViewer360(galleryEl, { tint = "#D4AF37", label = "نس
   }
   resize();
   addEventListener("resize", resize);
+
+  const center = frameCameraToObject(THREE, stage.camera, bottle, 1.2);
+
+  const controls = new OrbitControls(stage.camera, canvas);
+  controls.enableZoom = false;
+  controls.enablePan = false;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 2.2;
+  controls.target.copy(center);
+  controls.update();
+  controls.saveState();
 
   await stage.renderer.compileAsync(stage.scene, stage.camera);
 
@@ -78,7 +83,6 @@ export async function openViewer360(galleryEl, { tint = "#D4AF37", label = "نس
 
   function onReset() {
     controls.reset();
-    controls.target.set(0, 1.1, 0);
     controls.autoRotate = true;
     controls.update();
   }

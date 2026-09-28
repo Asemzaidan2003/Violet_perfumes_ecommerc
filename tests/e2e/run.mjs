@@ -38,11 +38,18 @@ const dbName = `nsamat_e2e_${process.pid}`;
 const uri = `mongodb://127.0.0.1:27017/${dbName}?replicaSet=rs0`;
 const pngPath = path.join(os.tmpdir(), `nsamat-e2e-${process.pid}.png`);
 
-let server, browser, context, mobileContext;
+let server, browser, browser3d, context, mobileContext;
+const MOBILE = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true };
+async function use3d() {
+  browser3d = await chromium.launch({ channel: "msedge", headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+  [context, mobileContext] = [await browser3d.newContext(), await browser3d.newContext(MOBILE)];
+}
 const results = [];
+let openPages = [];
 
 async function openPage({ mobile = false } = {}) {
   const page = await (mobile ? mobileContext : context).newPage();
+  openPages.push(page);
   const errors = [];
   page.on("console", (msg) => {
     if (msg.type() !== "error" && !msg.text().includes("Content Security Policy")) return;
@@ -104,6 +111,11 @@ async function scenario(name, fn) {
     console.log(`FAIL: ${name}`);
     console.log(err?.stack || err);
     results.push({ name, ok: false });
+  } finally {
+    // Close a scenario's pages so their rAF loops (hero 3D) don't keep running.
+    const pages = openPages;
+    openPages = [];
+    await Promise.all(pages.map((p) => p.close().catch(() => {})));
   }
 }
 
@@ -131,7 +143,8 @@ async function run() {
 
   await fs.writeFile(pngPath, Buffer.from(PNG_BASE64, "base64"));
 
-  browser = await chromium.launch({ channel: "msedge", headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+  // No WebGL2 here; 3D scenarios switch via use3d() (SwiftShader would starve unrelated pages).
+  browser = await chromium.launch({ channel: "msedge", headless: true });
   context = await browser.newContext();
   mobileContext = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
   await installFetchCapture(context);
@@ -470,7 +483,7 @@ async function run() {
   });
 
   // Task 1 (immersive layer: capability gate, reveals, view transitions) — see fx.mjs.
-  await registerFxScenarios({ scenario, openPage, check, baseUrl, productId: String(ysl._id) });
+  await registerFxScenarios({ scenario, openPage, use3d, check, baseUrl, productId: String(ysl._id) });
 }
 
 try {
@@ -478,6 +491,7 @@ try {
 } finally {
   await fs.rm(pngPath, { force: true }).catch(() => {});
   await browser?.close().catch(() => {});
+  await browser3d?.close().catch(() => {});
   await mongoose.connection.dropDatabase().catch(() => {});
   await mongoose.disconnect().catch(() => {});
   await new Promise((r) => (server ? server.close(r) : r()));

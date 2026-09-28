@@ -13,15 +13,36 @@ export async function createBottle(THREE, { tint = "#D4AF37", label = "نسما�
   ].map(([x, y]) => new THREE.Vector2(x, y));
   const glass = new THREE.Mesh(
     new THREE.LatheGeometry(profile, 48),
-    new THREE.MeshPhysicalMaterial({ transmission: 1, roughness: 0.05, ior: 1.5, thickness: 0.5, color: 0xffffff, clearcoat: 0.2 })
+    new THREE.MeshPhysicalMaterial({
+      transmission: 1,
+      roughness: 0.05,
+      ior: 1.5,
+      thickness: 0.4,
+      color: 0xffffff,
+      opacity: 0.35,
+      transparent: true,
+      attenuationColor: new THREE.Color(0xd9b45e),
+      attenuationDistance: 1.2,
+      clearcoat: 1,
+      clearcoatRoughness: 0.08,
+      envMapIntensity: 1.4,
+    })
   );
   group.add(glass);
 
-  // Inner liquid, slightly narrower than the glass, tinted with the product's family swatch.
-  const liquidProfile = profile.slice(0, 4).map((p) => new THREE.Vector2(p.x * 0.88, p.y));
+  // Inner liquid — visibly gold-amber, smaller than the glass so it reads as contents, not the vessel.
+  const liquidProfile = profile.slice(0, 4).map((p) => new THREE.Vector2(p.x * 0.8, p.y * 0.92));
   const liquid = new THREE.Mesh(
     new THREE.LatheGeometry(liquidProfile, 48),
-    new THREE.MeshPhysicalMaterial({ color: new THREE.Color(tint), transmission: 0.6, roughness: 0.2, ior: 1.33 })
+    new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(tint),
+      transmission: 0.4,
+      roughness: 0.15,
+      ior: 1.33,
+      attenuationColor: new THREE.Color(tint),
+      attenuationDistance: 0.6,
+      envMapIntensity: 1.2,
+    })
   );
   group.add(liquid);
 
@@ -56,6 +77,26 @@ export async function createBottle(THREE, { tint = "#D4AF37", label = "نسما�
   return group;
 }
 
+// frameCameraToObject(THREE, camera, object, marginFactor) — fits the camera distance to the
+// object's bounding box for the camera's fov/aspect, with a margin, and centres the camera on it.
+// Returns the box centre (useful as an OrbitControls target).
+export function frameCameraToObject(THREE, camera, object, marginFactor = 1.2) {
+  const box = new THREE.Box3().setFromObject(object);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const fovV = camera.fov * (Math.PI / 180);
+  const distV = (size.y / 2) / Math.tan(fovV / 2);
+  const fovH = 2 * Math.atan(Math.tan(fovV / 2) * (camera.aspect || 1));
+  const distH = (size.x / 2) / Math.tan(fovH / 2);
+  const distance = Math.max(distV, distH) * marginFactor;
+  camera.position.set(center.x, center.y, center.z + distance);
+  camera.near = Math.max(0.01, distance / 100);
+  camera.far = distance * 100;
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  return center;
+}
+
 // createStage(THREE, canvas) → { renderer, scene, camera, render(), dispose() }
 // The caller drives its own requestAnimationFrame loop and calls render() each tick; render()
 // self-guards: it no-ops off-screen, on a hidden tab, or once the running average frame time
@@ -65,6 +106,9 @@ export function createStage(THREE, canvas) {
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
   camera.position.set(0, 1.1, 5);
@@ -80,16 +124,24 @@ export function createStage(THREE, canvas) {
 
   let stalled = false;
   let lastTime = null;
+  let badStreak = 0;
   const frameTimes = [];
 
   function render() {
     if (stalled || document.hidden || !visible) return;
     const now = performance.now();
     if (lastTime != null) {
-      frameTimes.push(now - lastTime);
+      const dt = now - lastTime;
+      frameTimes.push(dt);
       if (frameTimes.length > 40) frameTimes.shift();
       const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
       if (frameTimes.length >= 20 && avg > 50) { stalled = true; return; } // keep the last painted frame
+      // A pathologically slow single frame (e.g. a software/CPU rasterizer with no real GPU) would
+      // otherwise take ~2s of consecutive bad frames before the rolling average above reacts —
+      // three such frames in a row is enough to stop immediately instead of grinding the main
+      // thread further.
+      badStreak = dt > 500 ? badStreak + 1 : 0;
+      if (badStreak >= 3) { stalled = true; return; }
     }
     lastTime = now;
     renderer.render(scene, camera);
