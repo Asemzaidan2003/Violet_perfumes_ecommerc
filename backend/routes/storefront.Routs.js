@@ -14,6 +14,7 @@ import { notFound, serverError } from "../store/views/errors.js";
 import { checkout, cartPage } from "../store/views/checkout.js";
 import { orderConfirmation } from "../store/views/order.js";
 import { getOrderByRef, publicOrder } from "../services/order.service.js";
+import { esc } from "../store/html.js";
 
 const router = express.Router();
 
@@ -183,6 +184,25 @@ router.get("/", async (req, res) => {
     families: familyCounts(products),
     body: home({ products, settings }),
   });
+});
+
+router.get("/robots.txt", (req, res) => {
+  const base = siteBase(origin(req));
+  res.type("text/plain").send(["User-agent: *", ...["/admin", "/api", "/checkout", "/cart", "/order"].map((p) => `Disallow: ${p}`),
+    "", `Sitemap: ${base}/sitemap.xml`, ""].join("\n"));
+});
+
+// Every indexable page: home, aisles and visible (non-discontinued) products. /search is noindex.
+router.get("/sitemap.xml", async (req, res) => {
+  const base = esc(siteBase(origin(req)));
+  const { products } = await getCatalog();
+  const paths = ["/", ...CATEGORIES.map((c) => `/c/${c.slug}`), ...FAMILY_KEYS.map((k) => `/family/${k}`),
+    "/offers", "/new", "/best-sellers", ...products.map((p) => `/p/${p.id}`)];
+  res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${paths.map((p) => `<url><loc>${base}${p}</loc></url>`).join("\n")}
+</urlset>
+`);
 });
 
 // Catch-all (Express 5 rejects "*" paths). No DB work: bots probing random URLs stay cheap.

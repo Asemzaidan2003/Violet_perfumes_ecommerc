@@ -378,3 +378,24 @@ test("priceCart: vanished lines are excluded; free delivery at or above the thre
   assert.equal(priceCart(lines, catalog, { delivery_fee: 2, free_delivery_over: 0 }).delivery, 2, "0 turns free delivery off");
   assert.equal(priceCart([{ id: "a", size: "30", qty: 99 }], catalog).rows[0].qty, 20, "quantities are clamped to 20");
 });
+
+test("robots.txt keeps crawlers out of admin, api, checkout and orders, and points at the sitemap", async () => {
+  const res = await fetch(`${t.url}/robots.txt`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /text\/plain/);
+  const body = await res.text();
+  for (const p of ["/admin", "/api", "/checkout", "/cart", "/order"]) assert.match(body, new RegExp(`^Disallow: ${p}$`, "m"));
+  assert.match(body, new RegExp(`^Sitemap: ${t.url}/sitemap\.xml$`, "m"));
+});
+
+test("sitemap.xml lists aisles and visible products, never discontinued ones", async () => {
+  const res = await fetch(`${t.url}/sitemap.xml`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /application\/xml/);
+  const body = await res.text();
+  for (const p of ["/", "/c/men", "/c/car", "/family/oud", "/offers", "/new", "/best-sellers", `/p/${ids.amber}`, `/p/${ids.sandal}`]) {
+    assert.ok(body.includes(`<loc>${t.url}${p}</loc>`), `sitemap has ${p}`);
+  }
+  assert.ok(!body.includes(ids.gone), "discontinued product not listed");
+  assert.ok(!body.includes("/search") && !body.includes("/checkout"));
+});
