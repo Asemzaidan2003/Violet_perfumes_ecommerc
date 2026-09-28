@@ -1,12 +1,11 @@
 // Product page: size/price/stock state, quantity stepper, cart buttons, gallery thumbnails,
 // share, the "notify me" interest dialog and recently viewed. Entry module, no exports.
 // "أضف إلى السلة" opens the drawer (cart.js, via cart:open); "اطلب الآن" goes straight to checkout.
-import { add, announce } from "./shared/cart-store.js";
+import { add, announce, MAX_QTY } from "./shared/cart-store.js";
 import { money, sizeLabel } from "./shared/format.js";
 import { normalizePhone, isJordanMobile } from "./shared/phone.js";
 import { loadCatalog } from "./shared/catalog-client.js";
 
-const MAX_QTY = 20;
 const RECENT_KEY = "nsamat_recent_v1";
 const RECENT_MAX = 12;
 const PLACEHOLDER = "/assets/img/placeholder-bottle.svg" + new URL(import.meta.url).search;

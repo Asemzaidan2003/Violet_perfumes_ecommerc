@@ -139,6 +139,12 @@ export async function registerCheckoutScenarios({ scenario, openPage, check, bas
         await page.goto(`${baseUrl}/checkout`);
         assert.equal(await page.inputValue("#co-name"), buyer);
         assert.equal(await page.inputValue("#co-city"), "الزرقاء");
+
+        // Unchecking "تذكّر معلوماتي" clears the saved details right away, not only on next order.
+        assert.notEqual(await page.evaluate(() => localStorage.getItem("nsamat_customer_v1")), null);
+        await page.locator(".co-remember input").uncheck();
+        assert.equal(await page.evaluate(() => localStorage.getItem("nsamat_customer_v1")), null);
+
         await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
         check(page);
       }

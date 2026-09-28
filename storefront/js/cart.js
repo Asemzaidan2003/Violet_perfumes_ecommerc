@@ -1,7 +1,7 @@
 // Cart drawer (every page) and the card quick-add buttons. Entry module, no exports: the cart
 // itself lives in ./shared/cart-store.js. Lines are cloned from the layout's <template> and
 // filled with textContent; prices come from the public catalogue, never from localStorage.
-import { CART_KEY, readCart, cartCount, add, setQty, remove, priceCart, shopSettings, announce, MAX_QTY } from "./shared/cart-store.js";
+import { CART_KEY, readCart, add, setQty, remove, priceCart, shopSettings, announce, MAX_QTY, PRICE_NOTE_KEY } from "./shared/cart-store.js";
 import { loadCatalog } from "./shared/catalog-client.js";
 import { money, num, sizeLabel } from "./shared/format.js";
 
@@ -56,10 +56,9 @@ let renderId = 0;
 async function render() {
   const lines = readCart();
   const id = ++renderId;
-  const count = cartCount(lines);
-  $("[data-cart-heading]").textContent = count ? `(${num(count)})` : "";
   $("[data-cart-empty]").hidden = lines.length > 0;
   if (!lines.length) {
+    $("[data-cart-heading]").textContent = "";
     $("[data-cart-lines]").replaceChildren();
     $("[data-cart-foot]").hidden = true;
     $("[data-cart-status]").textContent = "";
@@ -86,6 +85,8 @@ async function render() {
     (btn && !btn.disabled ? btn : li?.querySelector("[data-cart-remove]"))?.focus();
   }
   $("[data-cart-status]").textContent = "";
+  const orderableCount = priced.rows.reduce((n, r) => n + (r.product ? r.qty : 0), 0);
+  $("[data-cart-heading]").textContent = orderableCount ? `(${num(orderableCount)})` : "";
   $("[data-cart-subtotal]").textContent = money(priced.subtotal);
   $("[data-cart-delivery]").textContent = priced.delivery ? money(priced.delivery) : "مجاني";
   $("[data-cart-total]").textContent = money(priced.total);
@@ -148,3 +149,15 @@ addEventListener("storage", (e) => { if (drawer.open && e.key === CART_KEY) rend
 document.addEventListener("pointerover", (e) => { if (e.target.closest?.("[data-open-cart]")) loadCatalog().catch(() => {}); });
 
 if (location.pathname === "/cart") open();
+
+// Confirmation page: checkout.js sets this flag when the server's total differed from the one
+// shown at checkout (e.g. a price changed mid-checkout). cart.js runs on every page, so it's the
+// one place that can read and clear it without a page-specific script.
+if (location.pathname.startsWith("/order/")) {
+  try {
+    if (sessionStorage.getItem(PRICE_NOTE_KEY)) {
+      sessionStorage.removeItem(PRICE_NOTE_KEY);
+      document.querySelector("[data-price-note]")?.removeAttribute("hidden");
+    }
+  } catch { /* storage blocked */ }
+}

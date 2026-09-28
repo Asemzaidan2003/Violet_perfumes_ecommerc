@@ -58,8 +58,8 @@ export function checkout() {
       <fieldset class="co-fields">
         <legend class="co-legend">معلومات التوصيل</legend>
         ${field({ id: "co-name", label: "الاسم", input: html`<input id="co-name" name="name" autocomplete="name" required minlength="2" maxlength="80" enterkeyhint="next" aria-describedby="co-name-err">` })}
-        ${field({ id: "co-phone", label: "رقم الهاتف", input: html`<input id="co-phone" name="phone" type="tel" inputmode="numeric" dir="ltr" autocomplete="tel" required placeholder="07XXXXXXXX" enterkeyhint="next" aria-describedby="co-phone-err">` })}
-        ${field({ id: "co-city", label: "المحافظة", input: html`<select id="co-city" name="city" required aria-describedby="co-city-err">
+        ${field({ id: "co-phone", label: "رقم الهاتف", input: html`<input id="co-phone" name="phone" type="tel" inputmode="tel" dir="ltr" autocomplete="tel" required placeholder="07XXXXXXXX" enterkeyhint="next" aria-describedby="co-phone-err">` })}
+        ${field({ id: "co-city", label: "المحافظة", input: html`<select id="co-city" name="city" required autocomplete="address-level1" aria-describedby="co-city-err">
           <option value="">اختر المحافظة</option>
           ${GOVERNORATES.map((g) => html`<option value="${g}">${g}</option>`)}
         </select>` })}

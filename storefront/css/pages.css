@@ -185,6 +185,11 @@
   background: var(--bg-glass); backdrop-filter: blur(12px); border-block-start: 1px solid var(--line); }
 .co-grand { display: flex; justify-content: space-between; gap: var(--s-12); font-weight: 600; }
 .co-grand bdi { color: var(--gold-strong); font-size: var(--fs-18); font-variant-numeric: tabular-nums; }
+/* Below 900px .co-bar is sticky (see .co-bar above); a field scrolled to on focus/validation must
+   not end up hidden behind it (WCAG 2.4.11). */
+@media (max-width: 899.98px) {
+  .co-form :is(input, select, textarea) { scroll-margin-block-end: 140px; }
+}
 .order-page { display: grid; gap: var(--s-24); max-width: 640px; padding-block: var(--s-32) var(--s-48); }
 .order-hero { display: grid; justify-items: center; gap: var(--s-8); text-align: center; }
 .order-ref { font-size: var(--fs-18); }

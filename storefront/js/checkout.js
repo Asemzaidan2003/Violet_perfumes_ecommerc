@@ -1,7 +1,7 @@
 // Checkout: summary from the cart, validation that mirrors backend/store/validate.js, remembered
 // details, and an idempotent submit (client_key per cart contents, kept across retries).
 // Entry module, no exports. Rendering uses <template> + textContent only.
-import { readCart, clear, priceCart, shopSettings, announce } from "./shared/cart-store.js";
+import { readCart, clear, priceCart, shopSettings, announce, MAX_LINES, PRICE_NOTE_KEY } from "./shared/cart-store.js";
 import { loadCatalog } from "./shared/catalog-client.js";
 import { money, num, sizeLabel } from "./shared/format.js";
 import { normalizePhone, isJordanMobile } from "./shared/phone.js";
@@ -92,6 +92,7 @@ async function render() {
     if (!priced) status.textContent = "جارٍ تحميل الأسعار…";
     priced = priceCart(lines, await loadCatalog(), settings);
   } catch {
+    priced = null;
     status.textContent = "تعذّر تحميل الأسعار — تحقق من الاتصال ثم حدّث الصفحة";
     return;
   }
@@ -160,8 +161,13 @@ form.addEventListener("submit", async (e) => {
   for (const k of Object.keys(checks)) fieldError(form.elements[k], checks[k](form.elements[k].value));
   showSummary(errors);
   if (errors.length) return errors[0][0].focus();
+  if (!priced) {
+    showServerError("تعذّر تحميل الأسعار — تحقق من الاتصال ثم حدّث الصفحة");
+    return render();
+  }
   const items = orderItems();
   if (!items.length) return render();
+  if (items.length > MAX_LINES) return showServerError(`الحد ${MAX_LINES} منتجًا في الطلب`);
 
   setBusy(true);
   const el = form.elements;
@@ -183,13 +189,22 @@ form.addEventListener("submit", async (e) => {
     done = true;
     rememberDetails();
     try { sessionStorage.removeItem(CLIENT_KEY); } catch { /* storage blocked */ }
+    // The server prices independently (a listed price may have changed mid-checkout); flag it for
+    // the confirmation page when its total doesn't match what was shown here.
+    if (Math.abs((Number(data.data.total) || 0) - priced.total) > 0.005) {
+      try { sessionStorage.setItem(PRICE_NOTE_KEY, "1"); } catch { /* storage blocked */ }
+    }
     clear();
     announce("تم إرسال طلبك");
     return location.assign(`/order/${encodeURIComponent(data.data.ref)}`);
   }
   setBusy(false, res.status >= 500 ? "أعد المحاولة" : "تأكيد الطلب");
-  showServerError(data.message || "تعذّر إرسال الطلب، حاول مجددًا", res.status === 429);
+  showServerError(res.status === 429 ? "طلبات كثيرة من هذا الجهاز — أرسل طلبك عبر واتساب:" : (data.message || "تعذّر إرسال الطلب، حاول مجددًا"), res.status === 429);
 });
+
+// The checkout page can be restored from bfcache after a successful order (browser back from the
+// confirmation page); its cart is now empty and `done` is stale, so reload for a clean state.
+addEventListener("pageshow", (e) => { if (e.persisted && done) location.reload(); });
 
 // --- Start: remembered details, summary open on desktop, live cart updates.
 try {
@@ -197,6 +212,11 @@ try {
   for (const k of REMEMBERED) if (typeof saved?.[k] === "string" && !form.elements[k].value) form.elements[k].value = saved[k];
 } catch { /* nothing remembered */ }
 if (matchMedia("(min-width: 900px)").matches) $("[data-co-details]").open = true;
+// Unchecking "تذكّر معلوماتي" drops the saved details right away, not only on the next order.
+form.elements.remember.addEventListener("change", (e) => {
+  if (e.target.checked) return;
+  try { localStorage.removeItem(DETAILS_KEY); } catch { /* private mode */ }
+});
 addEventListener("cart:change", () => render());
 addEventListener("storage", () => render());
 render();

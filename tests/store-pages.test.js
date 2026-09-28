@@ -321,7 +321,8 @@ test("/checkout: one-screen form with the governorate list, no bottom bar", asyn
   const options = [...body.match(/<select id="co-city"[\s\S]*?<\/select>/)[0].matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]);
   assert.deepEqual(options, ["", ...GOVERNORATES], "a placeholder, then Amman first");
   assert.match(body, /<input id="co-name"[^>]*autocomplete="name"/);
-  assert.match(body, /<input id="co-phone"[^>]*type="tel"[^>]*inputmode="numeric"[^>]*dir="ltr"[^>]*autocomplete="tel"/);
+  assert.match(body, /<input id="co-phone"[^>]*type="tel"[^>]*inputmode="tel"[^>]*dir="ltr"[^>]*autocomplete="tel"/);
+  assert.match(body, /<select id="co-city"[^>]*autocomplete="address-level1"/);
   assert.match(body, /<textarea id="co-address"[^>]*autocomplete="street-address"/);
   assert.match(body, /name="website"[^>]*tabindex="-1"[^>]*autocomplete="off"/, "honeypot");
   assert.match(body, /name="remember"[^>]*checked/, "remember my details is on by default");

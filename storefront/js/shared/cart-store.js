@@ -3,14 +3,22 @@
 // and every importer gets the same instance. Never import store.js — it is an entry file.
 export const CART_KEY = "nsamat_cart_v1";
 export const MAX_QTY = 20;
+// Mirrors the server's MAX_ITEMS (backend/store/validate.js): the most distinct product/size
+// lines one order can hold. Enforced here too so the client never lets a customer build a cart
+// the server will then reject at checkout.
+export const MAX_LINES = 20;
+export const PRICE_NOTE_KEY = "nsamat_price_note_v1";
 
 const clampQty = (n) => Math.min(MAX_QTY, Math.max(1, Math.round(Number(n) || 1)));
 
-// [{ id, size, qty }]; anything malformed (bad JSON, non-array, non-object lines) is dropped.
+// [{ id, size, qty }]; anything malformed (bad JSON, non-array, non-object lines, or a line whose
+// id/size aren't strings) is dropped.
 export function readCart() {
   try {
     const lines = JSON.parse(localStorage.getItem(CART_KEY));
-    return Array.isArray(lines) ? lines.filter((l) => l && typeof l === "object") : [];
+    return Array.isArray(lines)
+      ? lines.filter((l) => l && typeof l === "object" && typeof l.id === "string" && typeof l.size === "string")
+      : [];
   } catch { return []; }
 }
 
@@ -29,11 +37,18 @@ function writeCart(lines) {
 
 const same = (id, size) => (l) => l.id === id && l.size === size;
 
+// Refuses a new distinct line once the cart already holds MAX_LINES of them (an existing line can
+// still have its quantity topped up). Announces the reason itself, so every caller — the card
+// quick-add, the product page's add and buy-now — gets the message for free.
 export function add(id, size, qty = 1) {
   const cart = readCart();
   const line = cart.find(same(id, size));
   if (line) line.qty = clampQty((Number(line.qty) || 0) + qty);
-  else cart.push({ id, size, qty: clampQty(qty) });
+  else if (cart.length < MAX_LINES) cart.push({ id, size, qty: clampQty(qty) });
+  else {
+    announce(`الحد ${MAX_LINES} منتجًا في الطلب`);
+    return false;
+  }
   return writeCart(cart);
 }
 
