@@ -33,12 +33,9 @@ test("a CSS-injection attempt is rejected with 400", async () => {
   assert.equal(res.status, 400);
 });
 
-test("a low-contrast pair is rejected with 400", async () => {
+test("any valid hex colours save, even low-contrast ones (owner decision)", async () => {
   const res = await putTheme({ bg: "#000000", surface: "#010101", text: "#020202", accent: "#030303" });
-  assert.equal(res.status, 400);
-  const data = await res.json();
-  assert.equal(data.success, false);
-  assert.match(data.message, /تباين/);
+  assert.equal(res.status, 200);
 });
 
 test("a valid theme returns 200, and GET / then contains the theme style with the values", async () => {

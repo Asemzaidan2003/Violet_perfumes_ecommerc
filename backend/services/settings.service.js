@@ -1,6 +1,6 @@
 import Setting from "../models/setting.model.js";
 import { fail } from "../utils/fail.js";
-import { DEFAULT_THEME, validateContrast } from "../store/theme.js";
+import { DEFAULT_THEME } from "../store/theme.js";
 
 const DEFAULTS = { whatsapp: "", instagram: "", delivery_fee: 0, free_delivery_over: 0, theme: {} };
 const KEYS = Object.keys(DEFAULTS);
@@ -46,8 +46,6 @@ export async function saveSettings(patch = {}) {
       const v = patch.theme[k];
       if (v !== undefined && v !== "") merged[k] = v;
     }
-    const failures = validateContrast(merged);
-    if (failures.length) throw fail(400, `تباين الألوان غير كافٍ: ${failures.join("، ")}`);
     set.theme = merged;
   }
 

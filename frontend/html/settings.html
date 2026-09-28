@@ -67,7 +67,6 @@
         </div>
         <button type="button" id="previewAccentBtn" style="border:0;padding:8px 16px;border-radius:6px">زر بلون التمييز <span id="ratioAccent"></span></button>
       </div>
-      <p id="themeWarning" role="alert" hidden></p>
 
       <div class="form-actions">
         <button type="button" class="btn" id="resetThemeBtn">استعادة الألوان الافتراضية</button>
@@ -87,7 +86,6 @@
     const errorEl = document.getElementById("error");
     const successEl = document.getElementById("success");
     const saveBtn = document.getElementById("saveBtn");
-    const warningEl = document.getElementById("themeWarning");
 
     const DEFAULT_THEME = { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37" };
     const themeInputs = { bg: form.theme_bg, surface: form.theme_surface, text: form.theme_text, accent: form.theme_accent };
@@ -123,17 +121,6 @@
       document.getElementById("ratioSurface").textContent = `(${r.text_surface.toFixed(1)}:1)`;
       document.getElementById("ratioAccent").textContent = `(${r.accent_bg.toFixed(1)}:1)`;
 
-      const failures = [];
-      if (r.text_bg < 4.5) failures.push("النص على الخلفية");
-      if (r.text_surface < 4.5) failures.push("النص على السطح");
-      if (r.accent_bg < 3) failures.push("لون التمييز على الخلفية");
-      if (failures.length) {
-        warningEl.textContent = `تباين الألوان غير كافٍ: ${failures.join("، ")}`;
-        warningEl.hidden = false;
-      } else {
-        warningEl.hidden = true;
-      }
-      return failures;
     }
 
     Object.values(themeInputs).forEach((input) => input.addEventListener("input", updatePreview));
@@ -189,12 +176,6 @@
       e.preventDefault();
       errorEl.hidden = true;
       successEl.hidden = true;
-
-      if (updatePreview().length) {
-        errorEl.textContent = "تباين الألوان غير كافٍ — عدّل الألوان قبل الحفظ";
-        errorEl.hidden = false;
-        return;
-      }
 
       const body = {
         whatsapp: form.whatsapp.value.trim(),
