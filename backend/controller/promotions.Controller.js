@@ -18,9 +18,14 @@ export const createPlacement = async (req, res) => {
 };
 
 // PUT /api/placements/:id
+// Loads the document and saves it (rather than findByIdAndUpdate) so every validator — the
+// image-required-per-slot check and the ends_at-after-starts_at window check — runs on edits too,
+// not just on create.
 export const updatePlacement = async (req, res) => {
-  const placement = await Placement.findByIdAndUpdate(req.params.id, pick(req.body, PLACEMENT_FIELDS), { new: true });
+  const placement = await Placement.findById(req.params.id);
   if (!placement) return res.status(404).json({ success: false, message: "الموضع غير موجود" });
+  Object.assign(placement, pick(req.body, PLACEMENT_FIELDS));
+  await placement.save();
   invalidatePlacements();
   res.status(200).json({ success: true, data: placement });
 };

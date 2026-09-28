@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { CATEGORIES, FAMILY_KEYS } from "../../storefront/js/shared/vocab.js";
+import { IMAGE_URL } from "./product.model.js";
 
 export const SLOTS = [
   "announcement",
@@ -15,8 +16,6 @@ export const IMAGE_SLOTS = ["hero", "home_mid", "home_bottom", "collection_banne
 export const THEMES = ["dark", "light", "gold"];
 
 const CATEGORY_SLUGS = CATEGORIES.map((c) => c.slug);
-// Same shape as product.model.js's IMAGE_URL (kept local to avoid coupling the two models).
-const IMAGE_URL = /^(\/img\/[a-f0-9]{24}(-480)?\.(webp|jpg|png)|https:\/\/[^\s"'<>]+)$/;
 
 // Internal path (no protocol-relative or backslash tricks) or an https absolute URL.
 export const validLink = (l) =>
@@ -38,9 +37,15 @@ const placementSchema = new mongoose.Schema(
     image: {
       type: String,
       trim: true,
+      // `required` alone only fires when the field is entirely absent from the write (Mongoose
+      // skips a plain `validate` for an undefined path); `validate` also covers an explicit
+      // empty string, e.g. a PUT that clears an existing hero image.
       required: [function () { return IMAGE_SLOTS.includes(this.slot); }, "الصورة مطلوبة لهذا الموضع"],
       validate: {
-        validator: (v) => !v || IMAGE_URL.test(v),
+        validator(v) {
+          if (v) return IMAGE_URL.test(v);
+          return !IMAGE_SLOTS.includes(this.slot);
+        },
         message: "الصورة مطلوبة لهذا الموضع",
       },
     },

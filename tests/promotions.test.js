@@ -112,3 +112,38 @@ test("the announcement slot needs no image", async () => {
   const res = await api("/placements", "POST", { slot: "announcement", title: "إعلان بدون صورة" });
   assert.equal(res.status, 201);
 });
+
+test("PUT clearing a hero's image runs full validation, not just the changed field", async () => {
+  const created = await api("/placements", "POST", {
+    slot: "hero", title: "هيرو", image: "/img/bbbbbbbbbbbbbbbbbbbbbbbb.webp",
+  });
+  const { data: placement } = await created.json();
+
+  const res = await api(`/placements/${placement._id}`, "PUT", { image: "" });
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).message, /الصورة/);
+});
+
+test("PUT setting ends_at before the stored starts_at is rejected", async () => {
+  const starts_at = new Date("2026-02-01T00:00:00Z");
+  const created = await api("/placements", "POST", {
+    slot: "announcement", title: "بنافذة زمنية", starts_at: starts_at.toISOString(),
+  });
+  const { data: placement } = await created.json();
+
+  const res = await api(`/placements/${placement._id}`, "PUT", {
+    ends_at: new Date(starts_at.getTime() - 60_000).toISOString(),
+  });
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).message, /الانتهاء/);
+});
+
+test("a valid PUT still invalidates the cache", async () => {
+  const created = await api("/placements", "POST", { slot: "announcement", title: "كاش" });
+  const { data: placement } = await created.json();
+  assert.ok((await getLivePlacements()).some((p) => String(p._id) === placement._id));
+
+  const res = await api(`/placements/${placement._id}`, "PUT", { active: false });
+  assert.equal(res.status, 200);
+  assert.ok(!(await getLivePlacements()).some((p) => String(p._id) === placement._id));
+});
