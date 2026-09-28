@@ -13,6 +13,7 @@ import { searchProducts, normalize } from "../../storefront/js/shared/search.js"
 import Brand from "../models/brand.model.js";
 import { notFound, serverError } from "../store/views/errors.js";
 import { checkout, cartPage } from "../store/views/checkout.js";
+import { brandsIndex } from "../store/views/brands.js";
 import { orderConfirmation } from "../store/views/order.js";
 import { getOrderByRef, publicOrder } from "../services/order.service.js";
 import { esc } from "../store/html.js";
@@ -136,6 +137,25 @@ router.get("/search", aislePage((req, products) => {
   };
 }));
 
+// Index of every active brand with >= 1 visible product (logo/name tile + product count).
+router.get("/brands", async (req, res) => {
+  const [{ products }, settings, placements, brands] = await Promise.all([
+    getCatalog(), getSettings(), getLivePlacements(), Brand.find({ active: true }).lean(),
+  ]);
+  const counts = new Map();
+  for (const p of products) if (p.brand) counts.set(p.brand.slug, (counts.get(p.brand.slug) || 0) + 1);
+  const rows = brands.filter((b) => counts.has(b.slug)).map((brand) => ({ brand, count: counts.get(brand.slug) }));
+  send(req, res, 200, {
+    title: "المصممون | نسمات",
+    description: "تصفّح كل دور العطور المتوفرة في نسمات.",
+    canonicalPath: "/brands",
+    settings,
+    placements,
+    styles: ["pages.css"],
+    body: brandsIndex(rows),
+  });
+});
+
 // Brand slug looked up directly in Brand (own-key rule: Map, not object) — unlike /c/:category and
 // /family/:key, an unknown or inactive brand must 404 even though getCatalog() would just show an
 // empty aisle (it silently treats an inactive brand's products as brand: null).
@@ -245,7 +265,7 @@ router.get("/sitemap.xml", async (req, res) => {
   const base = esc(siteBase(origin(req)));
   const [{ products }, brands] = await Promise.all([getCatalog(), Brand.find({ active: true }).lean()]);
   const paths = ["/", ...CATEGORIES.map((c) => `/c/${c.slug}`), ...FAMILY_KEYS.map((k) => `/family/${k}`),
-    "/offers", "/new", "/best-sellers", ...brands.map((b) => `/brand/${b.slug}`), ...products.map((p) => `/p/${p.id}`)];
+    "/offers", "/new", "/best-sellers", "/brands", ...brands.map((b) => `/brand/${b.slug}`), ...products.map((p) => `/p/${p.id}`)];
   res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map((p) => `<url><loc>${base}${p}</loc></url>`).join("\n")}

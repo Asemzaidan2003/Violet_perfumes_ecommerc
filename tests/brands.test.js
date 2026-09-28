@@ -143,15 +143,15 @@ test("sitemap includes active brand pages, not inactive ones", async () => {
   assert.ok(!body.includes(`/brand/${(await Brand.findById(ids.inactive)).slug}`));
 });
 
-test("home designer shelf appears only with >= 2 brands with visible products", async () => {
+test("home designer shelf appears with >= 1 brand with visible products", async () => {
   const before2 = await fetch(`${t.url}/`);
   const bodyBefore = await before2.text();
   assert.ok(bodyBefore.includes("تسوّق حسب المصمم"), "two brands (Dior, Chanel) already have products");
 
-  // Drop to one brand: remove Chanel's only product.
+  // Drop to one brand: remove Chanel's only product. The shelf must still show (>= 1 is enough).
   await Product.findByIdAndDelete(ids.noFive);
   invalidateCatalog();
   const after1 = await fetch(`${t.url}/`);
   const bodyAfter = await after1.text();
-  assert.ok(!bodyAfter.includes("تسوّق حسب المصمم"), "one brand left: shelf hidden");
+  assert.ok(bodyAfter.includes("تسوّق حسب المصمم"), "one brand left: shelf still shown");
 });

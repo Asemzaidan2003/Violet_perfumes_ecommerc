@@ -2,6 +2,10 @@
 // No I/O, no Mongo — safe to unit test directly.
 
 export const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+// Only the exact `rgb(r g b / a)` shape deriveTheme() itself emits (integer 0-255 channels, alpha
+// with up to 2 decimals) — never raw admin input, which stays gated by HEX_RE above.
+const RGBA_RE = /^rgb\((25[0-5]|2[0-4]\d|1\d\d|\d{1,2}) (25[0-5]|2[0-4]\d|1\d\d|\d{1,2}) (25[0-5]|2[0-4]\d|1\d\d|\d{1,2}) \/ 0\.\d{1,2}\)$/;
+export const TOKEN_RE = new RegExp(`(?:${HEX_RE.source})|(?:${RGBA_RE.source})`);
 
 export const DEFAULT_THEME = { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37" };
 
@@ -39,7 +43,15 @@ export function deriveTheme({ bg, surface, text, accent }) {
   const goldStrong = mix(accent, "#FFFFFF", 0.2);
   const focus = mix(accent, "#FFFFFF", 0.25);
   const goldInk = contrast(accent, "#1A1206") >= contrast(accent, "#FFFDF8") ? "#1A1206" : "#FFFDF8";
-  return { bg, surface, "surface-2": surface2, line, text, "text-muted": textMuted, gold: accent, "gold-strong": goldStrong, "gold-ink": goldInk, focus };
+  const { r, g, b } = hexToRgb(bg);
+  const bgGlass = `rgb(${r} ${g} ${b} / 0.82)`;
+  const { r: ar, g: ag, b: ab } = hexToRgb(accent);
+  const glowGold = `rgb(${ar} ${ag} ${ab} / 0.16)`;
+  return {
+    bg, surface, "surface-2": surface2, line, text, "text-muted": textMuted,
+    gold: accent, "gold-strong": goldStrong, "gold-ink": goldInk, focus,
+    "bg-glass": bgGlass, "glow-gold": glowGold,
+  };
 }
 
 // Server-side save gate: pairs that must stay legible.

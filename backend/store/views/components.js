@@ -28,6 +28,7 @@ const ICONS = {
   truck: '<path d="M2.5 6.5h11v10h-11z"/><path d="M13.5 9.5h4l3 3.5v3.5h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
   wallet: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M15.5 14.5h2"/><path d="M6 6 15.5 3.5l1 2.5"/>',
   cube: '<path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
 };
 
 // Decorative by default (aria-hidden); the button or link that holds it carries the label.

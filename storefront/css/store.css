@@ -117,8 +117,10 @@ main:focus { outline: none; }
 /* ---------- Header ---------- */
 .site-header { position: sticky; inset-block-start: 0; z-index: var(--z-header);
   background: var(--bg-glass); backdrop-filter: blur(12px); border-block-end: 1px solid transparent;
-  transition: border-color var(--dur-base), box-shadow var(--dur-base); }
+  transition: border-color var(--dur-base), box-shadow var(--dur-base), transform var(--dur-base) var(--ease-out); }
 .site-header.is-compact { border-color: var(--line); box-shadow: 0 8px 24px -12px var(--shadow); }
+.site-header.is-hidden { transform: translateY(-100%); }
+/* prefers-reduced-motion: reduce already zeroes all transition-durations globally (see Motion section below). */
 .header-row { display: flex; align-items: center; gap: var(--s-12); min-height: 64px; }
 .brand { display: inline-flex; align-items: center; gap: var(--s-8); min-height: 44px; }
 .brand-mark { width: 24px; height: 36px; transition: transform var(--dur-base) var(--ease-out); }
@@ -126,6 +128,13 @@ main:focus { outline: none; }
 .is-compact .brand-mark { transform: scale(.85); }
 .header-row > .search-field { display: none; }
 .header-actions { display: flex; gap: var(--s-8); margin-inline-start: auto; }
+.nav-menu-btn { display: inline-grid; }
+/* Mobile: one compact row (menu, logo, search icon, cart) — the row nav moves into the drawer. */
+.main-nav { display: none; }
+.nav-drawer-body ul { display: grid; gap: 2px; margin-block-end: var(--s-16); }
+.nav-drawer-body a { display: flex; align-items: center; gap: var(--s-8); min-height: 44px; padding-inline: var(--s-8);
+  border-radius: var(--r-control); color: var(--text); font-weight: 600; }
+.nav-drawer-body a:hover, .nav-drawer-body a[aria-current] { background: var(--surface-2); color: var(--gold-strong); }
 .nav-list { display: flex; gap: var(--s-8); overflow-x: auto; scrollbar-width: none; padding-block-end: var(--s-8); }
 .nav-list::-webkit-scrollbar { display: none; }
 .nav-list > li { flex: none; }
@@ -414,6 +423,8 @@ dialog[open] { animation: rise var(--dur-base) var(--ease-out); }
   .header-row { min-height: 76px; gap: var(--s-24); }
   .header-row > .search-field { display: flex; flex: 1; max-width: 520px; margin-inline: auto; }
   .search-link { display: none; }
+  .nav-menu-btn { display: none; }
+  .main-nav { display: block; }
   .header-actions { margin-inline-start: 0; }
   .nav-list { justify-content: center; overflow: visible; }
   .nav-list a, .nav-families summary { border-color: transparent; }

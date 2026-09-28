@@ -21,17 +21,35 @@ function useFallback(img) {
 }
 document.addEventListener("error", (e) => { if (e.target instanceof HTMLImageElement) useFallback(e.target); }, true);
 
-// --- Header compaction on scroll.
+// --- Header: compaction + hide-on-scroll-down, reappear on scroll-up.
+const HIDE_AFTER = 80;
 let ticking = false;
+let lastY = scrollY;
+function updateHeader() {
+  const header = document.querySelector("[data-header]");
+  if (!header) return;
+  header.classList.toggle("is-compact", scrollY > 16);
+  const stayVisible = scrollY <= HIDE_AFTER
+    || header.contains(document.activeElement)
+    || document.getElementById("search-overlay")?.open
+    || document.getElementById("cart-drawer")?.open
+    || document.getElementById("nav-drawer")?.open;
+  const hide = !stayVisible && scrollY > lastY;
+  header.classList.toggle("is-hidden", hide);
+  lastY = scrollY;
+}
 function onScroll() {
   if (ticking) return;
   ticking = true;
-  requestAnimationFrame(() => {
-    document.querySelector("[data-header]")?.classList.toggle("is-compact", scrollY > 16);
-    ticking = false;
-  });
+  requestAnimationFrame(() => { updateHeader(); ticking = false; });
 }
 addEventListener("scroll", onScroll, { passive: true });
+// Scrolling up, opening the overlay/drawer, or moving focus into the header must reveal it
+// immediately, without waiting for the next scroll event.
+document.addEventListener("focusin", (e) => { if (e.target.closest("[data-header]")) updateHeader(); });
+// Opening the search overlay or cart drawer must reveal the header even without a scroll event —
+// both are triggered by clicks handled in search.js/cart.js; re-check after they run.
+document.addEventListener("click", (e) => { if (e.target.closest("[data-open-search], [data-open-cart], [data-open-nav]")) queueMicrotask(updateHeader); });
 
 // --- Shelves: arrow buttons scroll one "page"; RTL tracks scroll towards negative scrollLeft.
 function updateShelfNav(track) {
@@ -66,9 +84,13 @@ function updateCartCount() {
 addEventListener("storage", (e) => { if (e.key === CART_KEY) updateCartCount(); });
 addEventListener("cart:change", updateCartCount);
 
+// --- Mobile nav drawer (menu button in the compact header row).
+const navDrawer = document.getElementById("nav-drawer");
 document.addEventListener("click", (e) => {
   const shelfBtn = e.target.closest("[data-shelf-prev], [data-shelf-next]");
   if (shelfBtn) return scrollShelf(shelfBtn);
+  if (e.target.closest("[data-open-nav]")) return navDrawer?.showModal();
+  if (navDrawer?.open && (e.target === navDrawer || e.target.closest("[data-close-nav], .nav-drawer a"))) return navDrawer.close();
   // Close open disclosure menus (families panel) when clicking elsewhere.
   for (const d of document.querySelectorAll("details[data-dismissable][open]")) if (!d.contains(e.target)) d.open = false;
 });

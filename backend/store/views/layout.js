@@ -5,7 +5,7 @@ import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { num } from "../../../storefront/js/shared/format.js";
 import { asset } from "../assets.js";
 import { IMPORT_MAP_JSON } from "../importmap.js";
-import { deriveTheme, DEFAULT_THEME, HEX_RE } from "../theme.js";
+import { deriveTheme, DEFAULT_THEME, TOKEN_RE } from "../theme.js";
 
 // Only fixed token names and pre-validated hex values ever reach this string — never user text.
 function themeStyle(theme = {}) {
@@ -13,7 +13,7 @@ function themeStyle(theme = {}) {
   if (Object.entries(DEFAULT_THEME).every(([k, v]) => picked[k] === v)) return "";
   const tokens = deriveTheme(picked);
   const css = Object.entries(tokens)
-    .filter(([, v]) => HEX_RE.test(v))
+    .filter(([, v]) => TOKEN_RE.test(v))
     .map(([name, v]) => `--${name}:${v}`)
     .join(";");
   return html`<style id="theme">:root{${raw(css)}}</style>`;
@@ -26,6 +26,7 @@ const NAV = [
   { href: "/c/women", label: "نسائي" },
   { href: "/c/unisex", label: "للجنسين" },
   { href: "/c/home", label: "معطرات" },
+  { href: "/brands", label: "المصممون" },
 ];
 
 const current = (href, path) => (href === path ? html` aria-current="page"` : "");
@@ -51,6 +52,7 @@ function familiesMenu(families) {
 function header(path, families) {
   return html`<header class="site-header" data-header>
   <div class="container header-row">
+    <button class="btn-icon nav-menu-btn" type="button" data-open-nav aria-label="القائمة" aria-controls="nav-drawer">${icon("menu")}</button>
     <a class="brand" href="/" aria-label="نسمات، الصفحة الرئيسية">
       <img class="brand-mark" src="${LOGO}" width="24" height="36" alt="">
       <span class="wordmark">نسمات</span>
@@ -69,6 +71,30 @@ function header(path, families) {
     </ul>
   </nav>
 </header>`;
+}
+
+// Mobile menu drawer: everything the desktop's row nav + families disclosure carries, in one
+// place with >= 44px targets. Hidden entirely at >= 900px (CSS), where the row nav is used instead.
+function navDrawer(path, families) {
+  return html`<dialog class="drawer nav-drawer" id="nav-drawer" aria-label="القائمة">
+  <div class="drawer-panel">
+    <div class="drawer-head">
+      <span class="modal-title">القائمة</span>
+      <button class="btn-icon" type="button" data-close-nav aria-label="إغلاق القائمة">${icon("close")}</button>
+    </div>
+    <div class="drawer-body nav-drawer-body">
+      <ul role="list">
+        ${NAV.map((n) => html`<li><a href="${n.href}"${current(n.href, path)}>${n.label}</a></li>`)}
+        <li><a href="/offers"${current("/offers", path)}>العروض</a></li>
+        <li><a href="/new"${current("/new", path)}>وصل حديثًا</a></li>
+      </ul>
+      ${families.length ? html`<h2 class="so-title">العائلات العطرية</h2>
+      <ul role="list">
+        ${families.map((f) => html`<li><a href="/family/${f.key}"><span class="swatch" style="--swatch: ${f.swatch}"></span>${f.ar}</a></li>`)}
+      </ul>` : ""}
+    </div>
+  </div>
+</dialog>`;
 }
 
 // Search overlay shell, filled by search.js. Family and category suggestions are server-rendered.
@@ -90,6 +116,7 @@ function searchOverlay(families) {
     </div>
     <a class="so-all" href="/search" data-so-all hidden>عرض كل النتائج ${icon("chevron")}</a>
     <div class="so-suggest" data-so-suggest>
+      <p class="so-hint muted">ابحث باسم العطر أو المصمم أو النوتة</p>
       ${families.length ? html`<h2 class="so-title">تصفّح حسب العائلة</h2>
       <ul class="so-chips" role="list">${families.map((f) => html`<li><a class="chip chip-link" href="/family/${f.key}"><span class="swatch" style="--swatch: ${f.swatch}"></span>${f.ar}</a></li>`)}</ul>` : ""}
       <h2 class="so-title">الأقسام</h2>
@@ -131,6 +158,7 @@ function footer(settings, wa) {
       <ul role="list">
         ${CATEGORIES.map((c) => html`<li><a href="/c/${c.slug}">${c.ar}</a></li>`)}
         <li><a href="/offers">العروض</a></li>
+        <li><a href="/brands">المصممون</a></li>
       </ul>
     </nav>
     <div>
@@ -251,6 +279,7 @@ ${footer(settings, wa)}
 ${hideBottomBar ? "" : bottomBar(path, wa)}
 ${searchOverlay(families)}
 ${cartDrawer(placements)}
+${navDrawer(path, families)}
 <script type="application/json" id="shop-settings">${json({ delivery_fee: settings.delivery_fee ?? 0, free_delivery_over: settings.free_delivery_over ?? 0, whatsapp: settings.whatsapp ?? "" })}</script>
 <div id="live-region" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>

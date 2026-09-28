@@ -106,11 +106,11 @@ function testerBar(families) {
 </section>`;
 }
 
-// Brand tiles for brands with at least one visible product — only rendered when there are ≥ 2.
+// Brand tiles for brands with at least one visible product — rendered as soon as there's ≥ 1.
 function designerShelf(products, brands = []) {
   const withProducts = new Set(products.map((p) => p.brand?.slug).filter(Boolean));
   const shown = brands.filter((b) => withProducts.has(b.slug));
-  if (shown.length < 2) return "";
+  if (shown.length < 1) return "";
   return html`<section class="section designers" aria-labelledby="designers-title" data-reveal>
   <div class="container">
     <div class="section-head"><h2 id="designers-title" class="section-title">تسوّق حسب المصمم</h2></div>
