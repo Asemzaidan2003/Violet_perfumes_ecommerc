@@ -1,5 +1,6 @@
 import Bottle from '../models/bottle.model.js';
 import { stockUpdate } from '../utils/restock.js';
+import { invalidateCatalog } from '../store/catalog.js';
 
 export const createBottle = async (req, res) => {
     const { name, capacity, cost, quantity } = req.body;
@@ -10,6 +11,7 @@ export const createBottle = async (req, res) => {
         quantity
     });
     await newBottle.save();
+    invalidateCatalog();
     return res.status(201).json({
         success: true,
         message: "Bottle created successfully",
@@ -27,6 +29,7 @@ export const updateBottle = async (req, res) => {
             message: `No Bottle found with this ID: ${id}`,
         });
     }
+    invalidateCatalog();
     return res.status(200).json({
         success: true,
         message: "Bottle data updated successfully",
@@ -72,6 +75,7 @@ export const deleteBottle = async (req, res) => {
             message: `No Bottle found with this ID: ${id}`,
         });
     }
+    invalidateCatalog();
     return res.status(200).json({
         success: true,
         message: "Bottle deleted successfully",

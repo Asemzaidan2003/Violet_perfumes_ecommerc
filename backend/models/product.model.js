@@ -11,7 +11,9 @@ const IMAGE_URL = /^(\/img\/[a-f0-9]{24}(-480)?\.(webp|jpg|png)|https:\/\/[^\s"'
 const productSchema = new mongoose.Schema(
   {
     p_name: { type: String, required: true, unique: true, trim: true },
-    p_image: { type: String, required: true },
+    // "." is the existing placeholder for "no image yet" (see toPublic()), kept valid
+    // alongside real URLs so legacy/placeholder saves aren't broken by this check.
+    p_image: { type: String, required: true, validate: { validator: (v) => v === "." || IMAGE_URL.test(v), message: "رابط صورة غير صالح" } },
     p_category: { type: String, required: [true, "الفئة مطلوبة"], enum: { values: CATEGORY_KEYS, message: "فئة غير صالحة" } },
     p_offer_percentage: { type: Number, default: 0, min: 0, max: 100 },
 

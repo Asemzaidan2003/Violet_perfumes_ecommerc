@@ -5,6 +5,7 @@ import compression from "compression";
 import mongoose from "mongoose";
 import { fileURLToPath } from "node:url";
 import { createLimiter } from "./middleware/rateLimit.js";
+import { parseTrustProxyHops } from "./utils/trustProxy.js";
 import { ASSET_V } from "./store/assets.js";
 import productRouter from "./routes/product.Routs.js";
 import oilRouter from "./routes/oil.Routs.js";
@@ -32,10 +33,10 @@ export function createApp({ limits = {} } = {}) {
   const app = express();
   const prod = process.env.NODE_ENV === "production";
 
-  app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS ?? 0));
+  app.set("trust proxy", parseTrustProxyHops(process.env.TRUST_PROXY_HOPS) ?? 0);
   app.locals.limiters = {
     login: createLimiter({ windowMs: 15 * 60_000, max: 5, ...limits.login }),
-    orders: createLimiter({ windowMs: 60 * 60_000, max: 10, ...limits.orders }),
+    orders: createLimiter({ windowMs: 60 * 60_000, max: 30, ...limits.orders }),
     interest: createLimiter({ windowMs: 60 * 60_000, max: 20, ...limits.interest }),
   };
   app.locals.assetV = ASSET_V;

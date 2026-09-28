@@ -26,7 +26,7 @@ test("token rejects tampering and expiry", () => {
 test("protected route needs a session", async () => {
   assert.equal((await fetch(`${t.url}/api/products`)).status, 401);
   await Product.create({
-    p_name: "test-perfume", p_image: "test.jpg", p_category: "Men", oil_id: "000000000000000000000000",
+    p_name: "test-perfume", p_image: ".", p_category: "Men", oil_id: "000000000000000000000000",
     size_list: [{ size: "30ml", price: 10 }], oil_percentage: 20, alcohol_percentage: 80,
   });
   const cookie = await loginAs(t.url);

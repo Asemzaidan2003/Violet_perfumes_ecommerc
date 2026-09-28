@@ -1,5 +1,6 @@
 import Oil from '../models/oil.model.js';
 import { stockUpdate } from '../utils/restock.js';
+import { invalidateCatalog } from '../store/catalog.js';
 
 export const createOil = async (req , res)=>{
     const {id , oil_name , oil_cost , oil_quantity} = req.body;
@@ -18,6 +19,7 @@ export const createOil = async (req , res)=>{
     });
 
     await newOil.save();//we insert the data here
+    invalidateCatalog();
     return res.status(200).json({success:true , message:"Oil data inserted successfully" , data:newOil});
 };
 
@@ -34,6 +36,7 @@ export const updateOil = async (req , res)=>{
             message: `No Oil found with this ID: ${req.params.id}`,
         });
     }
+    invalidateCatalog();
     return res.status(200).json({
         success:true,
         message:"Oil data updated successfully",
@@ -85,6 +88,7 @@ export const deleteOil = async (req , res)=>{
             data:null
         });
     }
+    invalidateCatalog();
     return res.status(200).json({
         success:true,
         message:"Oil deleted",

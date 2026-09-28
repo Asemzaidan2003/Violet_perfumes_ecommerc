@@ -105,7 +105,10 @@ function toDateInputValue(d) {
 // Client-side CSV export for whatever table rows are currently rendered
 function exportTableToCsv(filename, headers, rows) {
   const escape = (v) => {
-    const s = String(v ?? "");
+    // A leading =, +, -, @, tab or CR lets spreadsheet apps read the cell as
+    // a formula (CSV/formula injection); a leading apostrophe forces text.
+    let s = String(v ?? "");
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = [headers.map(escape).join(",")];

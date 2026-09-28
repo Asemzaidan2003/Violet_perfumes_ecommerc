@@ -14,7 +14,7 @@ before(async () => {
   const alcohol = await Alcohol.create({ name: "Ethanol", type: "perfumer", quantity: 1000, cost: 0.02 });
   const bottle = await Bottle.create({ name: "B30", capacity: 30, cost: 1, quantity: 10 });
   const product = await Product.create({
-    p_name: "Test Perfume", p_image: "x", p_category: "Men", oil_id: "OIL1",
+    p_name: "Test Perfume", p_image: ".", p_category: "Men", oil_id: "OIL1",
     size_list: [{ size: "30ml", price: 20 }], oil_percentage: 20, alcohol_percentage: 80,
   });
   ids = { bottle: bottle._id.toString(), alcohol: alcohol._id.toString(), product: product._id.toString() };

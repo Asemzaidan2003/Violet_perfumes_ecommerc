@@ -100,7 +100,7 @@ async function pollUnconfirmedOrders() {
   try {
     // The un-intercepted fetch: a 401 here must never yank the page out from under someone
     // mid-edit (see the fetch wrapper above). Instead, stop polling and just hide the badge.
-    const res = await originalFetch("/api/orders");
+    const res = await originalFetch("/api/orders/pending-count");
     if (res.status === 401) {
       if (pollIntervalId) clearInterval(pollIntervalId);
       badge.hidden = true;
@@ -109,7 +109,7 @@ async function pollUnconfirmedOrders() {
     }
     if (!res.ok) return;
     const { data } = await res.json();
-    const n = (data || []).filter((o) => o.stock_deducted === false && o.status !== "canceled").length;
+    const n = data?.count || 0;
     badge.textContent = String(n);
     badge.hidden = n === 0;
     document.title = n > 0 ? `(${n}) ${ORIGINAL_TITLE}` : ORIGINAL_TITLE;

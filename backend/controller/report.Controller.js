@@ -60,10 +60,15 @@ const endOfMonth = (d) => endOfDay(new Date(d.getFullYear(), d.getMonth() + 1, 0
 // - undefined/"completed" (default) -> only realized/completed orders
 // - "all"                            -> every status except canceled
 // - any explicit value               -> that exact status
+// Unconfirmed online orders (stock_deducted: false) are excluded from every
+// branch: they haven't had stock deducted yet, so their revenue has no
+// matching cost and would inflate profit. Legacy orders have no field or
+// `true`, which `$ne: false` still matches.
 const statusMatch = (statusParam) => {
-  if (!statusParam || statusParam === REALIZED_STATUS) return { status: REALIZED_STATUS };
-  if (statusParam === "all") return { status: { $ne: "canceled" } };
-  return { status: statusParam };
+  const confirmed = { stock_deducted: { $ne: false } };
+  if (!statusParam || statusParam === REALIZED_STATUS) return { status: REALIZED_STATUS, ...confirmed };
+  if (statusParam === "all") return { status: { $ne: "canceled" }, ...confirmed };
+  return { status: statusParam, ...confirmed };
 };
 
 // Parses ?from & ?to (YYYY-MM-DD) into inclusive Date boundaries.

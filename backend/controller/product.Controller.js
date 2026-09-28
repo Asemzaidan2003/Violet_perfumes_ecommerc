@@ -95,7 +95,6 @@ export const getProductById = async (req, res) => {
     const { id } = req.params;
 
     const product = await Product.findById(id);
-    console.log("Fetching product with ID:", id);
     if (!product) {
         return res.status(404).json({
             success: false,
@@ -114,7 +113,6 @@ export const getProductById = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
     const { id } = req.params;
-    console.log("update product id req:", id);
 
     const update = req.body;
 

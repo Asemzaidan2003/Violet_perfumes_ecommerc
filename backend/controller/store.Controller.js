@@ -1,7 +1,7 @@
 import Order from "../models/order.model.js";
 import Product from "../models/product.model.js";
 import Interest from "../models/interest.model.js";
-import { getCatalog, compactIndex, invalidateCatalog } from "../store/catalog.js";
+import { getCatalog, compactIndex } from "../store/catalog.js";
 import { getSettings, getCachedSettings } from "../services/settings.service.js";
 import { placeOrder, publicOrder } from "../services/order.service.js";
 import { validateOrderBody, validateInterestBody } from "../store/validate.js";
@@ -43,7 +43,6 @@ export const createStoreOrder = async (req, res) => {
       delivery: customer,
       delivery_policy: { fee: settings.delivery_fee, free_over: settings.free_delivery_over },
     }, "online");
-    invalidateCatalog();
     res.status(replay ? 200 : 201).json({ success: true, data: publicOrder(order) });
   } catch (err) {
     if (err?.code === 11000 && err.keyPattern?.client_key) {

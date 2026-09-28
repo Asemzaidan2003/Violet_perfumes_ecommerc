@@ -118,10 +118,11 @@ const orderItems = () => (priced?.rows ?? []).filter((r) => r.product).map((r) =
 const uuid = () => crypto.randomUUID?.() ??
   "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
 
-// Same cart contents → same key, so a retry after a timeout can never create a second order.
+// Same cart contents + delivery details → same key, so a retry after a timeout can never
+// create a second order, but a changed address after a lost response makes a new one.
 let memoKey = null;
-function clientKey(items) {
-  const sig = JSON.stringify(items);
+function clientKey(items, customer) {
+  const sig = JSON.stringify({ items, customer });
   try { memoKey = JSON.parse(sessionStorage.getItem(CLIENT_KEY)) ?? memoKey; } catch { /* storage blocked */ }
   if (memoKey?.sig !== sig) memoKey = { key: uuid(), sig };
   try { sessionStorage.setItem(CLIENT_KEY, JSON.stringify(memoKey)); } catch { /* in-memory only */ }
@@ -171,10 +172,11 @@ form.addEventListener("submit", async (e) => {
 
   setBusy(true);
   const el = form.elements;
+  const customer = { name: clean(el.name.value), phone: normalizePhone(el.phone.value), city: el.city.value, address: clean(el.address.value), notes: clean(el.notes.value) };
   const body = {
     items,
-    customer: { name: clean(el.name.value), phone: normalizePhone(el.phone.value), city: el.city.value, address: clean(el.address.value), notes: clean(el.notes.value) },
-    client_key: clientKey(items),
+    customer,
+    client_key: clientKey(items, customer),
     website: el.website.value,
   };
   let res, data;

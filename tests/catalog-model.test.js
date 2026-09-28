@@ -14,7 +14,7 @@ const api = (path, method = "GET", body) => fetch(`${t.url}/api${path}`, {
   body: body === undefined ? undefined : JSON.stringify(body),
 });
 const base = (extra = {}) => ({
-  p_name: `P ${Math.random()}`, p_image: "x", p_category: "Men", oil_id: "OIL1",
+  p_name: `P ${Math.random()}`, p_image: ".", p_category: "Men", oil_id: "OIL1",
   size_list: [{ size: "30", price: 20 }], oil_percentage: 20, alcohol_percentage: 80, ...extra,
 });
 

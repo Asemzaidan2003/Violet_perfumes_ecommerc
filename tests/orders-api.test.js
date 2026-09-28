@@ -15,7 +15,7 @@ before(async () => {
   await Alcohol.create({ name: "Ethanol", type: "perfumer", quantity: 1000, cost: 0.02 });
   const bottle = await Bottle.create({ name: "B30", capacity: 30, cost: 1, quantity: 10 });
   const product = await Product.create({
-    p_name: "Test Perfume", p_image: "x", p_category: "Men", oil_id: "OIL1",
+    p_name: "Test Perfume", p_image: ".", p_category: "Men", oil_id: "OIL1",
     size_list: [{ size: "30ml", price: 20 }], oil_percentage: 20, alcohol_percentage: 80,
   });
   ids = { bottle: bottle._id.toString(), product: product._id.toString() };
@@ -60,4 +60,22 @@ test("status rules and confirm endpoint over HTTP", async () => {
 test("missing status is 400", async () => {
   const { order } = await placeOrder({ products: [{ product_id: ids.product, size: "30", quantity: 1, bottle_id: ids.bottle }] }, "pos");
   assert.equal((await api(`/orders/${order._id}`, "PUT", {})).status, 400);
+});
+
+test("GET /api/orders/pending-count counts unconfirmed, non-canceled orders and requires admin", async () => {
+  const before = (await (await api("/orders/pending-count")).json()).data.count;
+
+  const { order } = await placeOrder({
+    products: [{ product_id: ids.product, size: "30", quantity: 1 }], delivery: {}, client_key: `pending-count-${Date.now()}`,
+    delivery_policy: { fee: 0, free_over: 0 },
+  }, "online");
+
+  const res = await api("/orders/pending-count");
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).data.count, before + 1);
+
+  await api(`/orders/${order._id}`, "DELETE");
+  assert.equal((await (await api("/orders/pending-count")).json()).data.count, before);
+
+  assert.equal((await fetch(`${t.url}/api/orders/pending-count`)).status, 401);
 });

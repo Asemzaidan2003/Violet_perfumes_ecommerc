@@ -22,7 +22,7 @@ beforeEach(async () => {
   const bottle = await Bottle.create({ name: "B30", capacity: 30, cost: 1, quantity: 10 });
   const bottle50 = await Bottle.create({ name: "B50", capacity: 50, cost: 2, quantity: 10 });
   const product = await Product.create({
-    p_name: "Test Perfume", p_image: "x", p_category: "Men", oil_id: "OIL1",
+    p_name: "Test Perfume", p_image: ".", p_category: "Men", oil_id: "OIL1",
     size_list: [{ size: "30ml", price: 20 }], oil_percentage: 20, alcohol_percentage: 80,
   });
   ids = { bottle: bottle._id.toString(), bottle50: bottle50._id.toString(), product: product._id.toString() };
@@ -174,7 +174,7 @@ const round2 = (n) => Math.round(n * 100) / 100;
 test("per-line and order totals reconcile: total_cost + total_profit equals total_revenue", async () => {
   await Oil.updateOne({ id: "OIL1" }, { oil_cost: 0.335 });
   const product2 = await Product.create({
-    p_name: "Test Perfume 2", p_image: "x", p_category: "Men", oil_id: "OIL1",
+    p_name: "Test Perfume 2", p_image: ".", p_category: "Men", oil_id: "OIL1",
     size_list: [{ size: "30ml", price: 20 }], oil_percentage: 30, alcohol_percentage: 70,
   });
   const l2 = () => ({ product_id: product2._id.toString(), size: "30", quantity: 1, bottle_id: ids.bottle });
