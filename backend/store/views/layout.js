@@ -212,7 +212,9 @@ ${ogImage ? html`<meta property="og:image" content="${abs(ogImage)}">` : ""}
 <link rel="icon" href="${LOGO}" type="image/svg+xml">
 <link rel="preload" href="/vendor/fonts/plex-arabic/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/store.css?v=${assetV}">
+<link rel="stylesheet" href="/assets/css/fx.css?v=${assetV}">
 ${styles.map((f) => html`<link rel="stylesheet" href="/assets/css/${f}?v=${assetV}">`)}
+<script type="module" src="/assets/js/fx.js?v=${assetV}"></script>
 <script type="module" src="/assets/js/store.js?v=${assetV}"></script>
 <script type="module" src="/assets/js/search.js?v=${assetV}"></script>
 <script type="module" src="/assets/js/cart.js?v=${assetV}"></script>

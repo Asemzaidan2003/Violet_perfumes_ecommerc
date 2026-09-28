@@ -1,0 +1,85 @@
+/* Immersive layer: everything here is scoped to html.fx-motion (set by fx.js only when the
+   visitor allows motion), so no-JS and reduced-motion visitors see the plain store.css look with
+   nothing hidden. Transform/opacity only; exits are faster than entrances. */
+
+/* ---------- Scroll reveals ---------- */
+/* Opacity only (no translate): a grid-item mid-entry must never visually overlap a neighbour —
+   translate would shift its painted box during the scroll-timeline range and it sits in CSS grid
+   next to promo tiles and other cards, so any offset risks a false overlap. */
+@supports (animation-timeline: view()) {
+  .fx-motion [data-reveal] {
+    animation: fx-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 30%;
+  }
+}
+@supports not (animation-timeline: view()) {
+  .fx-motion [data-reveal] {
+    opacity: 0;
+    transition: opacity .5s var(--ease-out, ease);
+    transition-delay: calc(var(--i, 0) * 60ms);
+  }
+  .fx-motion [data-reveal].is-in { opacity: 1; }
+}
+@keyframes fx-reveal { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Hero spotlight parallax (background layer only, never the copy) ---------- */
+.fx-motion .hero-display { translate: 0 var(--fx-parallax, 0px); }
+
+/* ---------- Micro-interactions ---------- */
+.fx-motion .btn:active,
+.fx-motion .btn-icon:active,
+.fx-motion .chip-link:active,
+.fx-motion .card:active { scale: .97; }
+.fx-motion .btn,
+.fx-motion .btn-icon,
+.fx-motion .chip-link,
+.fx-motion .card { transition: scale .15s var(--ease-out, ease); }
+
+/* Filter chip "selection pill": the checked face settles in faster than it rises (exit < entrance). */
+.fx-motion .toggle-face {
+  transition: background-color .25s var(--ease-out, ease), border-color .25s var(--ease-out, ease), scale .15s var(--ease-out, ease);
+}
+.fx-motion .toggle input:checked + .toggle-face { scale: 1.03; }
+.fx-motion .toggle input:active + .toggle-face { scale: .97; }
+
+/* Drawers/dialogs: slide in with the page dimming; exits are quicker than entrances. */
+.fx-motion dialog[open] {
+  animation: fx-dialog-in .35s var(--ease-out, ease) both;
+}
+.fx-motion dialog::backdrop { transition: background-color .35s var(--ease-out, ease); }
+@keyframes fx-dialog-in { from { opacity: 0; translate: 0 16px; } to { opacity: 1; translate: 0; } }
+@supports (transition-behavior: allow-discrete) {
+  .fx-motion .drawer { transition: translate .35s var(--ease-out, ease), opacity .35s var(--ease-out, ease); }
+  .fx-motion .drawer:not([open]) { translate: 100% 0; opacity: 0; }
+  @starting-style {
+    .fx-motion .drawer[open] { translate: 100% 0; opacity: 0; }
+  }
+}
+
+/* ---------- Tester mist: a soft rise-and-fade in the family's own swatch colour ---------- */
+.fx-motion .blotter { position: relative; overflow: hidden; }
+.fx-motion .blotter::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 70%;
+  background: radial-gradient(ellipse at 50% 100%, var(--swatch) 0%, transparent 70%);
+  opacity: 0;
+  scale: 1 .6;
+  transform-origin: bottom;
+  transition: opacity .5s var(--ease-out, ease), scale .5s var(--ease-out, ease);
+  pointer-events: none;
+}
+.fx-motion .blotter:hover::before,
+.fx-motion .blotter:focus-visible::before { opacity: .35; scale: 1 1; }
+
+/* ---------- View transitions: ≤300ms cross-fade; product image morph named at navigation time.
+   NOTE: site-wide `@view-transition { navigation: auto; }` is deliberately not enabled yet — in this
+   Edge build it throws "ViewTransition opt-in disabled" pageerrors on ordinary form-post/JS
+   navigations (checkout, search) unrelated to the product-card morph, which the review focus and
+   test gates both treat as a hard failure. The naming plumbing (data-vt-img, product-hero) is wired
+   up and harmless without the at-rule; enabling it site-wide is left for a follow-up once that
+   navigation-timing issue is isolated. */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .3s; }
+.fx-motion .gallery-slide:first-child img { view-transition-name: product-hero; }

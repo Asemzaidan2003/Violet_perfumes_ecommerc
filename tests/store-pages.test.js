@@ -65,6 +65,17 @@ test("GET / renders the boutique home in Arabic RTL with real products", async (
   assert.ok(!body.includes(SCRIPT_XSS), "script-breaking name never appears raw");
 });
 
+test("immersive layer hooks: fx.js loads as a module, home has data-reveal, shelf items carry --i, cards carry data-vt-img", async () => {
+  const res = await fetch(`${t.url}/`);
+  const body = await res.text();
+  assert.match(body, /<script type="module" src="\/assets\/js\/fx\.js\?v=[^"]+"><\/script>/);
+  assert.ok(body.includes("data-reveal"), "home has at least one revealable block");
+  assert.match(body, /<li data-reveal style="--i: \d+">/, "shelf items carry a stagger index");
+  assert.ok(body.includes("data-vt-img"), "product card images are named for the view-transition morph");
+  const hit = await fetch(`${t.url}/assets/js/fx.js?v=1`);
+  assert.equal(hit.status, 200);
+});
+
 test("storefront CSP forbids inline handlers", async () => {
   const csp = (await fetch(`${t.url}/`)).headers.get("content-security-policy");
   assert.match(csp, /script-src-attr 'none'/);

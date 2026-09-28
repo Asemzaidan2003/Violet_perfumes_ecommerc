@@ -89,7 +89,7 @@ function emptyState({ path, q, hidden, filtered, suggest }) {
 
 const gridItem = ({ p, best, rel }, shown, i) => html`<li class="grid-item" data-id="${p.id}" data-families="${p.families.join(" ")}"
   data-sizes="${p.sizes.map((s) => s.size).join(" ")}" data-stock="${p.sizes.filter((s) => s.in_stock).map((s) => s.size).join(" ")}"
-  data-price="${minPrice(p)}" data-created="${time(p)}" data-best="${best}" data-rel="${rel}"${shown ? "" : html` hidden`}>${productCard(p, { priority: i < 2 })}</li>`;
+  data-price="${minPrice(p)}" data-created="${time(p)}" data-best="${best}" data-rel="${rel}" data-reveal style="--i: ${i % 8}"${shown ? "" : html` hidden`}>${productCard(p, { priority: i < 2 })}</li>`;
 
 // Promo tiles go after visible items 4, 12, 20, … cycling through the aisle's tiles. There is one
 // tile element per position the whole aisle could fill; those past the visible count are appended

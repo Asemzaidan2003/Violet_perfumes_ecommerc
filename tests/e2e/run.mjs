@@ -24,6 +24,7 @@ import Interest from "../../backend/models/interest.model.js";
 import { registerAdminOnlineScenarios } from "./admin-online.mjs";
 import { registerCheckoutScenarios } from "./checkout.mjs";
 import { registerPromotionScenarios } from "./promotions.mjs";
+import { registerFxScenarios } from "./fx.mjs";
 
 process.env.SESSION_SECRET ||= "e2e-secret-".padEnd(48, "x");
 
@@ -467,6 +468,9 @@ async function run() {
     scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(),
     admin: { username: ADMIN_USER, password: ADMIN_PASS },
   });
+
+  // Task 1 (immersive layer: capability gate, reveals, view transitions) — see fx.mjs.
+  await registerFxScenarios({ scenario, openPage, check, baseUrl });
 }
 
 try {

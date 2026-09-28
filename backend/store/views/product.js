@@ -90,7 +90,7 @@ function notesPyramid(notes = {}) {
 }
 
 function recentlyViewed() {
-  return html`<section class="section recent" data-recent hidden aria-labelledby="recent-title">
+  return html`<section class="section recent" data-recent hidden data-reveal aria-labelledby="recent-title">
   <div class="container">
     <div class="section-head"><h2 id="recent-title" class="section-title">شاهدتها مؤخرًا</h2></div>
     <ul class="shelf-track" role="list" tabindex="0" aria-label="شاهدتها مؤخرًا" data-recent-list></ul>
@@ -170,7 +170,7 @@ export function product({ p, related, relatedHref, settings, base, placements = 
       </div>
     </div>
   </div>
-  ${p.description || Object.values(p.notes || {}).some((n) => n?.length) ? html`<div class="pdp-details">
+  ${p.description || Object.values(p.notes || {}).some((n) => n?.length) ? html`<div class="pdp-details" data-reveal>
     ${notesPyramid(p.notes)}
     ${p.description ? html`<section class="pdp-block" aria-labelledby="desc-title">
       <h2 id="desc-title" class="section-title">عن العطر</h2>

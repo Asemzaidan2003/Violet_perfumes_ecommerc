@@ -73,9 +73,9 @@ function aisles(products) {
   <div class="container">
     <div class="section-head"><h2 id="aisles-title" class="section-title">تجوّل في الأقسام</h2></div>
     <ul class="aisles" role="list">
-      ${AISLES.map((a) => {
+      ${AISLES.map((a, i) => {
         const count = products.filter((p) => a.keys.includes(p.category)).length;
-        return html`<li><a class="aisle" href="/c/${a.slug}" style="--glow: ${a.glow}">
+        return html`<li data-reveal style="--i: ${i}"><a class="aisle" href="/c/${a.slug}" style="--glow: ${a.glow}">
           <svg class="aisle-art" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true" focusable="false">${raw(AISLE_ART[a.slug])}</svg>
           <span class="aisle-name">${a.label}</span>
           <span class="aisle-count">${count ? perfumeCount(count) : "قريبًا"}</span>
@@ -89,7 +89,7 @@ function aisles(products) {
 
 function testerBar(families) {
   if (!families.length) return "";
-  return html`<section class="section testers" id="families" aria-labelledby="testers-title">
+  return html`<section class="section testers" id="families" aria-labelledby="testers-title" data-reveal>
   <div class="container">
     <div class="section-head">
       <h2 id="testers-title" class="section-title">ركن التجربة</h2>
@@ -116,7 +116,7 @@ function serviceStrip(settings) {
     { icon: "wallet", title: "الدفع عند الاستلام", sub: "ادفع نقدًا عند وصول طلبك" },
     { icon: "whatsapp", title: "خدمة واتساب", sub: wa ? html`<a href="${wa}" target="_blank" rel="noopener">راسلنا الآن</a>` : "نرد على استفساراتك بسرعة" },
   ];
-  return html`<section class="section services" aria-label="خدماتنا">
+  return html`<section class="section services" aria-label="خدماتنا" data-reveal>
   <ul class="container service-list" role="list">
     ${items.map((i) => html`<li class="service"><span class="service-icon">${icon(i.icon)}</span><span><strong>${i.title}</strong><span class="muted">${i.sub}</span></span></li>`)}
   </ul>

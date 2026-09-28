@@ -88,7 +88,7 @@ export function familyCounts(products) {
 function productImage(p, priority) {
   const src = p.thumb || p.image || PLACEHOLDER_IMG;
   const srcset = p.image && p.thumb && p.thumb !== p.image ? `${p.thumb} 480w, ${p.image} 960w` : null;
-  return html`<img src="${src}"${srcset ? html` srcset="${srcset}" sizes="(min-width: 900px) 240px, 46vw"` : ""} alt="${p.name}" width="400" height="500"${
+  return html`<img data-vt-img src="${src}"${srcset ? html` srcset="${srcset}" sizes="(min-width: 900px) 240px, 46vw"` : ""} alt="${p.name}" width="400" height="500"${
     priority ? raw(' fetchpriority="high"') : raw(' loading="lazy"')} decoding="async" referrerpolicy="no-referrer"${p.image ? "" : raw(' class="is-placeholder"')}>`;
 }
 
@@ -122,7 +122,7 @@ export function shelf({ title, href, products }) {
       <a class="link-more" href="${href}">عرض الكل ${icon("chevron")}</a>
     </div>
     <ul class="shelf-track" role="list" tabindex="0" aria-label="${title}">
-      ${products.map((p) => html`<li>${productCard(p)}</li>`)}
+      ${products.map((p, i) => html`<li data-reveal style="--i: ${i}">${productCard(p)}</li>`)}
     </ul>
   </div>
 </section>`;
