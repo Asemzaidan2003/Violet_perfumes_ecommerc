@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createLimiter } from "./middleware/rateLimit.js";
 import { parseTrustProxyHops } from "./utils/trustProxy.js";
 import { ASSET_V } from "./store/assets.js";
+import { THREE_VERSION } from "./store/importmap.js";
 import productRouter from "./routes/product.Routs.js";
 import oilRouter from "./routes/oil.Routs.js";
 import bottleRouter from "./routes/bottle.Routs.js";
@@ -91,6 +92,9 @@ export function createApp({ limits = {} } = {}) {
   const fontsDir = (pkgName) => fileURLToPath(new URL(`../node_modules/@fontsource/${pkgName}/files`, import.meta.url));
   app.use("/vendor/fonts/el-messiri", express.static(fontsDir("el-messiri"), { maxAge: "1y", immutable: true }));
   app.use("/vendor/fonts/plex-arabic", express.static(fontsDir("ibm-plex-sans-arabic"), { maxAge: "1y", immutable: true }));
+  const threeDir = (sub) => fileURLToPath(new URL(`../node_modules/three/${sub}`, import.meta.url));
+  app.use(`/vendor/three@${THREE_VERSION}/build`, express.static(threeDir("build"), { maxAge: "1y", immutable: true }));
+  app.use(`/vendor/three@${THREE_VERSION}/examples/jsm`, express.static(threeDir("examples/jsm"), { maxAge: "1y", immutable: true }));
   app.use("/img", imageRouter);
   app.use(storefrontRouter); // pages at "/", plus the storefront 404/500 pages — keep last
 

@@ -1,9 +1,10 @@
 // Page shell for every storefront page: head (SEO, Open Graph), header, bottom bar, footer.
-import { html, json } from "../html.js";
+import { html, json, raw } from "../html.js";
 import { icon, slot } from "./components.js";
 import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { num } from "../../../storefront/js/shared/format.js";
 import { asset } from "../assets.js";
+import { IMPORT_MAP_JSON } from "../importmap.js";
 
 const LOGO = asset("img/logo.svg");
 
@@ -196,6 +197,7 @@ export function layout({
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
+<script type="importmap">${raw(IMPORT_MAP_JSON)}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${title}</title>
 ${noindex ? html`<meta name="robots" content="noindex">` : ""}

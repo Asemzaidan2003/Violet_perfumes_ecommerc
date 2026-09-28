@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 const allOpaque = (page) => page.evaluate(() =>
   [...document.querySelectorAll("[data-reveal]")].every((el) => getComputedStyle(el).opacity === "1"));
 
-export async function registerFxScenarios({ scenario, openPage, check, baseUrl }) {
+export async function registerFxScenarios({ scenario, openPage, check, baseUrl, productId }) {
   await scenario("Motion basics", async () => {
     const page = await openPage();
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -98,5 +98,62 @@ export async function registerFxScenarios({ scenario, openPage, check, baseUrl }
     assert.ok(!(await rmPage.evaluate(() => document.documentElement.classList.contains("fx-entrance"))),
       "no overlay under reduced motion");
     check(rmPage);
+  });
+
+  await scenario("360 viewer", async () => {
+    const page = await openPage();
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    const requests = [];
+    page.on("request", (req) => requests.push(req.url()));
+
+    await page.goto(`${baseUrl}/p/${productId}`);
+    await page.waitForLoadState("networkidle");
+
+    const hasWebGL2 = await page.evaluate(() => {
+      try { return !!document.createElement("canvas").getContext("webgl2"); } catch { return false; }
+    });
+    const rich3d = await page.evaluate(() => document.documentElement.classList.contains("fx-motion"))
+      && hasWebGL2;
+
+    assert.ok(!requests.some((u) => u.includes("three.module.js")), "no three.js request before the click");
+
+    const btn = page.locator("[data-viewer360]");
+    if (!rich3d) {
+      console.log("SKIP: WebGL2 unavailable in this headless Edge even with SwiftShader — button stays hidden");
+      assert.equal(await btn.isVisible(), false, "the 360° button stays hidden without rich3d");
+      check(page);
+      return;
+    }
+    console.log("RAN: WebGL2 available (SwiftShader) — full 360° viewer path exercised");
+
+    await btn.waitFor({ state: "visible" });
+    await btn.click();
+    const canvas = page.locator("canvas[role=img]");
+    await canvas.waitFor({ state: "visible", timeout: 5000 });
+    assert.ok(requests.some((u) => u.includes("three.module.js")), "three.js was requested after the click");
+
+    const before = await canvas.getAttribute("data-yaw");
+    const box = await canvas.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 10 });
+    await page.mouse.up();
+    await page.waitForFunction((prev) => document.querySelector("canvas[role=img]")?.dataset.yaw !== prev, before);
+
+    await page.keyboard.press("Escape");
+    await page.waitForSelector("canvas[role=img]", { state: "detached" });
+    await page.locator(".gallery-slide").first().waitFor({ state: "visible" });
+
+    for (let i = 0; i < 5; i++) {
+      await btn.click();
+      await canvas.waitFor({ state: "visible", timeout: 5000 });
+      await page.locator(".viewer360-close").click();
+      await page.waitForSelector("canvas[role=img]", { state: "detached" });
+    }
+    const liveRenderers = await page.evaluate(() => window.__fxRenderers ?? 0);
+    assert.ok(liveRenderers <= 1, `at most 1 live renderer after 5 open/close cycles, got ${liveRenderers}`);
+
+    check(page);
   });
 }

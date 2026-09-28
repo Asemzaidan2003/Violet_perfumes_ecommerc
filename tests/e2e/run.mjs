@@ -131,7 +131,7 @@ async function run() {
 
   await fs.writeFile(pngPath, Buffer.from(PNG_BASE64, "base64"));
 
-  browser = await chromium.launch({ channel: "msedge", headless: true });
+  browser = await chromium.launch({ channel: "msedge", headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
   context = await browser.newContext();
   mobileContext = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
   await installFetchCapture(context);
@@ -470,7 +470,7 @@ async function run() {
   });
 
   // Task 1 (immersive layer: capability gate, reveals, view transitions) — see fx.mjs.
-  await registerFxScenarios({ scenario, openPage, check, baseUrl });
+  await registerFxScenarios({ scenario, openPage, check, baseUrl, productId: String(ysl._id) });
 }
 
 try {

@@ -16,6 +16,7 @@ import { orderConfirmation } from "../store/views/order.js";
 import { getOrderByRef, publicOrder } from "../services/order.service.js";
 import { esc } from "../store/html.js";
 import { getLivePlacements } from "../services/placements.service.js";
+import { IMPORT_MAP_HASH } from "../store/importmap.js";
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.use(helmet.contentSecurityPolicy({
   useDefaults: false,
   directives: {
     "default-src": ["'self'"],
-    "script-src": ["'self'"],
+    "script-src": ["'self'", IMPORT_MAP_HASH],
     "script-src-attr": ["'none'"],
     "style-src": ["'self'", "'unsafe-inline'"],
     "font-src": ["'self'"],

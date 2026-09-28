@@ -79,7 +79,8 @@ test("immersive layer hooks: fx.js loads as a module, home has data-reveal, shel
 test("storefront CSP forbids inline handlers", async () => {
   const csp = (await fetch(`${t.url}/`)).headers.get("content-security-policy");
   assert.match(csp, /script-src-attr 'none'/);
-  assert.match(csp, /script-src 'self'(;|$)/);
+  // 'self' plus exactly one sha256 hash, for the import map — nothing else inline is ever allowed.
+  assert.match(csp, /script-src 'self' 'sha256-[A-Za-z0-9+/]+=*'(;|$)/);
 });
 
 test("unknown storefront path is a styled 404 page", async () => {

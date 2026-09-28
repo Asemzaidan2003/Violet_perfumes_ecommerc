@@ -6,6 +6,7 @@ import { money, sizeLabel } from "./shared/format.js";
 import { normalizePhone, isJordanMobile } from "./shared/phone.js";
 import { loadCatalog } from "./shared/catalog-client.js";
 import { flyToCart } from "./fx-flight.js";
+import { rich3d } from "./fx.js";
 
 const RECENT_KEY = "nsamat_recent_v1";
 const RECENT_MAX = 12;
@@ -173,6 +174,32 @@ function initInterest() {
   });
 }
 
+// --- 360° viewer: rendered hidden server-side; revealed only when the device can actually run it.
+// viewer360.js (and `three` itself) are imported only once the button is clicked.
+let viewerHandle = null;
+function initViewer360() {
+  const btn = root.querySelector("[data-viewer360]");
+  if (!btn || !rich3d) return;
+  btn.hidden = false;
+  btn.addEventListener("click", async () => {
+    if (viewerHandle) return;
+    btn.disabled = true;
+    try {
+      const { openViewer360 } = await import("./viewer360.js");
+      viewerHandle = await openViewer360(root.querySelector("[data-gallery]"), {
+        tint: btn.dataset.tint, label: btn.dataset.name,
+      });
+      const gallery = root.querySelector("[data-gallery]");
+      const observer = new MutationObserver(() => {
+        if (!gallery.querySelector(".viewer360")) { viewerHandle = null; observer.disconnect(); }
+      });
+      observer.observe(gallery, { childList: true });
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
 // --- Recently viewed (localStorage ids; cards filled from the public catalogue with textContent).
 function readRecent() {
   try {
@@ -235,5 +262,6 @@ if (root) {
   safely(clampQty);
   safely(initGallery);
   safely(initInterest);
+  safely(initViewer360);
   initRecent().catch((err) => console.warn(err));
 }

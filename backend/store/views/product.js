@@ -14,9 +14,13 @@ const cheapest = (sizes) => sizes.reduce((a, b) => (b.final < a.final ? b : a), 
 // Preselect the cheapest in-stock size, else the cheapest.
 const defaultSize = (p) => cheapest(p.sizes.filter((s) => s.in_stock).length ? p.sizes.filter((s) => s.in_stock) : p.sizes);
 
+// data-tint: the product's first family swatch (falls back to gold), passed to the lazily-loaded
+// 360° viewer via a data attribute rather than baking it into a script. Rendered hidden; product.js
+// reveals it only when rich3d (Task 3 capability gate) says the device can actually run it.
 function gallery(p) {
   const images = [...new Set([p.image, ...p.images].filter(Boolean))];
   const slides = images.length ? images : [null];
+  const tint = FAMILY.get(p.families[0])?.swatch || "#D4AF37";
   return html`<div class="gallery" data-gallery>
   <ul class="gallery-track" role="list"${slides.length > 1 ? html` tabindex="0" aria-label="صور ${p.name}"` : ""}>
     ${slides.map((src, i) => {
@@ -29,6 +33,7 @@ function gallery(p) {
   </ul>
   ${slides.length > 1 ? html`<ul class="gallery-thumbs" role="list">${slides.map((src, i) => html`<li><button class="gallery-thumb" type="button" data-thumb="${i}"
     aria-label="الصورة ${i + 1} من ${slides.length}"${i ? "" : html` aria-current="true"`}><img src="${src}" alt="" width="64" height="80" loading="lazy" decoding="async" referrerpolicy="no-referrer"></button></li>`)}</ul>` : ""}
+  <button class="btn btn-secondary gallery-360" type="button" data-viewer360 data-tint="${tint}" data-name="${p.name}" hidden>${icon("cube")}<span>عرض 360°</span></button>
 </div>`;
 }
 
