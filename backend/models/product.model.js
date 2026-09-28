@@ -6,7 +6,7 @@ const noteList = {
   type: [note],
   validate: { validator: (v) => v.length <= 10, message: "عشر نوتات كحد أقصى لكل طبقة" },
 };
-const IMAGE_URL = /^(\/img\/[a-f0-9]{24}(-480)?\.(webp|jpg|png)|https:\/\/[^\s"'<>]+)$/;
+export const IMAGE_URL = /^(\/img\/[a-f0-9]{24}(-480)?\.(webp|jpg|png)|https:\/\/[^\s"'<>]+)$/;
 
 const productSchema = new mongoose.Schema(
   {
