@@ -10,6 +10,7 @@ import { normalizeSize } from "../../storefront/js/shared/vocab.js";
 import { normalizePhone } from "../../storefront/js/shared/phone.js";
 import { effectivePrice } from "../catalog/pricing.js";
 import { fail } from "../utils/fail.js";
+import { normalizeCode, checkCoupon, claimCoupon, releaseCoupon, couponDiscount } from "./coupons.service.js";
 
 // Business rule: an order is never blocked for stock. Stock is deducted only when an
 // order is confirmed through the POS; it may go negative (what the shop owes) and any
@@ -88,13 +89,16 @@ async function take(Model, filter, field, nameField, amount, missingMessage, ctx
   return { doc, taken: amount };
 }
 
+// The only place order totals are computed. The discount comes from the order's coupon
+// snapshot, so an edit at confirmation re-derives it; profit exists only once stock is deducted.
 function setTotals(order) {
   const sum = (key) => round2(order.products.reduce((s, line) => s + (line[key] || 0), 0));
   order.total_items = order.products.reduce((s, line) => s + line.quantity, 0);
   order.total_revenue = sum("total_revenue");
   order.total_cost = sum("total_cost");
-  order.total_profit = sum("total_profit");
-  order.final_total = round2(order.total_revenue + (order.delivery_fee || 0));
+  order.discount = couponDiscount(order.coupon, order.total_revenue);
+  order.total_profit = order.stock_deducted ? round2(sum("total_profit") - order.discount) : 0;
+  order.final_total = round2(order.total_revenue - order.discount + (order.delivery_fee || 0));
 }
 
 async function deductAndCost(order, session) {
@@ -169,6 +173,16 @@ export async function placeOrder(input = {}, source) {
     });
     setTotals(order);
     if (online) {
+      // Claimed only after the replay check above, inside this transaction: a failed order
+      // (or a rolled-back one) never keeps the use.
+      if (input.coupon_code != null && input.coupon_code !== "") {
+        const code = normalizeCode(input.coupon_code);
+        const check = await checkCoupon(code, order.total_revenue, new Date(), session);
+        if (!check.valid) throw fail(400, check.message);
+        const coupon = await claimCoupon(code, session);
+        if (!coupon) throw fail(400, "انتهت استخدامات هذا الكود");
+        order.coupon = { code: coupon.code, type: coupon.type, value: coupon.value };
+      }
       const { fee, free_over } = input.delivery_policy;
       order.delivery_fee = Number(free_over) > 0 && order.total_revenue >= Number(free_over) ? 0 : Number(fee);
       setTotals(order);
@@ -238,6 +252,7 @@ export function publicOrder(order) {
     subtotal: order.total_revenue,
     delivery_fee: order.delivery_fee,
     discount: order.discount ?? 0,
+    coupon: order.coupon?.code ?? null,
     total: order.final_total,
     items: order.products.map(({ p_name, product_size, quantity, selling_price, total_revenue }) => ({
       name: p_name,
@@ -262,7 +277,10 @@ export async function changeStatus(id, status) {
     if (NEEDS_CONFIRMATION.includes(status) && !order.stock_deducted) {
       throw fail(409, "يرجى تأكيد الطلب من نقطة البيع أولًا");
     }
-    if (status === "canceled" && order.status !== "canceled") await restock(order, session);
+    if (status === "canceled" && order.status !== "canceled") {
+      await restock(order, session);
+      if (order.coupon?.code) await releaseCoupon(order.coupon.code, session);
+    }
     order.status = status;
     await order.save({ session, validateModifiedOnly: true });
     return order;
@@ -273,7 +291,10 @@ export async function removeOrder(id) {
   return inTransaction(async (session) => {
     const order = await Order.findById(id).session(session);
     if (!order) throw fail(404, "الطلب غير موجود");
-    if (order.status !== "canceled") await restock(order, session);
+    if (order.status !== "canceled") {
+      await restock(order, session);
+      if (order.coupon?.code) await releaseCoupon(order.coupon.code, session);
+    }
     await order.deleteOne({ session });
     return order;
   });

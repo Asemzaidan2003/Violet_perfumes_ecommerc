@@ -39,6 +39,7 @@ export function createApp({ limits = {} } = {}) {
     login: createLimiter({ windowMs: 15 * 60_000, max: 5, ...limits.login }),
     orders: createLimiter({ windowMs: 60 * 60_000, max: 30, ...limits.orders }),
     interest: createLimiter({ windowMs: 60 * 60_000, max: 20, ...limits.interest }),
+    coupons: createLimiter({ windowMs: 60 * 60_000, max: 30, ...limits.coupons }),
   };
   app.locals.assetV = ASSET_V;
 
@@ -77,7 +78,7 @@ export function createApp({ limits = {} } = {}) {
   app.use("/api/reports", reportRouter);
   app.use("/api/uploads", uploadRouter);
   app.use("/api", adminRouter); // defines /settings and /interests
-  app.use("/api", promotionsRouter); // defines /placements
+  app.use("/api", promotionsRouter); // defines /placements and /coupons
   app.use("/api", (req, res) => res.status(404).json({ success: false, message: "Not found" }));
 
   app.get("/admin", (req, res) => res.redirect("/admin/html/index.html"));

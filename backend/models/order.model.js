@@ -51,6 +51,10 @@ const orderSchema = new mongoose.Schema(
     payment_method: { type: String, enum: ["Cash", "Credit"], required: true },
     delivery_fee: { type: Number, default: 0 },
     final_total: { type: Number, required: true },
+    // Discount-code snapshot, taken at placement (online only). `discount` is derived from it
+    // by setTotals, so an edit at confirmation re-derives it from the edited revenue.
+    discount: { type: Number, default: 0 },
+    coupon: { code: String, type: { type: String }, value: Number },
 
     order_notes: { type: String, default: "" },
 

@@ -5,6 +5,7 @@ import { getCatalog, compactIndex } from "../store/catalog.js";
 import { getSettings, getCachedSettings } from "../services/settings.service.js";
 import { placeOrder, publicOrder } from "../services/order.service.js";
 import { validateOrderBody, validateInterestBody } from "../store/validate.js";
+import { checkCoupon } from "../services/coupons.service.js";
 import { fail } from "../utils/fail.js";
 
 // GET /api/store/catalog — public compact index for the search overlay and cart pricing.
@@ -34,12 +35,13 @@ export const warmSettings = async (req, res, next) => {
 
 // POST /api/store/orders — place an online order (public, no auth).
 export const createStoreOrder = async (req, res) => {
-  const { items, customer, client_key } = validateOrderBody(req.body);
+  const { items, customer, client_key, coupon } = validateOrderBody(req.body);
   const settings = req.settings ?? await getSettings();
   try {
     const { order, replay } = await placeOrder({
       products: items,
       client_key,
+      coupon_code: coupon,
       delivery: customer,
       delivery_policy: { fee: settings.delivery_fee, free_over: settings.free_delivery_over },
     }, "online");
@@ -66,4 +68,16 @@ export const createStoreInterest = async (req, res) => {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
   res.status(201).json({ success: true });
+};
+
+// POST /api/store/coupons/check — { code, subtotal } → { valid, discount, message }. A preview
+// only: the order re-validates and claims the code against the server-priced subtotal.
+export const checkStoreCoupon = async (req, res) => {
+  const { code, subtotal } = req.body;
+  const amount = Number(subtotal);
+  if ((code != null && typeof code !== "string") || typeof subtotal === "boolean" || subtotal === "" || !Number.isFinite(amount) || amount < 0) {
+    throw fail(400, "بيانات غير صالحة");
+  }
+  const { valid, discount, message } = await checkCoupon(code, amount);
+  res.status(200).json({ success: true, valid, discount, message });
 };

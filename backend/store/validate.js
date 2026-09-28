@@ -30,7 +30,7 @@ function checkPhone(raw) {
   return phone;
 }
 
-// { items: [{ product_id, size, quantity }], customer: { name, phone, city, address, notes }, client_key }
+// { items: [{ product_id, size, quantity }], customer: { name, phone, city, address, notes }, client_key, coupon? }
 export function validateOrderBody(body = {}) {
   if (body.website) throw fail(400, "تعذر إرسال الطلب"); // honeypot
 
@@ -59,7 +59,14 @@ export function validateOrderBody(body = {}) {
   const client_key = String(body.client_key ?? "");
   if (!UUID_V4.test(client_key)) throw fail(400, "معرّف الطلب غير صالح");
 
-  return { items, customer: { name, phone, city, address, notes }, client_key };
+  // Only the shape is checked here; the order service normalizes, validates and claims it.
+  let coupon;
+  if (body.coupon != null && body.coupon !== "") {
+    if (typeof body.coupon !== "string" || body.coupon.trim().length > 20) throw fail(400, "كود الخصم غير صالح");
+    coupon = body.coupon;
+  }
+
+  return { items, customer: { name, phone, city, address, notes }, client_key, coupon };
 }
 
 // { product_id, size?, name, phone, note? }

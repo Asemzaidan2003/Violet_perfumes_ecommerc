@@ -183,7 +183,7 @@ export const getDashboardSummary = async (req, res) => {
         },
       ]),
 
-      // top 5 products in the last 30 days by revenue
+      // top 5 products in the last 30 days by revenue. Line figures are pre-discount (a coupon's discount is order-level, in final_total/total_profit only).
       Order.aggregate([
         {
           $match: {
