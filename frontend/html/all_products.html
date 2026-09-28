@@ -100,13 +100,19 @@
         return `
           <tr>
             <td><img class="row-thumb" src="${esc(product.p_image)}" alt="${esc(product.p_name)}"></td>
-            <td class="cell-strong">${esc(product.p_name)}${String(product.p_image).startsWith("/img/") ? "" : ' <span class="badge badge-pending">بدون صورة خاصة</span>'}</td>
+            <td class="cell-strong">${esc(product.p_name)}${String(product.p_image).startsWith("/img/") ? "" : ' <span class="badge badge-pending">بدون صورة خاصة</span>'}${product.visible === false ? ' <span class="badge badge-out">مخفي</span>' : ""}</td>
             <td>${product.p_category}</td>
             <td class="num">${product.oil_percentage}% زيت / ${product.alcohol_percentage}% كحول</td>
             <td><span class="badge ${statusBadgeClass(product.status)}">${statusLabel(product.status)}</span></td>
             <td>${sizesHTML}</td>
             <td>
               <button class="btn btn-secondary btn-sm" onclick="editProduct('${product._id}')">🛠️ تعديل</button>
+              <label class="switch-field switch-field-inline">
+                <span class="switch">
+                  <input type="checkbox" ${product.visible !== false ? "checked" : ""} onchange="toggleVisible('${product._id}', this)">
+                  <span class="switch-track"></span>
+                </span>
+              </label>
             </td>
           </tr>
         `;
@@ -130,6 +136,25 @@
 
     function editProduct(id) {
       window.location.href = `edit_product.html?id=${encodeURIComponent(id)}`;
+    }
+
+    async function toggleVisible(id, checkbox) {
+      const visible = checkbox.checked;
+      try {
+        const res = await fetch(`/api/products/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ visible }),
+        });
+        if (!res.ok) throw new Error("فشل التحديث");
+        const product = productsData.find(p => p._id === id);
+        if (product) product.visible = visible;
+        filterProducts();
+      } catch (err) {
+        console.error(err);
+        checkbox.checked = !visible;
+        alert("حدث خطأ أثناء تحديث الظهور");
+      }
     }
 
     fetchProducts();

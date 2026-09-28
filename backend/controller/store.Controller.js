@@ -59,7 +59,7 @@ export const createStoreOrder = async (req, res) => {
 export const createStoreInterest = async (req, res) => {
   const { product_id, size, name, phone, note } = validateInterestBody(req.body);
   const product = await Product.findById(product_id);
-  if (!product || product.status === "discontinued") throw fail(404, "المنتج غير متوفر");
+  if (!product || product.status === "discontinued" || product.visible === false) throw fail(404, "المنتج غير متوفر");
   if (size && !product.size_list.some((s) => s.size === size)) throw fail(400, "الحجم غير متوفر لهذا العطر");
 
   await Interest.findOneAndUpdate(

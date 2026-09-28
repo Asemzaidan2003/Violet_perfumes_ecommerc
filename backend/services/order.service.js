@@ -52,7 +52,7 @@ async function priceLines(items, source, session) {
     if (!mongoose.isValidObjectId(item.product_id)) throw fail(400, `السطر ${n}: معرّف المنتج غير صالح`);
     const product = await Product.findById(item.product_id).session(session);
     if (!product) throw fail(404, `السطر ${n}: المنتج غير موجود`);
-    if (source === "online" && product.status === "discontinued") throw fail(404, "المنتج غير متوفر");
+    if (source === "online" && (product.status === "discontinued" || product.visible === false)) throw fail(404, "المنتج غير متوفر");
     const size = normalizeSize(item.size);
     const ml = parseFloat(size);
     const listed = product.size_list.find((s) => s.size === size);

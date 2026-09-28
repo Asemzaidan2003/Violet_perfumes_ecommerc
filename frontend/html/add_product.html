@@ -57,6 +57,16 @@
       </div>
 
       <div class="field">
+        <label class="switch-field" for="visible">
+          <span>ظاهر في المتجر</span>
+          <span class="switch">
+            <input type="checkbox" id="visible" checked>
+            <span class="switch-track"></span>
+          </span>
+        </label>
+      </div>
+
+      <div class="field">
         <label for="status">الحالة</label>
         <select id="status">
           <option value="available">متوفر</option>
@@ -144,6 +154,7 @@
           alcohol_percentage: parseFloat(document.getElementById("alcohol_percentage").value),
           status: document.getElementById("status").value,
           p_image: document.getElementById("p_image").value,
+          visible: document.getElementById("visible").checked,
           size_list: size_list,
           ...extras
         };

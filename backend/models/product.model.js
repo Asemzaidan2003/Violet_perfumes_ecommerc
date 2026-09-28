@@ -57,6 +57,7 @@ const productSchema = new mongoose.Schema(
     notes: { top: noteList, heart: noteList, base: noteList },
     images: [{ type: String, validate: { validator: (v) => IMAGE_URL.test(v), message: "رابط صورة غير صالح" } }],
     keywords: { type: String, trim: true, maxlength: 300 },
+    visible: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

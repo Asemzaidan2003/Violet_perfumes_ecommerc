@@ -95,7 +95,7 @@ export async function getCatalog() {
   if (catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS) return catalogCache.data;
 
   const [products, oils, bottles, ranks] = await Promise.all([
-    Product.find({ status: { $ne: "discontinued" } }).lean(),
+    Product.find({ status: { $ne: "discontinued" }, visible: { $ne: false } }).lean(),
     Oil.find({}).lean(),
     Bottle.find({}).lean(),
     getBestSellerRanks(),
