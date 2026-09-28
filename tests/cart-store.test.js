@@ -16,7 +16,7 @@ before(() => {
   globalThis.document = { getElementById: () => null };
 });
 
-const { readCart, add, MAX_LINES, CART_KEY } = await import("../storefront/js/shared/cart-store.js");
+const { readCart, add, priceCart, MAX_LINES, CART_KEY } = await import("../storefront/js/shared/cart-store.js");
 
 beforeEach(() => localStorage.removeItem(CART_KEY));
 
@@ -48,4 +48,15 @@ test("add refuses a new distinct line past MAX_LINES but still tops up an existi
 
   assert.equal(add("p0", "30", 1), true, "an existing line can still grow past the line cap");
   assert.equal(readCart().find((l) => l.id === "p0" && l.size === "30").qty, 2);
+});
+
+test("priceCart applies a display-only discount; the delivery fee still uses the pre-discount subtotal", () => {
+  const catalog = [{ id: "a", sizes: [{ size: "30", final: 10 }] }];
+  const lines = [{ id: "a", size: "30", qty: 3 }]; // subtotal 30
+  const r = priceCart(lines, catalog, { delivery_fee: 2, free_delivery_over: 100 }, { discount: 4 });
+  assert.equal(r.subtotal, 30);
+  assert.equal(r.delivery, 2, "below the free-delivery threshold even after the discount");
+  assert.equal(r.total, 28, "30 - 4 + 2");
+  assert.equal(r.discount, 4);
+  assert.equal(priceCart(lines, catalog, {}, { discount: 999 }).total, 0, "discount is clamped to the subtotal");
 });

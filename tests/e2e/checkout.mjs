@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import Order from "../../backend/models/order.model.js";
 import Product from "../../backend/models/product.model.js";
+import Coupon from "../../backend/models/coupon.model.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
 import { getSettings, saveSettings } from "../../backend/services/settings.service.js";
 
@@ -188,6 +189,54 @@ export async function registerCheckoutScenarios({ scenario, openPage, check, bas
       // Edge logs a "Failed to load resource" console error for the 429 and the aborted request.
       page.errors.splice(0, Infinity, ...page.errors.filter((e) => !/Failed to load resource/.test(e)));
       check(page);
+    });
+
+    await scenario("Coupon checkout", async () => {
+      const coupon = await Coupon.create({ code: "SAVE10", type: "percent", value: 10, active: true });
+      try {
+        const page = await shopPage(VIEWPORTS[1]);
+        await page.goto(`${baseUrl}/`);
+        await page.evaluate((id) => localStorage.setItem("nsamat_cart_v1", JSON.stringify([{ id, size: "30", qty: 1 }])), pid);
+        await page.goto(`${baseUrl}/checkout`);
+        await page.locator("[data-co-total-foot]", { hasText: "27.00 د.أ" }).waitFor();
+        await page.locator("[data-co-details] summary").click(); // open the order summary (mobile: collapsed by default)
+
+        // A lowercase, space-padded code still works, and the discount shows in the summary and the
+        // sticky mobile bar total (25.00 subtotal - 2.50 discount + 2.00 delivery = 24.50).
+        await page.locator("[data-co-coupon] summary").click();
+        await page.fill("#co-coupon-code", " save10 ");
+        await page.click("[data-co-coupon-apply]");
+        await page.locator("[data-co-discount-row]:not([hidden])").waitFor();
+        assert.equal(await text(page, "[data-co-discount]"), "−2.50 د.أ");
+        assert.match(await text(page, "[data-co-discount-code]"), /save10/i);
+        await page.locator("[data-co-total-foot]", { hasText: "24.50 د.أ" }).waitFor();
+
+        const buyer = `زبون الكود ${Date.now()}`;
+        await fillCheckout(page, buyer);
+        await Promise.all([page.waitForURL(ORDER_URL), page.locator("[data-co-send]").click()]);
+
+        // Confirmation shows the discount row, and the admin order has discount > 0.
+        assert.match(await page.locator("main .totals").innerText(), /الخصم.*SAVE10/s);
+        const ref = page.url().split("/").pop();
+        const order = (await adminOrders()).find((o) => o.public_ref === ref);
+        assert.ok(order, `admin API has order ${ref}`);
+        assert.ok(order.discount > 0, "order has a discount");
+        assert.equal(order.coupon.code, "SAVE10");
+
+        // An unknown code: the generic message shows, and no discount row appears.
+        await page.evaluate((id) => localStorage.setItem("nsamat_cart_v1", JSON.stringify([{ id, size: "30", qty: 1 }])), pid);
+        await page.goto(`${baseUrl}/checkout`);
+        await page.locator("[data-co-coupon] summary").click();
+        await page.fill("#co-coupon-code", "NOPE");
+        await page.click("[data-co-coupon-apply]");
+        await page.locator("[data-co-coupon-msg]", { hasText: "غير صالح" }).waitFor();
+        assert.equal(await page.locator("[data-co-discount-row]:not([hidden])").count(), 0);
+
+        await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
+        check(page);
+      } finally {
+        await Coupon.deleteOne({ _id: coupon._id });
+      }
     });
   } finally {
     await saveSettings(previous);

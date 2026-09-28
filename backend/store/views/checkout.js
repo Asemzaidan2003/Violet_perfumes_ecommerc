@@ -24,11 +24,24 @@ function summary() {
     <ul class="co-lines" role="list" data-co-lines></ul>
     <dl class="totals">
       <div><dt>المجموع الفرعي</dt><dd><bdi data-co-subtotal></bdi></dd></div>
+      <div data-co-discount-row hidden><dt>الخصم <bdi data-co-discount-code></bdi></dt><dd><bdi data-co-discount></bdi></dd></div>
       <div><dt>التوصيل</dt><dd><bdi data-co-delivery></bdi></dd></div>
       <div class="totals-grand"><dt>الإجمالي</dt><dd><bdi data-co-total></bdi></dd></div>
     </dl>
     <p class="muted co-free" data-co-free hidden></p>
     <a class="link-btn" href="/cart" data-open-cart><span>تعديل السلة</span></a>
+  </details>
+  <details class="co-coupon" data-co-coupon>
+    <summary class="co-coupon-head">لديك كود خصم؟</summary>
+    <div class="co-coupon-body">
+      <div class="co-coupon-row">
+        <label for="co-coupon-code" class="sr-only">كود الخصم</label>
+        <input id="co-coupon-code" autocapitalize="characters" autocomplete="off" maxlength="20" placeholder="كود الخصم" aria-describedby="co-coupon-msg">
+        <button type="button" class="btn btn-secondary" data-co-coupon-apply>تطبيق</button>
+      </div>
+      <p class="co-coupon-msg" id="co-coupon-msg" data-co-coupon-msg aria-live="polite"></p>
+      <button type="button" class="link-btn co-coupon-remove" data-co-coupon-remove hidden>${icon("close")}<span>إزالة الكود</span></button>
+    </div>
   </details>
   <template data-co-line><li class="co-line">
     <span class="co-thumb"><img alt="" width="48" height="60" decoding="async" referrerpolicy="no-referrer"></span>

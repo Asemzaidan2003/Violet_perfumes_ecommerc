@@ -163,6 +163,20 @@
 .co-line-total { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .co-details .totals, .order-box .totals { padding-block: var(--s-12); }
 .co-free { font-size: var(--fs-14); margin-block-end: var(--s-8); }
+.co-coupon { padding-inline: var(--s-16); padding-block-end: var(--s-8); border-block-start: 1px solid var(--line); }
+.co-coupon-head { display: flex; align-items: center; min-height: 44px; color: var(--gold-strong); font-weight: 600;
+  font-size: var(--fs-14); cursor: pointer; list-style: none; }
+.co-coupon-head::-webkit-details-marker { display: none; }
+.co-coupon-body { display: grid; gap: var(--s-8); padding-block-end: var(--s-8); }
+.co-coupon-row { display: flex; gap: var(--s-8); }
+.co-coupon-row input { flex: 1; min-width: 0; min-height: 44px; padding-inline: var(--s-12); border: 1px solid var(--line);
+  border-radius: var(--r-control); background: var(--bg); font-size: var(--fs-16); text-transform: uppercase; }
+.co-coupon-row input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.co-coupon-row .btn { min-height: 44px; padding-inline: var(--s-16); }
+.co-coupon-msg { min-height: 1.2em; font-size: var(--fs-14); color: var(--text-muted); }
+.co-coupon-msg:not(:empty) { color: var(--gold-strong); }
+.co-coupon-remove { min-height: 32px; font-size: var(--fs-14); }
+.co-coupon-remove .icon { width: 16px; height: 16px; }
 .co-form { display: grid; gap: var(--s-16); min-width: 0; }
 .co-fields { display: grid; gap: var(--s-16); min-width: 0; margin: 0; padding: 0; border: 0; }
 .co-legend { padding: 0; margin-block-end: var(--s-8); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-22); }

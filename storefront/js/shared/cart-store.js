@@ -69,8 +69,10 @@ export function shopSettings() {
 
 // Prices cart lines against the public catalogue. Lines whose product or size vanished come back
 // with `product: null` and are left out of the subtotal. Free delivery uses the server's rule
-// (subtotal ≥ free_over > 0), so the drawer, the checkout and the order agree.
-export function priceCart(lines, catalog, settings = {}) {
+// (subtotal ≥ free_over > 0), so the drawer, the checkout and the order agree. `discount` is
+// display-only (the server re-validates and claims the code at order time): it reduces the total
+// but never the pre-discount subtotal the free-delivery threshold is judged against.
+export function priceCart(lines, catalog, settings = {}, { discount = 0 } = {}) {
   const byId = new Map(catalog.map((p) => [p.id, p]));
   const rows = lines.map((line) => {
     const product = byId.get(line.id);
@@ -82,7 +84,9 @@ export function priceCart(lines, catalog, settings = {}) {
   const fee = Number(settings.delivery_fee) || 0;
   const freeOver = Number(settings.free_delivery_over) || 0;
   const delivery = freeOver > 0 && subtotal >= freeOver ? 0 : fee;
-  return { rows, subtotal, delivery, total: subtotal + delivery, freeOver, fee };
+  const disc = Math.min(Math.max(Number(discount) || 0, 0), subtotal);
+  const total = Math.round((subtotal - disc + delivery) * 100) / 100;
+  return { rows, subtotal, delivery, total, freeOver, fee, discount: disc };
 }
 
 // Announce through the layout's #live-region (role="status").

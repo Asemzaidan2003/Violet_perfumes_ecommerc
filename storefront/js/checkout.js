@@ -19,9 +19,15 @@ const errorsBox = form.querySelector("[data-co-errors]");
 const serverError = form.querySelector("[data-co-error]");
 const waLink = form.querySelector("[data-co-wa]");
 const GOVERNORATES = [...form.elements.city.options].map((o) => o.value).filter(Boolean);
+const couponDetails = $("[data-co-coupon]");
+const couponInput = $("#co-coupon-code");
+const couponApplyBtn = $("[data-co-coupon-apply]");
+const couponRemoveBtn = $("[data-co-coupon-remove]");
+const couponMsg = $("[data-co-coupon-msg]");
 let priced = null;
 let busy = false;
 let done = false;
+let coupon = { code: null, discount: 0 }; // applied & server-valid, or cleared
 
 // --- Validation: the same rules and limits as the server (which also strips < and >).
 const clean = (v) => String(v ?? "").trim().replace(/[<>]/g, "");
@@ -90,7 +96,7 @@ async function render() {
   empty(false);
   try {
     if (!priced) status.textContent = "جارٍ تحميل الأسعار…";
-    priced = priceCart(lines, await loadCatalog(), settings);
+    priced = priceCart(lines, await loadCatalog(), settings, { discount: coupon.code ? coupon.discount : 0 });
   } catch {
     priced = null;
     status.textContent = "تعذّر تحميل الأسعار — تحقق من الاتصال ثم حدّث الصفحة";
@@ -103,6 +109,12 @@ async function render() {
   const count = priced.rows.reduce((n, r) => n + (r.product ? r.qty : 0), 0);
   $("[data-co-count]").textContent = `(${num(count)})`;
   $("[data-co-subtotal]").textContent = money(priced.subtotal);
+  const discRow = $("[data-co-discount-row]");
+  discRow.hidden = !(priced.discount > 0);
+  if (priced.discount > 0) {
+    $("[data-co-discount]").textContent = `−${money(priced.discount)}`;
+    $("[data-co-discount-code]").textContent = coupon.code ? `(${coupon.code})` : "";
+  }
   $("[data-co-delivery]").textContent = priced.delivery ? money(priced.delivery) : "مجاني";
   for (const el of document.querySelectorAll("[data-co-total], [data-co-total-head], [data-co-total-foot]")) el.textContent = money(priced.total);
   const free = $("[data-co-free]");
@@ -110,6 +122,73 @@ async function render() {
   free.hidden = !(priced.freeOver > 0 && priced.fee > 0 && left > 0);
   free.textContent = free.hidden ? "" : `أضف ${money(left)} للحصول على توصيل مجاني`;
 }
+
+// --- Coupon: a preview check only (POST /api/store/coupons/check); the order re-validates and
+// claims the code server-side. `coupon` is the applied, server-valid state; clearing it (removal,
+// an invalid recheck, or a rejection at order time) drops the discount everywhere.
+function clearCoupon(message = "") {
+  coupon = { code: null, discount: 0 };
+  couponInput.disabled = false;
+  couponApplyBtn.hidden = false;
+  couponRemoveBtn.hidden = true;
+  couponMsg.textContent = message;
+}
+
+async function applyCoupon(rawCode) {
+  const code = rawCode.trim().toUpperCase(); // display form; the server does the real validation
+  couponApplyBtn.disabled = true;
+  couponMsg.textContent = "جارٍ التحقق…";
+  try {
+    const res = await fetch("/api/store/coupons/check", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, subtotal: priced.subtotal }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.valid) {
+      coupon = { code, discount: Number(data.discount) || 0 };
+      couponInput.value = code;
+      couponInput.disabled = true;
+      couponApplyBtn.hidden = true;
+      couponRemoveBtn.hidden = false;
+      couponMsg.textContent = data.message || "تم تطبيق الكود";
+    } else {
+      clearCoupon(data.message || "الكود غير صالح");
+    }
+  } catch {
+    clearCoupon("تعذّر التحقق من الكود — تحقق من الاتصال");
+  }
+  couponApplyBtn.disabled = false;
+  render();
+}
+
+// Re-checks the applied code against the current (possibly changed) subtotal after a cart edit.
+async function recheckCoupon() {
+  if (!coupon.code || !priced) return;
+  try {
+    const res = await fetch("/api/store/coupons/check", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: coupon.code, subtotal: priced.subtotal }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.valid) {
+      if (data.discount !== coupon.discount) { coupon = { ...coupon, discount: Number(data.discount) || 0 }; render(); }
+    } else {
+      clearCoupon(data.message || "لم يعد الكود صالحًا لهذه السلة");
+      render();
+    }
+  } catch { /* keep the last known discount on a network blip */ }
+}
+
+couponApplyBtn.addEventListener("click", () => {
+  const code = couponInput.value.trim();
+  if (!code || !priced) return;
+  applyCoupon(code);
+});
+couponRemoveBtn.addEventListener("click", () => {
+  couponInput.value = "";
+  clearCoupon("");
+  render();
+});
 
 // --- Submit.
 const orderItems = () => (priced?.rows ?? []).filter((r) => r.product).map((r) => ({ product_id: r.line.id, size: r.line.size, quantity: r.qty }));
@@ -121,8 +200,8 @@ const uuid = () => crypto.randomUUID?.() ??
 // Same cart contents + delivery details → same key, so a retry after a timeout can never
 // create a second order, but a changed address after a lost response makes a new one.
 let memoKey = null;
-function clientKey(items, customer) {
-  const sig = JSON.stringify({ items, customer });
+function clientKey(items, customer, couponCode) {
+  const sig = JSON.stringify({ items, customer, coupon: couponCode });
   try { memoKey = JSON.parse(sessionStorage.getItem(CLIENT_KEY)) ?? memoKey; } catch { /* storage blocked */ }
   if (memoKey?.sig !== sig) memoKey = { key: uuid(), sig };
   try { sessionStorage.setItem(CLIENT_KEY, JSON.stringify(memoKey)); } catch { /* in-memory only */ }
@@ -176,8 +255,9 @@ form.addEventListener("submit", async (e) => {
   const body = {
     items,
     customer,
-    client_key: clientKey(items, customer),
+    client_key: clientKey(items, customer, coupon.code),
     website: el.website.value,
+    ...(coupon.code ? { coupon: coupon.code } : {}),
   };
   let res, data;
   try {
@@ -201,6 +281,16 @@ form.addEventListener("submit", async (e) => {
     return location.assign(`/order/${encodeURIComponent(data.data.ref)}`);
   }
   setBusy(false, res.status >= 500 ? "أعد المحاولة" : "تأكيد الطلب");
+  // A 400 with an applied coupon means the coupon check/claim failed inside the order transaction
+  // (the only late 400 possible once client-side validation above already passed): show it by the
+  // code field and drop it, instead of the generic banner, so the rest of the form stays filled.
+  // ponytail: assumes any 400-with-coupon is a coupon failure; add a response flag if the server
+  // ever returns other 400s alongside a coupon.
+  if (res.status === 400 && coupon.code) {
+    couponDetails.open = true;
+    clearCoupon(data.message || "تعذّر تطبيق الكود");
+    return render();
+  }
   showServerError(res.status === 429 ? "طلبات كثيرة من هذا الجهاز — أرسل طلبك عبر واتساب:" : (data.message || "تعذّر إرسال الطلب، حاول مجددًا"), res.status === 429);
 });
 
@@ -219,6 +309,6 @@ form.elements.remember.addEventListener("change", (e) => {
   if (e.target.checked) return;
   try { localStorage.removeItem(DETAILS_KEY); } catch { /* private mode */ }
 });
-addEventListener("cart:change", () => render());
-addEventListener("storage", () => render());
+addEventListener("cart:change", () => { render(); recheckCoupon(); });
+addEventListener("storage", () => { render(); recheckCoupon(); });
 render();

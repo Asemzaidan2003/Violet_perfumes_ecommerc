@@ -27,7 +27,7 @@ export function orderConfirmation({ order, settings }) {
     </ul>
     <dl class="totals">
       <div><dt>المجموع الفرعي</dt><dd><bdi>${money(order.subtotal)}</bdi></dd></div>
-      ${order.discount ? html`<div><dt>الخصم</dt><dd><bdi>−${money(order.discount)}</bdi></dd></div>` : ""}
+      ${order.discount ? html`<div><dt>الخصم${order.coupon ? html` (${order.coupon})` : ""}</dt><dd><bdi>−${money(order.discount)}</bdi></dd></div>` : ""}
       <div><dt>التوصيل</dt><dd><bdi>${order.delivery_fee ? money(order.delivery_fee) : "مجاني"}</bdi></dd></div>
       <div class="totals-grand"><dt>الإجمالي عند الاستلام</dt><dd><bdi>${money(order.total)}</bdi></dd></div>
     </dl>
