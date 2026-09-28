@@ -1,6 +1,7 @@
 // Home "/": walking into the boutique — spec sections 1–10 (the footer, 11, is in the layout).
 import { html, raw } from "../html.js";
 import { icon, shelf, slot, familyCounts } from "./components.js";
+import { heroSlider } from "./promo.js";
 import { money, perfumeCount } from "../../../storefront/js/shared/format.js";
 
 const SHELF_SIZE = 12;
@@ -32,10 +33,10 @@ const HERO_ART = raw(`<svg class="hero-art" viewBox="0 0 400 480" aria-hidden="t
 <g class="hero-glints" fill="#F2D27A"><circle cx="96" cy="150" r="2"/><circle cx="318" cy="112" r="1.6"/><circle cx="300" cy="236" r="2.2"/><circle cx="84" cy="276" r="1.4"/></g>
 </svg>`);
 
-// Window display (spec §2): slide 1 is always this brand welcome; admin hero placements follow.
-function hero(placements = []) {
-  return html`<section class="hero" aria-labelledby="hero-title">
-  <div class="container hero-inner">
+// Window display (spec §2): slide 1 is always this brand welcome; live admin hero slides follow
+// (promo.js). With none, the hero is exactly the brand welcome and no slider markup is rendered.
+function hero(placements) {
+  const brand = html`<div class="container hero-inner">
     <div class="hero-copy">
       <p class="eyebrow">بوتيك العطور في الأردن</p>
       <h1 id="hero-title" class="hero-title">نسمات — عطرك يحكي عنك</h1>
@@ -46,8 +47,10 @@ function hero(placements = []) {
       </div>
     </div>
     <div class="hero-display">${HERO_ART}</div>
-  </div>
-  ${slot("hero", placements)}
+  </div>`;
+  const { slider, body } = heroSlider(brand, placements);
+  return html`<section class="hero${slider ? " is-slider" : ""}" aria-labelledby="hero-title"${slider ? html` aria-roledescription="عرض شرائح" data-hero-slider` : ""}>
+  ${body}
 </section>`;
 }
 
@@ -120,19 +123,18 @@ function serviceStrip(settings) {
 </section>`;
 }
 
-export function home({ products, settings }) {
+export function home({ products, settings, placements = [] }) {
   // getCatalog() order is best-seller rank, then newest — exactly the best-sellers fallback rule.
   const best = products.slice(0, SHELF_SIZE);
   const newest = [...products].sort((a, b) => new Date(b.created) - new Date(a.created)).slice(0, SHELF_SIZE);
   const offers = products.filter((p) => p.offer > 0).slice(0, SHELF_SIZE);
-  return html`${slot("announcement")}
-${hero()}
+  return html`${hero(placements)}
 ${aisles(products)}
 ${shelf({ title: "الأكثر مبيعًا", href: "/best-sellers", products: best })}
-${slot("home_mid")}
+${slot("home_mid", placements)}
 ${testerBar(familyCounts(products))}
 ${shelf({ title: "وصل حديثًا", href: "/new", products: newest })}
 ${shelf({ title: "عروض المتجر", href: "/offers", products: offers })}
-${slot("home_bottom")}
+${slot("home_bottom", placements)}
 ${serviceStrip(settings)}`;
 }

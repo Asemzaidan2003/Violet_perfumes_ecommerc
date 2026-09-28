@@ -4,6 +4,7 @@ import { html, raw } from "../html.js";
 import { FAMILIES } from "../../../storefront/js/shared/vocab.js";
 import { money, num } from "../../../storefront/js/shared/format.js";
 import { asset } from "../assets.js";
+import { placementMarkup } from "./promo.js";
 
 export const PLACEHOLDER_IMG = asset("img/placeholder-bottle.svg");
 const NEW_FOR_MS = 30 * 24 * 60 * 60_000;
@@ -125,7 +126,5 @@ export function shelf({ title, href, products }) {
 </section>`;
 }
 
-// Promotion placements arrive in sub-project 3; until then every slot is empty and renders nothing.
-// ponytail: non-empty slots render a bare hook element — sub-project 3 defines the placement markup.
-export const slot = (name, placements = []) =>
-  placements.length ? html`<div class="slot" data-slot="${name}"></div>` : "";
+// A placement slot: the live placements for `name` (targeted by { category, family }), or "".
+export const slot = (name, placements = [], target = {}) => placementMarkup(name, placements, target);

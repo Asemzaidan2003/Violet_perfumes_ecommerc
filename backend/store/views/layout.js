@@ -129,7 +129,7 @@ function footer(settings, wa) {
 }
 
 // Cart drawer shell, filled by cart.js from the <template> (textContent only, never innerHTML).
-function cartDrawer() {
+function cartDrawer(placements) {
   return html`<dialog id="cart-drawer" class="drawer" aria-labelledby="cart-title">
   <div class="drawer-panel">
     <div class="drawer-head">
@@ -145,7 +145,7 @@ function cartDrawer() {
         <div class="error-links">${CATEGORIES.slice(0, 3).map((c) => html`<a class="chip chip-link" href="/c/${c.slug}">${c.ar}</a>`)}</div>
       </div>
       <ul class="cart-lines" role="list" data-cart-lines></ul>
-      ${slot("cart_upsell")}
+      ${slot("cart_upsell", placements)}
     </div>
     <div class="drawer-foot" data-cart-foot hidden>
       <div class="free-progress" data-free hidden>
@@ -184,8 +184,10 @@ export const siteBase = (origin = "") => (process.env.PUBLIC_URL || origin).repl
 
 export function layout({
   title, description, canonicalPath, ogImage, body, bodyClass = "", hideBottomBar = false, noindex = false,
-  settings = {}, assetV = "", origin = "", families = [], styles = [], scripts = [],
+  settings = {}, assetV = "", origin = "", families = [], styles = [], scripts = [], placements = [],
 }) {
+  // Promo assets load only when something is live (404/500 pages pass no placements).
+  if (placements.length) { styles = [...styles, "promo.css"]; scripts = [...scripts, "promo.js"]; }
   const base = siteBase(origin);
   const abs = (p) => (/^https?:/.test(p) ? p : base + p);
   const wa = settings.whatsapp ? `https://wa.me/${settings.whatsapp}` : "";
@@ -218,6 +220,7 @@ ${scripts.map((f) => html`<script type="module" src="/assets/js/${f}?v=${assetV}
 </head>
 <body class="${[bodyClass, hideBottomBar ? "no-bottom-bar" : ""].filter(Boolean).join(" ")}">
 <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
+${slot("announcement", placements)}
 ${header(path, families)}
 <main id="main" tabindex="-1">
 ${body}
@@ -225,7 +228,7 @@ ${body}
 ${footer(settings, wa)}
 ${hideBottomBar ? "" : bottomBar(path, wa)}
 ${searchOverlay(families)}
-${cartDrawer()}
+${cartDrawer(placements)}
 <script type="application/json" id="shop-settings">${json({ delivery_fee: settings.delivery_fee ?? 0, free_delivery_over: settings.free_delivery_over ?? 0, whatsapp: settings.whatsapp ?? "" })}</script>
 <div id="live-region" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>

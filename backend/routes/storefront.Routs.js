@@ -15,6 +15,7 @@ import { checkout, cartPage } from "../store/views/checkout.js";
 import { orderConfirmation } from "../store/views/order.js";
 import { getOrderByRef, publicOrder } from "../services/order.service.js";
 import { esc } from "../store/html.js";
+import { getLivePlacements } from "../services/placements.service.js";
 
 const router = express.Router();
 
@@ -61,7 +62,7 @@ const AISLE_LIMIT = 24;
 
 // resolve(req, products) → { path, title, base, defaultSort, ... } or null for a 404.
 const aislePage = (resolve) => async (req, res, next) => {
-  const [{ products }, settings] = await Promise.all([getCatalog(), getSettings()]);
+  const [{ products }, settings, placements] = await Promise.all([getCatalog(), getSettings(), getLivePlacements()]);
   const a = resolve(req, products);
   if (!a) return next();
   const q = a.q ?? "";
@@ -73,10 +74,11 @@ const aislePage = (resolve) => async (req, res, next) => {
     canonicalPath: a.path, // /search results: canonical without q, and not indexed
     noindex: a.path === "/search",
     settings,
+    placements,
     families: familyCounts(products),
     styles: ["pages.css"],
     scripts: ["collection.js"],
-    body: collection({ ...a, q, catalog: products, filter: parseFilter(req.query), sort }),
+    body: collection({ ...a, q, catalog: products, filter: parseFilter(req.query), sort, placements }),
   });
 };
 
@@ -84,7 +86,7 @@ router.get("/c/:category", aislePage((req, products) => {
   const c = CATEGORY_BY_SLUG.get(req.params.category);
   if (!c) return null;
   return {
-    path: `/c/${c.slug}`, title: c.ar, eyebrow: "الأقسام", defaultSort: "best",
+    path: `/c/${c.slug}`, title: c.ar, eyebrow: "الأقسام", defaultSort: "best", target: { category: c.slug },
     base: products.filter((p) => p.category === c.key),
     switcher: AIR.includes(c) && AIR.map((x) => ({ href: `/c/${x.slug}`, label: x.ar, current: x === c })),
   };
@@ -94,7 +96,7 @@ router.get("/family/:key", aislePage((req, products) => {
   const f = FAMILY_BY_KEY.get(req.params.key);
   if (!f) return null;
   return {
-    path: `/family/${f.key}`, title: f.ar, eyebrow: "العائلات العطرية", defaultSort: "best", hideFamily: f.key,
+    path: `/family/${f.key}`, title: f.ar, eyebrow: "العائلات العطرية", defaultSort: "best", hideFamily: f.key, target: { family: f.key },
     base: products.filter((p) => p.families.includes(f.key)),
   };
 }));
@@ -126,7 +128,7 @@ router.get("/search", aislePage((req, products) => {
 
 router.get("/p/:id", async (req, res, next) => {
   if (!/^[a-f0-9]{24}$/i.test(req.params.id)) return next();
-  const [{ products, byId }, settings] = await Promise.all([getCatalog(), getSettings()]);
+  const [{ products, byId }, settings, placements] = await Promise.all([getCatalog(), getSettings(), getLivePlacements()]);
   const p = byId.get(req.params.id.toLowerCase());
   if (!p) return next();
   // Related: same family, else same category.
@@ -142,22 +144,23 @@ router.get("/p/:id", async (req, res, next) => {
     ogImage: p.image,
     hideBottomBar: true,
     settings,
+    placements,
     families: familyCounts(products),
     styles: ["pages.css"],
     scripts: ["product.js"],
-    body: product({ p, related, relatedHref, settings, base: siteBase(origin(req)) }),
+    body: product({ p, related, relatedHref, settings, placements, base: siteBase(origin(req)) }),
   });
 });
 
 router.get("/cart", async (req, res) => {
-  const settings = await getSettings();
-  send(req, res, 200, { title: "سلة التسوق | نسمات", canonicalPath: "/cart", noindex: true, settings, body: cartPage() });
+  const [settings, placements] = await Promise.all([getSettings(), getLivePlacements()]);
+  send(req, res, 200, { title: "سلة التسوق | نسمات", canonicalPath: "/cart", noindex: true, settings, placements, body: cartPage() });
 });
 
 router.get("/checkout", async (req, res) => {
-  const settings = await getSettings();
+  const [settings, placements] = await Promise.all([getSettings(), getLivePlacements()]);
   send(req, res, 200, {
-    title: "إتمام الطلب | نسمات", canonicalPath: "/checkout", noindex: true, hideBottomBar: true, settings,
+    title: "إتمام الطلب | نسمات", canonicalPath: "/checkout", noindex: true, hideBottomBar: true, settings, placements,
     styles: ["pages.css"], scripts: ["checkout.js"], body: checkout(),
   });
 });
@@ -165,24 +168,25 @@ router.get("/checkout", async (req, res) => {
 // Public refs are 10 characters of the order service's base32 alphabet; anything else is a 404.
 router.get("/order/:ref", async (req, res, next) => {
   if (!/^[A-Z2-9]{10}$/.test(req.params.ref)) return next();
-  const [order, settings] = await Promise.all([getOrderByRef(req.params.ref), getSettings()]);
+  const [order, settings, placements] = await Promise.all([getOrderByRef(req.params.ref), getSettings(), getLivePlacements()]);
   if (!order) return next();
   res.set("Cache-Control", "no-store");
   send(req, res, 200, {
-    title: "شكرًا لطلبك | نسمات", noindex: true, hideBottomBar: true, settings,
+    title: "شكرًا لطلبك | نسمات", noindex: true, hideBottomBar: true, settings, placements,
     styles: ["pages.css"], body: orderConfirmation({ order: publicOrder(order), settings }),
   });
 });
 
 router.get("/", async (req, res) => {
-  const [{ products }, settings] = await Promise.all([getCatalog(), getSettings()]);
+  const [{ products }, settings, placements] = await Promise.all([getCatalog(), getSettings(), getLivePlacements()]);
   send(req, res, 200, {
     title: "نسمات | عطور فاخرة في الأردن",
     description: "بوتيك نسمات للعطور: عطور رجالية ونسائية وللجنسين ومعطرات، توصيل لكل الأردن والدفع عند الاستلام.",
     canonicalPath: "/",
     settings,
+    placements,
     families: familyCounts(products),
-    body: home({ products, settings }),
+    body: home({ products, settings, placements }),
   });
 });
 

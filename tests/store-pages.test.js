@@ -10,6 +10,7 @@ import { money, sizeLabel } from "../storefront/js/shared/format.js";
 import { saveSettings } from "../backend/services/settings.service.js";
 import { GOVERNORATES } from "../backend/store/validate.js";
 import { priceCart } from "../storefront/js/shared/cart-store.js";
+import { invalidatePlacements } from "../backend/services/placements.service.js";
 
 const XSS = "<img src=x onerror=alert(1)>";
 const SCRIPT_XSS = "</script><img src=x onerror=alert(1)>";
@@ -81,6 +82,7 @@ test("unknown storefront path is a styled 404 page", async () => {
 });
 
 test("the 404 page does no database work", async () => {
+  invalidatePlacements(); // a cold placement cache: a stray getLivePlacements() here would query
   const queries = [];
   mongoose.set("debug", (collection, method) => queries.push(`${collection}.${method}`));
   try {
@@ -449,3 +451,4 @@ test("sitemap.xml lists aisles and visible products, never discontinued ones", a
   assert.ok(!body.includes(ids.gone), "discontinued product not listed");
   assert.ok(!body.includes("/search") && !body.includes("/checkout"));
 });
+
