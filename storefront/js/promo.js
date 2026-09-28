@@ -10,16 +10,19 @@ function safely(fn) {
   try { fn(); } catch (err) { console.error(err); }
 }
 
-// Runs `step` every `ms` while nothing pauses it: hover, focus inside `root`, a hidden tab, or
-// reduced motion. `restart()` resets the countdown after a manual change.
+// Runs `step` every `ms` while nothing pauses it: the visitor's pause toggle, hover, focus inside
+// `root`, a hidden tab or `root`, or reduced motion. `restart()` resets the countdown after a
+// manual change; `setPaused()` is the visible pause control (WCAG 2.2.2).
 function autoplay(root, ms, step) {
   let timer = 0;
   let hover = false;
   let focus = false;
+  let paused = false;
   const stop = () => { clearInterval(timer); timer = 0; };
   const start = () => {
     stop();
-    if (!hover && !focus && !document.hidden && !reducedMotion.matches) timer = setInterval(step, ms);
+    if (root.hidden || paused || hover || focus || document.hidden || reducedMotion.matches) return;
+    timer = setInterval(step, ms);
   };
   root.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") { hover = true; stop(); } });
   root.addEventListener("pointerleave", () => { hover = false; start(); });
@@ -28,7 +31,7 @@ function autoplay(root, ms, step) {
   document.addEventListener("visibilitychange", start);
   reducedMotion.addEventListener("change", start);
   start();
-  return { restart: start, stop };
+  return { restart: start, stop, setPaused: (v) => { paused = v; start(); } };
 }
 
 // --- Announcement bar: dismissed for the session; several items rotate.
@@ -39,12 +42,17 @@ function initAnnouncement(bar) {
   const items = [...bar.querySelectorAll(".announce-item")];
   const play = items.length > 1 && autoplay(bar, ANNOUNCE_MS, () => {
     const i = items.findIndex((el) => !el.hidden);
+    const next = items[(i + 1) % items.length];
     items[i].hidden = true;
-    items[(i + 1) % items.length].hidden = false;
+    next.hidden = false;
+    bar.classList.replace(items[i].dataset.theme, next.dataset.theme); // each item keeps its own theme
   });
   bar.querySelector("[data-announce-close]").addEventListener("click", () => {
-    if (play) play.stop();
     bar.hidden = true;
+    if (play) play.stop();
+    // The session cookie lets the server leave the bar out (no flash or shift on the next page);
+    // sessionStorage covers a blocked cookie.
+    document.cookie = `${DISMISS_KEY}=1; path=/; SameSite=Lax`;
     try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch { /* hidden for this page only */ }
     document.getElementById("main")?.focus();
   });
@@ -54,7 +62,7 @@ function initAnnouncement(bar) {
 function initHero(hero) {
   const slides = [...hero.querySelectorAll("[data-slide]")];
   const dots = [...hero.querySelectorAll("[data-hero-dot]")];
-  const controls = hero.querySelector("[data-hero-controls]");
+  const pause = hero.querySelector("[data-hero-pause]");
   let current = 0;
   const show = (n) => {
     current = (n + slides.length) % slides.length;
@@ -70,6 +78,12 @@ function initHero(hero) {
   hero.querySelector("[data-hero-next]").addEventListener("click", () => go(current + 1));
   hero.querySelector("[data-hero-prev]").addEventListener("click", () => go(current - 1));
   for (const d of dots) d.addEventListener("click", () => go(Number(d.dataset.heroDot)));
+  pause.addEventListener("click", () => {
+    const paused = pause.getAttribute("aria-pressed") !== "true";
+    pause.setAttribute("aria-pressed", String(paused));
+    pause.setAttribute("aria-label", paused ? "تشغيل العرض التلقائي" : "إيقاف العرض التلقائي");
+    play.setPaused(paused);
+  });
 
   // Swipe: horizontal pointer drags past a threshold. RTL: dragging towards the right is "next".
   let startX = null;
@@ -86,8 +100,7 @@ function initHero(hero) {
   track.addEventListener("pointercancel", () => { startX = null; });
 
   show(0);
-  controls.hidden = false;
-  hero.classList.add("is-live");
+  hero.classList.add("is-live"); // reveals the controls (their space is reserved from first paint)
 }
 
 for (const bar of document.querySelectorAll("[data-announce]")) safely(() => initAnnouncement(bar));

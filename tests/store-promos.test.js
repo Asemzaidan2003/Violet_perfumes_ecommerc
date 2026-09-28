@@ -7,7 +7,7 @@ import Bottle from "../backend/models/bottle.model.js";
 import Product from "../backend/models/product.model.js";
 import Placement from "../backend/models/placement.model.js";
 import { invalidateCatalog } from "../backend/store/catalog.js";
-import { invalidatePlacements } from "../backend/services/placements.service.js";
+import { invalidatePlacements, getLivePlacements, forSlot } from "../backend/services/placements.service.js";
 
 let t;
 const ids = {};
@@ -79,6 +79,8 @@ test("a hero slide shows real text after the brand slide; the brand h1 stays the
     assert.equal(body.match(/<article class="hero-slide/g).length, 3, "at most 3 admin slides");
     assert.ok(!body.includes("موسم 4"));
     assert.match(body, /aria-label="الشريحة 1"[^>]*aria-current="true"/);
+    assert.match(body, /<button[^>]*data-hero-pause aria-pressed="false" aria-label="إيقاف العرض التلقائي">/, "visible pause control");
+    assert.ok(body.includes('srcset="/img/aaaaaaaaaaaaaaaaaaaaaaaa-480.webp 480w, /img/aaaaaaaaaaaaaaaaaaaaaaaa.webp 960w"'), "uploads get the 480 variant");
   });
 });
 
@@ -146,5 +148,47 @@ test("external https links open with rel=noopener; internal links have no target
     const { body } = await page("/");
     assert.match(body, /<a[^>]*href="https:\/\/example\.com\/x" target="_blank" rel="noopener"/);
     assert.match(body, /<a[^>]*href="\/offers">داخلي/);
+  });
+});
+
+test("a dismissed announcement (session cookie) is left out server-side; other slots stay", async () => {
+  await withPlacements([{ slot: "announcement", title: "إعلان اليوم" }, { slot: "cart_upsell", title: "اقتراح اليوم" }], async () => {
+    const get = async (cookie) => (await fetch(`${t.url}/`, { headers: cookie ? { cookie } : {} })).text();
+    assert.ok((await get()).includes("إعلان اليوم"));
+    for (const cookie of ["nsamat_announce_dismissed=1", "a=b; nsamat_announce_dismissed=1; c=d"]) {
+      const body = await get(cookie);
+      assert.ok(!body.includes("إعلان اليوم") && !body.includes("data-announce"), cookie);
+      assert.ok(body.includes("اقتراح اليوم"), "only the announcement is dropped");
+    }
+    assert.ok((await get("nsamat_announce_dismissed=0")).includes("إعلان اليوم"));
+    assert.ok((await get("xnsamat_announce_dismissed=1")).includes("إعلان اليوم"));
+  });
+});
+
+test("targeting: family banners show on /family/:key; category OR family matches either aisle", async () => {
+  await withPlacements([
+    { slot: "collection_banner", title: "بانر العنبر", image: IMG, target: { family: "amber" } },
+    { slot: "collection_banner", title: "بانر مزدوج", image: IMG, target: { category: "women", family: "oud" }, sort: 1 },
+  ], async () => {
+    assert.ok((await page("/family/amber")).body.includes("بانر العنبر"));
+    assert.ok(!(await page("/family/oud")).body.includes("بانر العنبر"));
+    assert.ok(!(await page("/c/men")).body.includes("بانر العنبر"), "a family target never shows on a category aisle");
+    assert.ok((await page("/c/women")).body.includes("بانر مزدوج"));
+    assert.ok((await page("/family/oud")).body.includes("بانر مزدوج"));
+    assert.ok(!(await page("/c/men")).body.includes("بانر مزدوج"));
+  });
+  const both = [{ slot: "grid_tile", target: { category: "women", family: "oud" } }];
+  assert.equal(forSlot(both, "grid_tile", { category: "women" }).length, 1);
+  assert.equal(forSlot(both, "grid_tile", { family: "oud" }).length, 1);
+  assert.equal(forSlot(both, "grid_tile", { category: "men", family: "amber" }).length, 0);
+});
+
+test("an ends_at passing inside the 60 s cache takes the placement down without invalidation", async () => {
+  await withPlacements([{ slot: "announcement", title: "عرض الدقيقة الأخيرة", ends_at: new Date(Date.now() + 1500) }], async () => {
+    assert.equal((await getLivePlacements()).length, 1); // cache warm from here on
+    assert.ok((await page("/")).body.includes("عرض الدقيقة الأخيرة"));
+    await new Promise((r) => setTimeout(r, 1600));
+    assert.equal((await getLivePlacements()).length, 0);
+    assert.ok(!(await page("/")).body.includes("عرض الدقيقة الأخيرة"));
   });
 });

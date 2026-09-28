@@ -53,6 +53,10 @@ article.hero-slide::before { content: ""; position: absolute; inset: 0; z-index:
 .hero-slide.is-active .hero-slide-copy > :nth-child(2) { animation-delay: 80ms; }
 .hero-slide.is-active .hero-slide-copy > :nth-child(3) { animation-delay: 160ms; }
 .hero-controls { display: flex; align-items: center; justify-content: center; gap: var(--s-8); padding-block: var(--s-8) var(--s-16); }
+/* Space is reserved from first paint (no shift); the controls appear once promo.js is live. */
+.hero:not(.is-live) .hero-controls { visibility: hidden; }
+.hero-pause .icon { width: 20px; height: 20px; }
+.hero-pause[aria-pressed="true"] .i-pause, .hero-pause:not([aria-pressed="true"]) .i-play { display: none; }
 .hero-dots { display: flex; }
 .hero-dot { display: grid; place-items: center; width: 36px; height: 44px; padding: 0; border: 0; background: none; touch-action: manipulation; }
 .hero-dot::before { content: ""; width: 8px; height: 8px; border-radius: var(--r-chip); background: var(--text-muted); opacity: .55;
@@ -79,8 +83,9 @@ article.hero-slide::before { content: ""; position: absolute; inset: 0; z-index:
 
 /* ---------- Grid tile: sized like a product card ---------- */
 .grid-promo { min-width: 0; }
-.promo-tile { position: relative; isolation: isolate; display: grid; align-items: end; height: 100%; min-height: 100%;
-  aspect-ratio: 4 / 5; border-radius: var(--r-card); border: 1px solid var(--p-line); background: var(--p-bg); color: var(--p-fg); }
+/* Height comes from the grid row (the product cards beside it); the image is absolutely placed. */
+.promo-tile { position: relative; isolation: isolate; display: grid; align-items: end; height: 100%; min-height: 18rem;
+  border-radius: var(--r-card); border: 1px solid var(--p-line); background: var(--p-bg); color: var(--p-fg); }
 .promo-tile .promo-copy { padding: var(--s-12); gap: var(--s-4); }
 .promo-tile .promo-title { font-size: var(--fs-18); }
 .promo-tile .promo-sub { font-size: var(--fs-14); }

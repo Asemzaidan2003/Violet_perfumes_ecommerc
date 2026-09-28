@@ -38,9 +38,15 @@ router.use(helmet.contentSecurityPolicy({
 
 const origin = (req) => `${req.protocol}://${req.get("host")}`;
 
+// Set by promo.js when a visitor closes the announcement bar: leave it out server-side (no flash).
+const announceDismissed = (req) => /(?:^|;\s*)nsamat_announce_dismissed=1(?:;|$)/.test(req.headers.cookie || "");
+
 function send(req, res, status, page) {
+  const placements = page.placements && announceDismissed(req)
+    ? page.placements.filter((p) => p.slot !== "announcement") : page.placements;
   res.status(status).type("html").send(String(layout({
     ...page,
+    placements,
     assetV: req.app.locals.assetV,
     origin: origin(req),
   })));

@@ -5,7 +5,9 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import Placement from "../../backend/models/placement.model.js";
+import Product from "../../backend/models/product.model.js";
 import { invalidatePlacements } from "../../backend/services/placements.service.js";
+import { invalidateCatalog } from "../../backend/store/catalog.js";
 
 // Offline stand-in "photography": a warm dusk gradient, served for https://example.com/promo-*.
 const promoImage = (hue) => `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
@@ -77,7 +79,32 @@ export async function registerPromotionScenarios({ scenario, openPage, check, ba
         assert.ok(await bar.isHidden());
         await page.reload();
         await page.waitForLoadState("networkidle");
-        assert.ok(await page.locator("[data-announce]").isHidden(), "stays dismissed after reload");
+        assert.equal(await page.locator("[data-announce]").count(), 0, "after dismissal the server leaves the bar out (no flash)");
+        await page.context().clearCookies(); // the context is shared with later scenarios
+        check(page);
+        await page.close();
+      }
+
+      // Hero auto-advance runs, and the visible pause toggle stops it (WCAG 2.2.2).
+      {
+        const page = await promoPage(openPage, { width: 1440, height: 900 });
+        await page.goto(`${baseUrl}/`);
+        await page.waitForLoadState("networkidle");
+        await page.mouse.move(5, 5); // off the hero: hover would pause it
+        const active = () => page.locator("[data-hero-dot][aria-current]").getAttribute("aria-label");
+        assert.equal(await active(), "الشريحة 1");
+        await page.waitForFunction(() => document.querySelector("[data-hero-dot][aria-current]")?.getAttribute("aria-label") === "الشريحة 2",
+          null, { timeout: 7500 });
+        const pause = page.locator("[data-hero-pause]");
+        await pause.click();
+        assert.equal(await pause.getAttribute("aria-pressed"), "true");
+        assert.equal(await pause.getAttribute("aria-label"), "تشغيل العرض التلقائي");
+        await page.evaluate(() => document.activeElement.blur()); // focus alone would also pause it
+        await page.mouse.move(5, 5);
+        await page.waitForTimeout(7500);
+        assert.equal(await active(), "الشريحة 2", "paused: the slide stays");
+        await pause.click();
+        assert.equal(await pause.getAttribute("aria-label"), "إيقاف العرض التلقائي");
         check(page);
         await page.close();
       }
@@ -98,6 +125,53 @@ export async function registerPromotionScenarios({ scenario, openPage, check, ba
     } finally {
       await Placement.deleteMany({});
       invalidatePlacements();
+    }
+  });
+
+  await scenario("Promotions: grid tiles fit the aisle grid", async () => {
+    const extra = await Product.insertMany(Array.from({ length: 13 }, (_, i) => ({
+      p_name: `رجالي تجريبي ${i + 1}`, p_image: ".", p_category: "Men", oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80,
+      size_list: [{ size: "50", price: 10 + i }],
+    })));
+    invalidateCatalog();
+    await Placement.create([
+      { slot: "grid_tile", title: "جرّب قبل أن تشتري", subtitle: "عينات مجانية مع كل طلب", link: "/offers", cta: "اعرف المزيد", image: "https://example.com/promo-40.svg" },
+      { slot: "grid_tile", title: "بطاقة ذهبية بعنوان طويل نسبيًا يختبر الالتفاف", link: "/offers", cta: "اطلب", theme: "gold", image: "https://example.com/promo-50.svg", sort: 1 },
+    ]);
+    invalidatePlacements();
+    try {
+      for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 }]) {
+        const page = await promoPage(openPage, viewport);
+        await page.goto(`${baseUrl}/c/men`);
+        await page.waitForLoadState("networkidle");
+        assert.ok(await page.locator(".grid-promo:not([hidden])").count() >= 2, "two tiles placed");
+        const [sw, iw] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+        assert.ok(sw <= iw, `horizontal scroll at ${viewport.width}px on /c/men: ${sw} > ${iw}`);
+        assert.equal(iw, viewport.width, `layout viewport widened at ${viewport.width}px`);
+        // No tile overlaps a card, and each tile stays inside its own grid cell.
+        const overlaps = await page.evaluate(() => {
+          const r = (el) => el.getBoundingClientRect();
+          const hit = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+          const out = [];
+          for (const li of document.querySelectorAll(".grid-promo:not([hidden])")) {
+            const tile = r(li.querySelector(".promo-tile"));
+            const cell = r(li);
+            if (tile.right > cell.right + 0.5 || tile.left < cell.left - 0.5 || tile.bottom > cell.bottom + 0.5) out.push("tile leaves its cell");
+            for (const card of document.querySelectorAll(".grid-item:not([hidden])")) if (hit(tile, r(card))) out.push(card.dataset.id);
+          }
+          return out;
+        });
+        assert.deepEqual(overlaps, []);
+        await page.locator(".grid-promo").first().scrollIntoViewIfNeeded();
+        await page.screenshot({ path: path.join(shotDir, `p4-aisle-${viewport.width}.png`) });
+        check(page);
+        await page.close();
+      }
+    } finally {
+      await Placement.deleteMany({});
+      invalidatePlacements();
+      await Product.deleteMany({ _id: { $in: extra.map((p) => p._id) } });
+      invalidateCatalog();
     }
   });
 }
