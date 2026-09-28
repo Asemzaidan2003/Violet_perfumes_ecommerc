@@ -22,8 +22,19 @@ function matches(li, { f, s, stock }) {
   return true;
 }
 
+// Promo tiles ([data-promo]) are never filtered or sorted: they go after visible items 4, 12, 20, …
+// in their server order; tiles without a position are hidden. Same rule as views/collection.js.
+function placeTiles(shown, tiles) {
+  tiles.forEach((tile, k) => {
+    const after = shown[3 + k * 8];
+    tile.hidden = !after;
+    if (after) after.after(tile); else grid.append(tile);
+  });
+}
+
 if (form && grid) {
-  const items = [...grid.children];
+  const items = [...grid.children].filter((li) => !li.hasAttribute("data-promo"));
+  const tiles = [...grid.querySelectorAll(":scope > [data-promo]")];
   const count = document.querySelector("[data-count]");
   const empty = document.querySelector("[data-empty]");
   const clear = empty?.querySelector("[data-clear]");
@@ -40,6 +51,7 @@ if (form && grid) {
       if (!li.hidden) shown++;
     }
     grid.append(...items.sort(Object.hasOwn(COMPARE, sort) ? COMPARE[sort] : COMPARE.best));
+    placeTiles(items.filter((li) => !li.hidden), tiles);
     count.textContent = perfumeCount(shown);
     empty.hidden = shown > 0;
     if (clear) clear.hidden = !(filter.f.length || filter.s.length || filter.stock);

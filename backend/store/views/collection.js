@@ -3,6 +3,8 @@
 // no-JS work); filtered-out cards are rendered `hidden` so collection.js can re-filter instantly.
 import { html } from "../html.js";
 import { productCard, familyCounts, slot, icon } from "./components.js";
+import { gridTile } from "./promo.js";
+import { forSlot } from "../../services/placements.service.js";
 import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { perfumeCount, sizeLabel } from "../../../storefront/js/shared/format.js";
 
@@ -89,9 +91,29 @@ const gridItem = ({ p, best, rel }, shown, i) => html`<li class="grid-item" data
   data-sizes="${p.sizes.map((s) => s.size).join(" ")}" data-stock="${p.sizes.filter((s) => s.in_stock).map((s) => s.size).join(" ")}"
   data-price="${minPrice(p)}" data-created="${time(p)}" data-best="${best}" data-rel="${rel}"${shown ? "" : html` hidden`}>${productCard(p, { priority: i < 2 })}</li>`;
 
-// page: { path, eyebrow, title, intro, switcher, q, base, catalog, filter, sort, defaultSort, hideFamily }
+// Promo tiles go after visible items 4, 12, 20, … cycling through the aisle's tiles. There is one
+// tile element per position the whole aisle could fill; those past the visible count are appended
+// hidden, so collection.js can re-place them when filtering changes the count (same rule).
+const TILE_FIRST = 4;
+const TILE_EVERY = 8;
+function gridWithTiles(items, filter, tiles) {
+  const slots = tiles.length && items.length >= TILE_FIRST ? Math.floor((items.length - TILE_FIRST) / TILE_EVERY) + 1 : 0;
+  const tileAt = (k, hidden) => gridTile(tiles[k % tiles.length], hidden);
+  const out = [];
+  let visible = 0;
+  let placed = 0;
+  for (const it of items) {
+    const shown = matches(it.p, filter);
+    out.push(gridItem(it, shown, shown ? visible++ : 99));
+    if (shown && placed < slots && visible === TILE_FIRST + placed * TILE_EVERY) out.push(tileAt(placed++));
+  }
+  for (; placed < slots; placed++) out.push(tileAt(placed, true));
+  return out;
+}
+
+// page: { path, eyebrow, title, intro, switcher, q, base, catalog, filter, sort, defaultSort, hideFamily, target, placements }
 export function collection(page) {
-  const { path, eyebrow, title, intro, switcher, q, base, catalog, defaultSort, hideFamily } = page;
+  const { path, eyebrow, title, intro, switcher, q, base, catalog, defaultSort, hideFamily, target = {}, placements = [] } = page;
   const { families, sizes } = options(base, hideFamily);
   const filter = {
     f: page.filter.f.filter((k) => families.some((f) => f.key === k)),
@@ -104,7 +126,6 @@ export function collection(page) {
   items.sort(COMPARE[sort]);
   const shownCount = items.filter((it) => matches(it.p, filter)).length;
   const sorts = Object.keys(SORTS).filter((k) => k !== "relevance" || q);
-  let visible = 0;
   return html`<section class="aisle-head" aria-labelledby="aisle-title">
   <div class="container">
     <nav class="crumbs" aria-label="مسار التنقل"><ol role="list"><li><a href="/">الرئيسية</a></li><li aria-current="page">${title}</li></ol></nav>
@@ -118,15 +139,12 @@ export function collection(page) {
     </form>` : ""}
     ${switcher ? html`<ul class="aisle-switch" role="list">${switcher.map((s) => html`<li><a class="chip chip-link" href="${s.href}"${s.current ? html` aria-current="page"` : ""}>${s.label}</a></li>`)}</ul>` : ""}
     <p class="aisle-count" data-count aria-live="polite">${perfumeCount(shownCount)}</p>
-    ${slot("collection_banner")}
+    ${slot("collection_banner", placements, target)}
   </div>
 </section>
 <div class="container aisle-body">
   ${base.length ? filters({ path, q, filter, sort, sorts, defaultSort, families, sizes }) : ""}
-  <ul class="grid" role="list" data-grid>${items.map((it) => {
-    const shown = matches(it.p, filter);
-    return gridItem(it, shown, shown ? visible++ : 99);
-  })}</ul>
+  <ul class="grid" role="list" data-grid>${gridWithTiles(items, filter, forSlot(placements, "grid_tile", target))}</ul>
   ${emptyState({ path, q, hidden: shownCount > 0, filtered: Boolean(filter.f.length || filter.s.length || filter.stock), suggest: familyCounts(catalog) })}
 </div>`;
 }

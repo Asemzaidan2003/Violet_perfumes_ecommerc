@@ -1,7 +1,7 @@
 // Product page /p/:id: gallery, sizes, quantity, actions, notes, related shelf, interest dialog.
 // product.js wires the interactions; Task 6's cart module takes over the cart buttons.
 import { html, json } from "../html.js";
-import { icon, price, shelf, offerChip, PLACEHOLDER_IMG } from "./components.js";
+import { icon, price, shelf, offerChip, slot, PLACEHOLDER_IMG } from "./components.js";
 import { CATEGORIES, FAMILIES } from "../../../storefront/js/shared/vocab.js";
 import { money, num, sizeLabel } from "../../../storefront/js/shared/format.js";
 
@@ -124,7 +124,7 @@ function jsonLd(p, url, abs) {
 }
 
 // base: absolute site origin (PUBLIC_URL or the request's), for the share URL and JSON-LD.
-export function product({ p, related, relatedHref, settings, base }) {
+export function product({ p, related, relatedHref, settings, base, placements = [] }) {
   const cat = CATEGORY.get(p.category);
   const selected = defaultSize(p);
   const url = `${base}/p/${p.id}`;
@@ -146,6 +146,7 @@ export function product({ p, related, relatedHref, settings, base }) {
       <h1 class="pdp-title">${p.name}</h1>
       ${p.families.length ? html`<ul class="pdp-families" role="list">${p.families.filter((k) => FAMILY.has(k)).map((k) => html`<li><a class="chip chip-link" href="/family/${k}"><span class="swatch" style="--swatch: ${FAMILY.get(k).swatch}"></span>${FAMILY.get(k).ar}</a></li>`)}</ul>` : ""}
       <div class="pdp-price" data-price>${selected ? price(p, selected.size) : ""}${p.offer > 0 ? html`<span class="badge badge-offer"><bdi>−${num(p.offer)}%</bdi></span>` : ""}${offerChip(p)}</div>
+      ${slot("product_promo", placements)}
       ${p.sizes.length ? sizes(p, selected) : ""}
       ${anyOut ? html`<div class="oos" data-oos${selected?.in_stock ? html` hidden` : ""}>
         <p class="oos-note"><strong>غير متوفر حاليًا</strong> — ${OOS_NOTE}</p>

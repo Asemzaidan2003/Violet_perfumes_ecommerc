@@ -27,16 +27,16 @@ export function invalidatePlacements() {
   cache = null;
 }
 
-// Placements for one slot; collection_banner/grid_tile are further filtered by target
-// (an unset target field matches every page; a set field must equal the page's value).
+// Placements for one slot; collection_banner/grid_tile are further filtered by target. An empty
+// target matches every page. A set target matches when ANY of its set fields equals the page's
+// value (OR): { category: "men", family: "oud" } shows on /c/men and on /family/oud.
 export function forSlot(placements, slot, target = {}) {
   const targeted = slot === "collection_banner" || slot === "grid_tile";
   return placements.filter((p) => {
     if (p.slot !== slot) return false;
     if (!targeted) return true;
     const t = p.target || {};
-    if (t.category && t.category !== target.category) return false;
-    if (t.family && t.family !== target.family) return false;
-    return true;
+    if (!t.category && !t.family) return true;
+    return Boolean((t.category && t.category === target.category) || (t.family && t.family === target.family));
   });
 }

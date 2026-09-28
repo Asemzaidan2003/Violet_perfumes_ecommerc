@@ -4,6 +4,7 @@ import { html, raw } from "../html.js";
 import { FAMILIES } from "../../../storefront/js/shared/vocab.js";
 import { money, num } from "../../../storefront/js/shared/format.js";
 import { asset } from "../assets.js";
+import { placementMarkup } from "./promo.js";
 
 export const PLACEHOLDER_IMG = asset("img/placeholder-bottle.svg");
 const NEW_FOR_MS = 30 * 24 * 60 * 60_000;
@@ -18,6 +19,8 @@ const ICONS = {
   home: '<path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9v11.5h13V9"/><path d="M10 20.5v-5.5h4v5.5"/>',
   grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  pause: '<path d="M9 6v12M15 6v12"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z"/>',
   chevron: '<path d="m9.5 6 6 6-6 6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   minus: '<path d="M5 12h14"/>',
@@ -125,7 +128,5 @@ export function shelf({ title, href, products }) {
 </section>`;
 }
 
-// Promotion placements arrive in sub-project 3; until then every slot is empty and renders nothing.
-// ponytail: non-empty slots render a bare hook element — sub-project 3 defines the placement markup.
-export const slot = (name, placements = []) =>
-  placements.length ? html`<div class="slot" data-slot="${name}"></div>` : "";
+// A placement slot: the live placements for `name` (targeted by { category, family }), or "".
+export const slot = (name, placements = [], target = {}) => placementMarkup(name, placements, target);

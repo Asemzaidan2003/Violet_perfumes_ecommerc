@@ -1,0 +1,129 @@
+/* Promotion slots — "window displays", not banners: real type over photography, a scrim in the
+   theme's own colour for legibility, one CTA each, slow settling motion. Loaded only when a
+   placement is live. Tokens come from store.css; motion honours its reduced-motion rule. */
+
+/* ---------- Themes: every text pair ≥ 4.5:1 on its own background ---------- */
+.theme-dark { --p-bg: var(--surface); --p-fg: var(--text); --p-muted: var(--text-muted); --p-accent: var(--gold-strong); --p-line: var(--line); }
+.theme-light { --p-bg: var(--cream); --p-fg: var(--ink); --p-muted: var(--ink-muted); --p-accent: var(--ink);
+  --p-line: color-mix(in srgb, var(--ink) 14%, transparent); }
+.theme-gold { --p-bg: var(--gold); --p-fg: var(--gold-ink); --p-muted: var(--gold-ink); --p-accent: var(--gold-ink);
+  --p-line: color-mix(in srgb, var(--gold-ink) 20%, transparent); }
+:is(.theme-dark, .theme-light, .theme-gold) { --p-scrim: color-mix(in srgb, var(--p-bg) 94%, transparent); }
+.theme-gold .btn-primary { background: var(--gold-ink); color: var(--gold-strong); }
+.theme-gold .btn-primary:hover { background: var(--ink); }
+.theme-light .btn-primary:hover, .theme-gold .btn-primary:hover { box-shadow: 0 10px 24px -14px var(--shadow); }
+.promo-cta { position: relative; }
+/* The whole display is the CTA's hit area; the button stays the one visible action. */
+:is(.promo-banner, .promo-tile, .hero-slide) .promo-cta::after { content: ""; position: absolute; inset: -100vmax; }
+:is(.promo-banner, .promo-tile, .hero-slide) { overflow: hidden; }
+:is(.promo-banner, .promo-tile, .hero-slide):has(.promo-cta:focus-visible) { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* ---------- Announcement bar (above the header, scrolls away) ---------- */
+.announce { background: var(--p-bg); color: var(--p-fg); border-block-end: 1px solid var(--p-line); font-size: var(--fs-14); }
+.theme-dark.announce { --p-bg: var(--surface-2); }
+.announce-row { display: flex; align-items: center; min-height: 44px; }
+.announce-track { flex: 1; min-width: 0; padding-inline-start: 44px; text-align: center; }
+.announce-item { animation: announce-in var(--dur-slow) var(--ease-out) both; text-wrap: balance; }
+.announce-item a { display: inline-block; padding-block: 10px; font-weight: 600; color: inherit;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 5px; }
+.announce-item a:hover { text-decoration-color: currentColor; }
+.announce-sub { color: var(--p-muted); }
+.announce-close { color: var(--p-fg); }
+.announce-close:hover { background: color-mix(in srgb, var(--p-fg) 10%, transparent); color: var(--p-fg); }
+.announce-close .icon { width: 18px; height: 18px; }
+@keyframes announce-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Hero slider: slides cross-fade in one grid cell (height = tallest slide) ---------- */
+.hero-track { display: grid; touch-action: pan-y; }
+.hero-track > .hero-slide { grid-area: 1 / 1; min-width: 0; }
+.hero.is-slider .hero-slide:not(.is-active) { opacity: 0; visibility: hidden; }
+.hero.is-slider .hero-slide { transition: opacity var(--dur-slow) var(--ease-out), visibility 0s linear var(--dur-slow); }
+.hero.is-slider .hero-slide.is-active { transition: opacity var(--dur-slow) var(--ease-out); }
+article.hero-slide { position: relative; isolation: isolate; display: grid; align-items: end; color: var(--p-fg); }
+article.hero-slide .promo-img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover;
+  transform: scale(1.06); transition: transform 7s cubic-bezier(.2, .6, .2, 1); }
+article.hero-slide.is-active .promo-img { transform: scale(1); }
+article.hero-slide::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(to top, var(--p-scrim) 0 42%, color-mix(in srgb, var(--p-bg) 55%, transparent) 62%, transparent 88%); }
+.hero-slide-copy { display: grid; justify-items: start; gap: var(--s-12); padding-block: var(--s-48) var(--s-32); }
+.hero-slide-title { font-size: clamp(2rem, 1.2rem + 3.4vw, 3.5rem); line-height: 1.25; max-width: 14em; }
+.hero-slide-sub { color: var(--p-muted); font-size: var(--fs-18); max-width: 30em; text-wrap: pretty; }
+.hero-slide-copy .btn { margin-block-start: var(--s-8); }
+.hero-slide.is-active .hero-slide-copy > * { animation: rise var(--dur-slow) var(--ease-out) both; }
+.hero-slide.is-active .hero-slide-copy > :nth-child(2) { animation-delay: 80ms; }
+.hero-slide.is-active .hero-slide-copy > :nth-child(3) { animation-delay: 160ms; }
+.hero-controls { display: flex; align-items: center; justify-content: center; gap: var(--s-8); padding-block: var(--s-8) var(--s-16); }
+/* Space is reserved from first paint (no shift); the controls appear once promo.js is live. */
+.hero:not(.is-live) .hero-controls { visibility: hidden; }
+.hero-pause .icon { width: 20px; height: 20px; }
+.hero-pause[aria-pressed="true"] .i-pause, .hero-pause:not([aria-pressed="true"]) .i-play { display: none; }
+.hero-dots { display: flex; }
+.hero-dot { display: grid; place-items: center; width: 36px; height: 44px; padding: 0; border: 0; background: none; touch-action: manipulation; }
+.hero-dot::before { content: ""; width: 8px; height: 8px; border-radius: var(--r-chip); background: var(--text-muted); opacity: .55;
+  transition: width var(--dur-base) var(--ease-out), background-color var(--dur-base), opacity var(--dur-base); }
+.hero-dot:hover::before { opacity: 1; }
+.hero-dot[aria-current]::before { width: 24px; background: var(--gold); opacity: 1; }
+
+/* ---------- Home banners, aisle banner ---------- */
+.promo-band { padding-block: var(--s-16); }
+.promo-banners { display: grid; gap: var(--s-16); }
+.promo-banner { position: relative; isolation: isolate; display: grid; align-items: end; min-height: 280px;
+  border-radius: var(--r-card); border: 1px solid var(--p-line); background: var(--p-bg); color: var(--p-fg); }
+.promo-banner .promo-img, .promo-tile .promo-img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover;
+  transition: transform var(--dur-slow) var(--ease-out); }
+.promo-banner::before, .promo-tile::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(to top, var(--p-scrim) 0 40%, transparent 85%); }
+.promo-banner:hover .promo-img, .promo-tile:hover .promo-img { transform: scale(1.03); }
+.promo-copy { display: grid; justify-items: start; gap: var(--s-8); padding: var(--s-24); min-width: 0; }
+.promo-title { font-size: var(--fs-22); line-height: 1.35; overflow-wrap: anywhere; }
+.promo-sub { color: var(--p-muted); max-width: 34em; overflow-wrap: anywhere; }
+.promo-copy .btn { margin-block-start: var(--s-8); }
+.promo-banner-aisle { min-height: 200px; margin-block-start: var(--s-16); }
+.promo-banner-aisle .promo-title { font-size: var(--fs-22); }
+
+/* ---------- Grid tile: sized like a product card ---------- */
+.grid-promo { min-width: 0; }
+/* Height comes from the grid row (the product cards beside it); the image is absolutely placed. */
+.promo-tile { position: relative; isolation: isolate; display: grid; align-items: end; height: 100%; min-height: 18rem;
+  border-radius: var(--r-card); border: 1px solid var(--p-line); background: var(--p-bg); color: var(--p-fg); }
+.promo-tile .promo-copy { padding: var(--s-12); gap: var(--s-4); }
+.promo-tile .promo-title { font-size: var(--fs-18); }
+.promo-tile .promo-sub { font-size: var(--fs-14); }
+.promo-tile .btn { min-height: 44px; padding: var(--s-8) var(--s-16); font-size: var(--fs-14); }
+
+/* ---------- Product strip, cart upsell ---------- */
+.promo-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-12); padding: var(--s-8) var(--s-16);
+  border-radius: var(--r-control); background: var(--p-bg); color: var(--p-fg); border: 1px solid var(--p-line); font-size: var(--fs-14);
+  border-inline-start: 3px solid var(--gold); }
+.theme-dark.promo-strip { --p-bg: var(--surface-2); }
+.promo-strip p { flex: 1 1 14em; }
+.promo-strip span { color: var(--p-muted); }
+.promo-strip-link { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; font-weight: 600; color: var(--p-accent); }
+.promo-strip-link .icon { width: 16px; height: 16px; }
+.promo-strip-link:hover { text-decoration: underline; text-underline-offset: 5px; }
+.promo-upsell { display: flex; align-items: center; gap: var(--s-12); margin-block: var(--s-16); padding: var(--s-12);
+  border-radius: var(--r-card); background: var(--p-bg); color: var(--p-fg); border: 1px solid var(--p-line); }
+.theme-dark.promo-upsell { --p-bg: var(--surface-2); }
+.promo-upsell .promo-img { width: 64px; height: 80px; flex: none; object-fit: cover; border-radius: var(--r-control); }
+.promo-upsell .promo-copy { padding: 0; gap: 2px; }
+.promo-upsell .promo-title { font-family: var(--font-body); font-weight: 600; font-size: var(--fs-16); }
+.promo-upsell .promo-sub { font-size: var(--fs-14); }
+.promo-upsell .link-more { margin-inline-start: 0; color: var(--p-accent); }
+
+@media (min-width: 900px) {
+  article.hero-slide { align-items: center; }
+  article.hero-slide::before { background: linear-gradient(to left, var(--p-scrim) 0 48%, color-mix(in srgb, var(--p-bg) 50%, transparent) 68%, transparent 90%); }
+  .hero-slide-copy { padding-block: var(--s-64); }
+  .hero-slide-copy > * { max-width: 30rem; }
+  .promo-band { padding-block: var(--s-24); }
+  .promo-banners.is-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .promo-banner { min-height: 340px; }
+  .promo-banner:not(.promo-banner-aisle) .promo-copy { padding: var(--s-32); }
+  .promo-banners:not(.is-pair) .promo-banner::before { background: linear-gradient(to left, var(--p-scrim) 0 36%, transparent 75%); }
+  .promo-banners:not(.is-pair) .promo-banner { align-items: center; }
+  .promo-banners:not(.is-pair) .promo-copy { max-width: 36rem; }
+  .promo-banner-aisle { align-items: center; min-height: 180px; }
+  .promo-banner-aisle::before { background: linear-gradient(to left, var(--p-scrim) 0 40%, transparent 80%); }
+  .promo-banner-aisle .promo-copy { max-width: 32rem; }
+  .promo-title { font-size: var(--fs-28); }
+}
