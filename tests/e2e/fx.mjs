@@ -77,10 +77,14 @@ export async function registerFxScenarios({ scenario, openPage, check, baseUrl }
     ]);
     check(page);
 
-    // Reload in the same context: the stamp written at the start suppresses a replay.
+    // Reload in the same context: the stamp written at the start suppresses a replay. The overlay
+    // markup is always server-rendered (hidden in CSS by default); what must not happen is html
+    // ever getting .fx-entrance, which is the only thing that makes it visible.
     await page.goto(`${baseUrl}/`);
     await page.waitForLoadState("networkidle");
-    assert.equal(await page.locator("[data-fx-entrance]").count(), 0, "the fresh stamp suppresses the overlay on the next load");
+    assert.ok(!(await page.evaluate(() => document.documentElement.classList.contains("fx-entrance"))),
+      "the fresh stamp suppresses the overlay on the next load");
+    assert.equal(await page.locator("[data-fx-entrance]").evaluate((el) => getComputedStyle(el).display), "none");
     check(page);
 
     // Reduced motion: never shows, even with no stamp at all.
@@ -91,7 +95,8 @@ export async function registerFxScenarios({ scenario, openPage, check, baseUrl }
     await rmPage.evaluate(() => localStorage.removeItem("nsamat_entrance"));
     await rmPage.reload();
     await rmPage.waitForLoadState("networkidle");
-    assert.equal(await rmPage.locator("[data-fx-entrance]").count(), 0, "no overlay under reduced motion");
+    assert.ok(!(await rmPage.evaluate(() => document.documentElement.classList.contains("fx-entrance"))),
+      "no overlay under reduced motion");
     check(rmPage);
   });
 }
