@@ -77,7 +77,7 @@ export const deleteProduct = async (req, res) => {
 
 // GET all products
 export const getProducts = async (req, res) => {
-    const products = await Product.find({});
+    const products = await Product.find({}).populate("brand", "name_ar");
     if (products.length === 0) {
         return res.status(404).json({
             success: false,

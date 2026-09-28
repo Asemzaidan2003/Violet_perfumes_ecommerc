@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>المصممون</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <script src="../js/navbar.js"></script>
+</head>
+<body>
+  <div id="navbar"></div>
+
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">لوحة التحكم</span>
+        <h2>المصممون</h2>
+      </div>
+      <button type="button" class="btn btn-primary" id="addBrandBtn">+ إضافة مصمم</button>
+    </div>
+
+    <div class="table-card">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th></th><th>بالعربية</th><th>بالإنجليزية</th><th>عدد المنتجات</th><th>نشط</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="brandsBody">
+            <tr class="loading-row"><td colspan="6"><span class="spinner"></span>جاري التحميل...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="brandModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="brandModalTitle">
+    <div class="modal-box">
+      <button type="button" class="modal-close" id="brandClose" aria-label="إغلاق">✕</button>
+      <h3 id="brandModalTitle">إضافة مصمم</h3>
+      <form id="brandForm">
+        <div class="field">
+          <label for="bf-name-ar">الاسم بالعربية</label>
+          <input type="text" id="bf-name-ar" maxlength="60" required>
+        </div>
+        <div class="field">
+          <label for="bf-name-en">الاسم بالإنجليزية</label>
+          <input type="text" id="bf-name-en" maxlength="60" required>
+        </div>
+        <div class="field">
+          <label for="bf-slug">الرابط (slug)</label>
+          <input type="text" id="bf-slug" maxlength="40" placeholder="يُشتق تلقائيًا إن تُرك فارغًا">
+        </div>
+        <div class="field">
+          <label for="bf-logo">الشعار</label>
+          <input type="text" id="bf-logo" placeholder="https://... أو ارفع صورة">
+          <label class="drop-zone" for="bf-logo-file">اسحب صورة هنا أو اضغط للاختيار</label>
+          <input type="file" id="bf-logo-file" accept="image/jpeg,image/png,image/webp" style="display:none">
+          <p class="upload-status" role="status" id="bf-upload-status"></p>
+          <img id="bf-logo-preview" alt="" style="max-width:80px;display:none;margin-top:8px">
+        </div>
+        <div class="field">
+          <label for="bf-active">نشط</label>
+          <input type="checkbox" id="bf-active" checked>
+        </div>
+        <p id="brandError" role="alert" hidden></p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-block" id="brandSave">حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="../js/brands.js"></script>
+</body>
+</html>

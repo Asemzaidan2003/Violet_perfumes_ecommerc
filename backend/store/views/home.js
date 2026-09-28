@@ -106,6 +106,24 @@ function testerBar(families) {
 </section>`;
 }
 
+// Brand tiles for brands with at least one visible product — only rendered when there are ≥ 2.
+function designerShelf(products, brands = []) {
+  const withProducts = new Set(products.map((p) => p.brand?.slug).filter(Boolean));
+  const shown = brands.filter((b) => withProducts.has(b.slug));
+  if (shown.length < 2) return "";
+  return html`<section class="section designers" aria-labelledby="designers-title" data-reveal>
+  <div class="container">
+    <div class="section-head"><h2 id="designers-title" class="section-title">تسوّق حسب المصمم</h2></div>
+    <ul class="designer-tiles" role="list">
+      ${shown.map((b) => html`<li><a class="designer-tile" href="/brand/${b.slug}">${
+        b.logo ? html`<img src="${b.logo}" alt="${b.name_ar}" width="64" height="64" loading="lazy">`
+          : html`<span class="designer-name-fallback">${b.name_ar}</span>`
+      }<span class="designer-label">${b.name_ar}</span></a></li>`)}
+    </ul>
+  </div>
+</section>`;
+}
+
 function serviceStrip(settings) {
   const wa = settings.whatsapp ? `https://wa.me/${settings.whatsapp}` : "";
   const delivery = settings.free_delivery_over > 0
@@ -131,7 +149,7 @@ const ENTRANCE = raw(`<div class="fx-entrance-overlay" data-fx-entrance aria-hid
   <span class="fx-entrance-sweep"></span>
 </div>`);
 
-export function home({ products, settings, placements = [] }) {
+export function home({ products, settings, placements = [], brands = [] }) {
   // getCatalog() order is best-seller rank, then newest — exactly the best-sellers fallback rule.
   const best = products.slice(0, SHELF_SIZE);
   const newest = [...products].sort((a, b) => new Date(b.created) - new Date(a.created)).slice(0, SHELF_SIZE);
@@ -141,6 +159,7 @@ ${hero(placements)}
 ${aisles(products)}
 ${shelf({ title: "الأكثر مبيعًا", href: "/best-sellers", products: best })}
 ${slot("home_mid", placements)}
+${designerShelf(products, brands)}
 ${testerBar(familyCounts(products))}
 ${shelf({ title: "وصل حديثًا", href: "/new", products: newest })}
 ${shelf({ title: "عروض المتجر", href: "/offers", products: offers })}

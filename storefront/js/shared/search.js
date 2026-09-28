@@ -36,12 +36,13 @@ function fields(p) {
   let f = fieldCache.get(p);
   if (!f) {
     const notes = p.notes ? [p.notes.top, p.notes.heart, p.notes.base].flat().filter(Boolean).join(" ") : "";
+    const brandNames = p.brand ? `${p.brand.name_ar || ""} ${p.brand.name_en || ""}` : "";
     const nameWords = forms(p.name);
     f = {
       nameWords,
       name: nameWords.flat(),
       keywords: forms(p.keywords).flat(),
-      other: forms(`${(p.families || []).map((k) => FAMILY_LABELS.get(k) || "").join(" ")} ${notes}`).flat(),
+      other: forms(`${(p.families || []).map((k) => FAMILY_LABELS.get(k) || "").join(" ")} ${notes} ${brandNames}`).flat(),
     };
     fieldCache.set(p, f);
   }

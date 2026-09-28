@@ -73,17 +73,23 @@ function buildProductFields({ CATEGORIES, FAMILIES }, { uploadImage }) {
   }
   galleryInput.addEventListener("change", () => handleFiles(galleryInput.files, (saved) => { images.push(saved.url); renderGallery(); }));
 
-  // Families, notes, description, keywords.
+  // Families, notes, description, keywords, brand.
   const familyBox = el("div", { className: "chip-group" }, ...FAMILIES.map((f) => el("label", { className: "chip-check" },
     el("input", { type: "checkbox", name: "families", value: f.key }),
     el("span", { className: "swatch", style: `background:${f.swatch}` }),
     f.ar)));
   const text = (id, label, props = {}) => el("div", { className: "field" }, el("label", { htmlFor: id, textContent: label }), el(props.rows ? "textarea" : "input", { id, ...props }));
 
+  const brandSelect = el("select", { id: "p_brand" }, el("option", { value: "", textContent: "بدون" }));
+  fetch("/api/brands").then((r) => r.json()).then(({ data }) => {
+    for (const b of (data || []).filter((b) => b.active)) brandSelect.append(el("option", { value: b._id, textContent: `${b.name_ar} / ${b.name_en}` }));
+  }).catch((err) => console.error(err));
+
   root.append(
     el("div", { className: "field" }, el("label", { textContent: "رفع صورة المنتج" }), drop, fileInput, status),
     el("div", { className: "field" }, el("label", { htmlFor: "gallery_file", textContent: "صور إضافية" }), galleryInput, galleryList),
     el("div", { className: "field" }, el("span", { className: "field-label", textContent: "العائلات العطرية" }), familyBox),
+    el("div", { className: "field" }, el("label", { htmlFor: "p_brand", textContent: "المصمم" }), brandSelect),
     text("notes_top", "النوتات العليا (افصل بفواصل)"),
     text("notes_heart", "نوتات القلب (افصل بفواصل)"),
     text("notes_base", "النوتات الأساسية (افصل بفواصل)"),
@@ -98,6 +104,7 @@ function buildProductFields({ CATEGORIES, FAMILIES }, { uploadImage }) {
       notes: { top: list("notes_top"), heart: list("notes_heart"), base: list("notes_base") },
       description: document.getElementById("description").value.trim(),
       keywords: document.getElementById("keywords").value.trim(),
+      brand: brandSelect.value || null,
       images: [...images],
     }),
     fill: (p) => {
@@ -108,6 +115,7 @@ function buildProductFields({ CATEGORIES, FAMILIES }, { uploadImage }) {
       document.getElementById("notes_base").value = (p.notes?.base ?? []).join("، ");
       document.getElementById("description").value = p.description ?? "";
       document.getElementById("keywords").value = p.keywords ?? "";
+      brandSelect.value = p.brand ?? "";
       images.splice(0, images.length, ...(p.images ?? []));
       renderGallery();
     },

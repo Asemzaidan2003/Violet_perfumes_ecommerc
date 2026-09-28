@@ -58,6 +58,7 @@ const productSchema = new mongoose.Schema(
     images: [{ type: String, validate: { validator: (v) => IMAGE_URL.test(v), message: "رابط صورة غير صالح" } }],
     keywords: { type: String, trim: true, maxlength: 300 },
     visible: { type: Boolean, default: true },
+    brand: { type: mongoose.Schema.Types.ObjectId, ref: "brands" },
   },
   { timestamps: true }
 );

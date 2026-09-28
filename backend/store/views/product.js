@@ -117,6 +117,7 @@ function jsonLd(p, url, abs) {
     ...(images.length ? { image: images } : {}),
     ...(p.description ? { description: p.description } : {}),
     category: CATEGORY.get(p.category)?.ar,
+    ...(p.brand ? { brand: { "@type": "Brand", name: p.brand.name_en } } : {}),
     offers: p.sizes.map((s) => ({
       "@type": "Offer",
       name: sizeLabel(s.size),
@@ -148,6 +149,7 @@ export function product({ p, related, relatedHref, settings, base, placements = 
     ${gallery(p)}
     <div class="pdp-info">
       ${cat ? html`<a class="eyebrow pdp-cat" href="/c/${cat.slug}">${cat.ar}</a>` : ""}
+      ${p.brand ? html`<a class="pdp-brand" href="/brand/${p.brand.slug}">${p.brand.name_ar}</a>` : ""}
       <h1 class="pdp-title">${p.name}</h1>
       ${p.families.length ? html`<ul class="pdp-families" role="list">${p.families.filter((k) => FAMILY.has(k)).map((k) => html`<li><a class="chip chip-link" href="/family/${k}"><span class="swatch" style="--swatch: ${FAMILY.get(k).swatch}"></span>${FAMILY.get(k).ar}</a></li>`)}</ul>` : ""}
       <div class="pdp-price" data-price>${selected ? price(p, selected.size) : ""}${p.offer > 0 ? html`<span class="badge badge-offer"><bdi>−${num(p.offer)}%</bdi></span>` : ""}${offerChip(p)}</div>

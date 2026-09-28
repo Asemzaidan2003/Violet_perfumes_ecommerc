@@ -36,6 +36,7 @@
             <tr>
               <th>الصورة</th>
               <th>الاسم</th>
+              <th>المصمم</th>
               <th>الفئة</th>
               <th>نسب التركيب</th>
               <th>الحالة</th>
@@ -44,7 +45,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr class="loading-row"><td colspan="7"><span class="spinner"></span>جاري تحميل المنتجات...</td></tr>
+            <tr class="loading-row"><td colspan="8"><span class="spinner"></span>جاري تحميل المنتجات...</td></tr>
           </tbody>
         </table>
       </div>
@@ -82,7 +83,7 @@
 
       if (!data.length) {
         tbody.innerHTML = `
-          <tr><td colspan="7">
+          <tr><td colspan="8">
             <div class="empty-state">
               <div class="icon">📦</div>
               <div class="title">لا توجد منتجات مطابقة</div>
@@ -101,6 +102,7 @@
           <tr>
             <td><img class="row-thumb" src="${esc(product.p_image)}" alt="${esc(product.p_name)}"></td>
             <td class="cell-strong">${esc(product.p_name)}${String(product.p_image).startsWith("/img/") ? "" : ' <span class="badge badge-pending">بدون صورة خاصة</span>'}${product.visible === false ? ' <span class="badge badge-out">مخفي</span>' : ""}</td>
+            <td>${esc(product.brand?.name_ar ?? "—")}</td>
             <td>${product.p_category}</td>
             <td class="num">${product.oil_percentage}% زيت / ${product.alcohol_percentage}% كحول</td>
             <td><span class="badge ${statusBadgeClass(product.status)}">${statusLabel(product.status)}</span></td>

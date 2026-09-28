@@ -17,6 +17,8 @@ const list = dialog?.querySelector("#so-results");
 const status = dialog?.querySelector("[data-so-status]");
 const all = dialog?.querySelector("[data-so-all]");
 const suggest = dialog?.querySelector("[data-so-suggest]");
+const brandsBox = dialog?.querySelector("[data-so-brands]");
+const brandsList = dialog?.querySelector("[data-so-brands-list]");
 const itemTpl = dialog?.querySelector("template[data-so-item]");
 const headerInput = document.querySelector(".header-row .search-field input");
 
@@ -44,7 +46,7 @@ function nodeFor(p) {
   if (!p.image) img.classList.add("is-placeholder");
   li.querySelector(".so-name").textContent = p.name;
   const inStock = p.sizes.some((s) => s.in_stock);
-  li.querySelector(".so-meta").textContent = [CATEGORY_AR.get(p.category), FAMILY_AR.get(p.families[0]), inStock ? "" : "غير متوفر حاليًا"]
+  li.querySelector(".so-meta").textContent = [p.brand?.name_ar, CATEGORY_AR.get(p.category), FAMILY_AR.get(p.families[0]), inStock ? "" : "غير متوفر حاليًا"]
     .filter(Boolean).join(" · ");
   const cheapest = Math.min(...p.sizes.map((s) => s.final));
   if (p.sizes.length) li.querySelector(".so-price").textContent = `${p.sizes.length > 1 ? "من " : ""}${money(cheapest)}`;
@@ -71,6 +73,7 @@ function render() {
     list.replaceChildren();
     all.hidden = true;
     suggest.hidden = false;
+    if (brandsBox) brandsBox.hidden = true;
     input.setAttribute("aria-expanded", "false");
     setActive(-1);
     return say("");
@@ -81,6 +84,23 @@ function render() {
   input.setAttribute("aria-expanded", String(results.length > 0));
   all.hidden = results.length === 0;
   suggest.hidden = results.length > 0;
+  if (brandsBox) {
+    const brands = new Map();
+    for (const p of results) {
+      if (p.brand && !brands.has(p.brand.slug)) brands.set(p.brand.slug, p.brand);
+    }
+    const matched = [...brands.values()];
+    brandsList.replaceChildren(...matched.map((b) => {
+      const a = document.createElement("a");
+      a.className = "chip chip-link";
+      a.href = `/brand/${encodeURIComponent(b.slug)}`;
+      a.textContent = b.name_ar;
+      const li = document.createElement("li");
+      li.append(a);
+      return li;
+    }));
+    brandsBox.hidden = matched.length === 0;
+  }
   setActive(-1);
   say(results.length ? perfumeCount(results.length) : `لا نتائج لـ «${q}» — جرّب عائلة عطرية أو قسمًا`);
 }

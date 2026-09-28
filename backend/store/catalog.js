@@ -2,6 +2,7 @@ import Product from "../models/product.model.js";
 import Oil from "../models/oil.model.js";
 import Bottle from "../models/bottle.model.js";
 import Order from "../models/order.model.js";
+import Brand from "../models/brand.model.js";
 import { effectivePrice, liveOffer } from "../catalog/pricing.js";
 
 const CATALOG_TTL_MS = 30_000;
@@ -34,7 +35,9 @@ export function computeAvailability(product, oilsById, bottlesByCapacity) {
   return availability;
 }
 
-export function toPublic(product, availability, rank, now = new Date()) {
+// brandsById: Map(brandId string -> brand doc), pre-filtered to active brands only by the caller,
+// so an inactive or removed brand simply yields null here (the spec's "treated as null" rule).
+export function toPublic(product, availability, rank, now = new Date(), brandsById = new Map()) {
   const sizes = product.size_list.map((entry) => ({
     size: entry.size,
     list: entry.price,
@@ -44,6 +47,8 @@ export function toPublic(product, availability, rank, now = new Date()) {
   const image = product.p_image === "." ? null : product.p_image;
   const thumb = image && /^\/img\//.test(image) ? image.replace(/\.(webp|jpg|png)$/, "-480.$1") : image;
   const offer = liveOffer(product, now);
+  const brandDoc = product.brand ? brandsById.get(String(product.brand)) : null;
+  const brand = brandDoc ? { slug: brandDoc.slug, name_ar: brandDoc.name_ar, name_en: brandDoc.name_en } : null;
   return {
     id: String(product._id),
     name: product.p_name,
@@ -55,6 +60,7 @@ export function toPublic(product, availability, rank, now = new Date()) {
     notes: product.notes,
     description: product.description,
     keywords: product.keywords,
+    brand,
     offer,
     // ponytail: null unless the offer is live and has an end, so the countdown chip never
     // shows for an expired or open-ended offer. The 30 s catalogue cache may keep an
@@ -94,13 +100,15 @@ function sortByRankThenNewest(a, b) {
 export async function getCatalog() {
   if (catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS) return catalogCache.data;
 
-  const [products, oils, bottles, ranks] = await Promise.all([
+  const [products, oils, bottles, ranks, brands] = await Promise.all([
     Product.find({ status: { $ne: "discontinued" }, visible: { $ne: false } }).lean(),
     Oil.find({}).lean(),
     Bottle.find({}).lean(),
     getBestSellerRanks(),
+    Brand.find({ active: true }).lean(),
   ]);
 
+  const brandsById = new Map(brands.map((b) => [String(b._id), b]));
   const oilsById = new Map(oils.map((o) => [o.id, o]));
   const bottlesByCapacity = new Map();
   for (const b of bottles) {
@@ -111,7 +119,7 @@ export async function getCatalog() {
 
   const now = new Date();
   const publicProducts = products
-    .map((p) => toPublic(p, computeAvailability(p, oilsById, bottlesByCapacity), ranks.get(String(p._id)) ?? null, now))
+    .map((p) => toPublic(p, computeAvailability(p, oilsById, bottlesByCapacity), ranks.get(String(p._id)) ?? null, now, brandsById))
     .sort(sortByRankThenNewest);
 
   const byId = new Map(publicProducts.map((p) => [p.id, p]));
@@ -128,6 +136,7 @@ export function compactIndex(products) {
     category: p.category,
     families: p.families,
     keywords: p.keywords,
+    brand: p.brand,
     notes: p.notes, // searched by the overlay exactly as by the server-rendered /search
     offer: p.offer,
     offer_ends_at: p.offer_ends_at,

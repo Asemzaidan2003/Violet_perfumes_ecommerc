@@ -34,11 +34,12 @@
               <th>الاسم</th>
               <th>الفئة</th>
               <th>العائلات العطرية</th>
+              <th>المصمم</th>
               <th></th>
             </tr>
           </thead>
           <tbody id="catalogBody">
-            <tr class="loading-row"><td colspan="5"><span class="spinner"></span>جاري تحميل المنتجات...</td></tr>
+            <tr class="loading-row"><td colspan="6"><span class="spinner"></span>جاري تحميل المنتجات...</td></tr>
           </tbody>
         </table>
       </div>
@@ -55,6 +56,15 @@
     let productsData = [];
     let CATEGORIES = [];
     let FAMILIES = [];
+    let BRANDS = [];
+
+    function buildBrandSelect(current) {
+      const select = el("select", { className: "status-select" },
+        el("option", { value: "", textContent: "بدون" }),
+        ...BRANDS.map((b) => el("option", { value: b._id, textContent: b.name_ar })));
+      select.value = current ?? "";
+      return select;
+    }
 
     function buildCategorySelect(current) {
       const select = el("select", { className: "status-select" },
@@ -74,24 +84,27 @@
     function buildRow(product) {
       const categorySelect = buildCategorySelect(product.p_category);
       const familyBox = buildFamilyChips(product.families ?? []);
+      const brandSelect = buildBrandSelect(product.brand?._id ?? product.brand ?? "");
       const status = el("span", { className: "text-muted" });
       const saveBtn = el("button", { type: "button", className: "btn btn-secondary btn-sm", textContent: "حفظ" });
 
       saveBtn.addEventListener("click", async () => {
         const families = [...familyBox.querySelectorAll("input:checked")].map((i) => i.value);
         const p_category = categorySelect.value;
+        const brand = brandSelect.value || null;
         status.textContent = "جارٍ الحفظ…";
         status.className = "text-muted";
         try {
           const res = await fetch(`/api/products/${product._id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ p_category, families }),
+            body: JSON.stringify({ p_category, families, brand }),
           });
           const body = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(body.message || "فشل الحفظ");
           product.p_category = p_category;
           product.families = families;
+          product.brand = brand;
           status.textContent = "تم الحفظ ✓";
           status.className = "text-brand";
         } catch (err) {
@@ -105,11 +118,12 @@
         el("td", { className: "cell-strong", textContent: product.p_name }),
         el("td", {}, categorySelect),
         el("td", {}, familyBox),
+        el("td", {}, brandSelect),
         el("td", {}, saveBtn, status));
     }
 
     function emptyRow() {
-      return el("tr", {}, el("td", { colSpan: 5 },
+      return el("tr", {}, el("td", { colSpan: 6 },
         el("div", { className: "empty-state" },
           el("div", { className: "icon", textContent: "📦" }),
           el("div", { className: "title", textContent: "لا توجد منتجات مطابقة" }))));
@@ -129,16 +143,18 @@
       CATEGORIES = vocab.CATEGORIES;
       FAMILIES = vocab.FAMILIES;
       try {
-        const res = await fetch("/api/products");
+        const [res, brandsRes] = await Promise.all([fetch("/api/products"), fetch("/api/brands")]);
         const json = await res.json().catch(() => ({}));
         // getProducts responds 404 (success:false) when the catalogue is legitimately
         // empty — that's not a failure; any other non-ok status is.
         if (!res.ok && res.status !== 404) throw new Error(json.message || "تعذر تحميل المنتجات");
         productsData = json.data ?? [];
+        const brandsJson = await brandsRes.json().catch(() => ({}));
+        BRANDS = (brandsJson.data ?? []).filter((b) => b.active);
         renderRows();
       } catch (err) {
         document.getElementById("catalogBody").replaceChildren(el("tr", {},
-          el("td", { colSpan: 5, className: "text-muted", textContent: err.message || "تعذر تحميل المنتجات" })));
+          el("td", { colSpan: 6, className: "text-muted", textContent: err.message || "تعذر تحميل المنتجات" })));
       }
     }
 

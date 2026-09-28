@@ -15,9 +15,13 @@ const COMPARE = {
   price_desc: (a, b) => n(b, "price") - n(a, "price") || n(a, "best") - n(b, "best"),
 };
 
-function matches(li, { f, s, stock }) {
+const list = (el, key, sep = " ") => (el.dataset[key] || "").split(sep).filter(Boolean);
+
+function matches(li, { f, s, stock, b, n }) {
   if (f.length && !words(li, "families").some((k) => f.includes(k))) return false;
   if (s.length && !words(li, "sizes").some((x) => s.includes(x))) return false;
+  if (b.length && !b.includes(li.dataset.brand)) return false;
+  if (n.length && !list(li, "notes", "|").some((x) => n.includes(x))) return false;
   if (stock && !words(li, "stock").some((x) => !s.length || s.includes(x))) return false;
   return true;
 }
@@ -43,7 +47,7 @@ if (form && grid) {
 
   const apply = () => {
     const data = new FormData(form);
-    const filter = { f: data.getAll("f"), s: data.getAll("s"), stock: data.has("stock") };
+    const filter = { f: data.getAll("f"), s: data.getAll("s"), b: data.getAll("b"), n: data.getAll("n"), stock: data.has("stock") };
     const sort = data.get("sort") || defaultSort;
     let shown = 0;
     for (const li of items) {
@@ -54,13 +58,15 @@ if (form && grid) {
     placeTiles(items.filter((li) => !li.hidden), tiles);
     count.textContent = perfumeCount(shown);
     empty.hidden = shown > 0;
-    if (clear) clear.hidden = !(filter.f.length || filter.s.length || filter.stock);
+    if (clear) clear.hidden = !(filter.f.length || filter.s.length || filter.b.length || filter.n.length || filter.stock);
 
     const params = [];
     const q = data.get("q");
     if (q) params.push(`q=${encodeURIComponent(q)}`);
     if (filter.f.length) params.push(`f=${filter.f.map(encodeURIComponent).join(",")}`);
     if (filter.s.length) params.push(`s=${filter.s.map(encodeURIComponent).join(",")}`);
+    if (filter.b.length) params.push(`b=${filter.b.map(encodeURIComponent).join(",")}`);
+    if (filter.n.length) params.push(`n=${filter.n.map(encodeURIComponent).join(",")}`);
     if (filter.stock) params.push("stock=1");
     if (sort !== defaultSort) params.push(`sort=${encodeURIComponent(sort)}`);
     history.replaceState(history.state, "", `${location.pathname}${params.length ? `?${params.join("&")}` : ""}`);

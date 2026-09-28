@@ -9,7 +9,8 @@ import { home } from "../store/views/home.js";
 import { collection, SORTS } from "../store/views/collection.js";
 import { product } from "../store/views/product.js";
 import { CATEGORIES, FAMILIES, FAMILY_KEYS } from "../../storefront/js/shared/vocab.js";
-import { searchProducts } from "../../storefront/js/shared/search.js";
+import { searchProducts, normalize } from "../../storefront/js/shared/search.js";
+import Brand from "../models/brand.model.js";
 import { notFound, serverError } from "../store/views/errors.js";
 import { checkout, cartPage } from "../store/views/checkout.js";
 import { orderConfirmation } from "../store/views/order.js";
@@ -59,6 +60,8 @@ const list = (v) => [].concat(v ?? []).flatMap((x) => String(x).split(",")).map(
 const parseFilter = (query) => ({
   f: list(query.f).filter((k) => FAMILY_KEYS.includes(k)),
   s: list(query.s).filter((x) => /^\d+(\.\d+)?$/.test(x)).slice(0, 20),
+  b: list(query.b).filter((x) => /^[a-z0-9-]{2,40}$/.test(x)).slice(0, 20),
+  n: list(query.n).map((x) => normalize(x)).filter(Boolean).slice(0, 20),
   stock: query.stock === "1",
 });
 
@@ -133,6 +136,36 @@ router.get("/search", aislePage((req, products) => {
   };
 }));
 
+// Brand slug looked up directly in Brand (own-key rule: Map, not object) — unlike /c/:category and
+// /family/:key, an unknown or inactive brand must 404 even though getCatalog() would just show an
+// empty aisle (it silently treats an inactive brand's products as brand: null).
+router.get("/brand/:slug", async (req, res, next) => {
+  const slug = req.params.slug;
+  if (!/^[a-z0-9-]{2,40}$/.test(slug)) return next();
+  const [brand, { products }, settings, placements] = await Promise.all([
+    Brand.findOne({ slug, active: true }).lean(),
+    getCatalog(), getSettings(), getLivePlacements(),
+  ]);
+  if (!brand) return next();
+  const base = products.filter((p) => p.brand && p.brand.slug === slug);
+  const asked = req.query.sort;
+  const sort = typeof asked === "string" && Object.hasOwn(SORTS, asked) ? asked : "best";
+  send(req, res, 200, {
+    title: `${brand.name_ar} | نسمات`,
+    description: `تسوّق عطور ${brand.name_ar} من نسمات: توصيل لكل الأردن والدفع عند الاستلام.`,
+    canonicalPath: `/brand/${slug}`,
+    settings,
+    placements,
+    families: familyCounts(products),
+    styles: ["pages.css"],
+    scripts: ["collection.js"],
+    body: collection({
+      path: `/brand/${slug}`, title: brand.name_ar, eyebrow: "المصممون", defaultSort: "best",
+      base, catalog: products, filter: parseFilter(req.query), sort, placements, brandLogo: brand.logo || null,
+    }),
+  });
+});
+
 router.get("/p/:id", async (req, res, next) => {
   if (!/^[a-f0-9]{24}$/i.test(req.params.id)) return next();
   const [{ products, byId }, settings, placements] = await Promise.all([getCatalog(), getSettings(), getLivePlacements()]);
@@ -185,7 +218,9 @@ router.get("/order/:ref", async (req, res, next) => {
 });
 
 router.get("/", async (req, res) => {
-  const [{ products }, settings, placements] = await Promise.all([getCatalog(), getSettings(), getLivePlacements()]);
+  const [{ products }, settings, placements, brands] = await Promise.all([
+    getCatalog(), getSettings(), getLivePlacements(), Brand.find({ active: true }).lean(),
+  ]);
   send(req, res, 200, {
     title: "نسمات | عطور فاخرة في الأردن",
     description: "بوتيك نسمات للعطور: عطور رجالية ونسائية وللجنسين ومعطرات، توصيل لكل الأردن والدفع عند الاستلام.",
@@ -194,7 +229,7 @@ router.get("/", async (req, res) => {
     placements,
     families: familyCounts(products),
     scripts: ["fx-entrance.js"],
-    body: home({ products, settings, placements }),
+    body: home({ products, settings, placements, brands }),
   });
 });
 
@@ -207,9 +242,9 @@ router.get("/robots.txt", (req, res) => {
 // Every indexable page: home, aisles and visible (non-discontinued) products. /search is noindex.
 router.get("/sitemap.xml", async (req, res) => {
   const base = esc(siteBase(origin(req)));
-  const { products } = await getCatalog();
+  const [{ products }, brands] = await Promise.all([getCatalog(), Brand.find({ active: true }).lean()]);
   const paths = ["/", ...CATEGORIES.map((c) => `/c/${c.slug}`), ...FAMILY_KEYS.map((k) => `/family/${k}`),
-    "/offers", "/new", "/best-sellers", ...products.map((p) => `/p/${p.id}`)];
+    "/offers", "/new", "/best-sellers", ...brands.map((b) => `/brand/${b.slug}`), ...products.map((p) => `/p/${p.id}`)];
   res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map((p) => `<url><loc>${base}${p}</loc></url>`).join("\n")}

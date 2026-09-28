@@ -84,6 +84,10 @@ function searchOverlay(families) {
     </form>
     <p class="so-status" data-so-status role="status" aria-live="polite"></p>
     <ul class="so-results" id="so-results" role="listbox" aria-label="نتائج البحث"></ul>
+    <div class="so-brands" data-so-brands hidden>
+      <h2 class="so-title">المصممون</h2>
+      <ul class="so-chips" role="list" data-so-brands-list></ul>
+    </div>
     <a class="so-all" href="/search" data-so-all hidden>عرض كل النتائج ${icon("chevron")}</a>
     <div class="so-suggest" data-so-suggest>
       ${families.length ? html`<h2 class="so-title">تصفّح حسب العائلة</h2>
