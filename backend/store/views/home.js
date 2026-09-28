@@ -123,12 +123,21 @@ function serviceStrip(settings) {
 </section>`;
 }
 
+// "Doors of light" entrance overlay: two dark panels + a gold sweep. pointer-events: none from
+// the first frame (fx.css), hidden unless html.fx-motion.fx-entrance (fx-entrance.js opts in).
+const ENTRANCE = raw(`<div class="fx-entrance-overlay" data-fx-entrance aria-hidden="true">
+  <span class="fx-entrance-panel fx-entrance-panel-l"></span>
+  <span class="fx-entrance-panel fx-entrance-panel-r"></span>
+  <span class="fx-entrance-sweep"></span>
+</div>`);
+
 export function home({ products, settings, placements = [] }) {
   // getCatalog() order is best-seller rank, then newest — exactly the best-sellers fallback rule.
   const best = products.slice(0, SHELF_SIZE);
   const newest = [...products].sort((a, b) => new Date(b.created) - new Date(a.created)).slice(0, SHELF_SIZE);
   const offers = products.filter((p) => p.offer > 0).slice(0, SHELF_SIZE);
-  return html`${hero(placements)}
+  return html`${ENTRANCE}
+${hero(placements)}
 ${aisles(products)}
 ${shelf({ title: "الأكثر مبيعًا", href: "/best-sellers", products: best })}
 ${slot("home_mid", placements)}

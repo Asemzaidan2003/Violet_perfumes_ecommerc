@@ -5,6 +5,7 @@ import { add, announce, MAX_QTY } from "./shared/cart-store.js";
 import { money, sizeLabel } from "./shared/format.js";
 import { normalizePhone, isJordanMobile } from "./shared/phone.js";
 import { loadCatalog } from "./shared/catalog-client.js";
+import { flyToCart } from "./fx-flight.js";
 
 const RECENT_KEY = "nsamat_recent_v1";
 const RECENT_MAX = 12;
@@ -221,7 +222,8 @@ if (root) {
     if (addBtn) {
       if (addToCart()) {
         flash(addBtn, "أُضيف إلى السلة");
-        dispatchEvent(new Event("cart:open"));
+        const img = root.querySelector(".gallery-slide img");
+        flyToCart(img).then(() => dispatchEvent(new Event("cart:open")));
       }
       return;
     }

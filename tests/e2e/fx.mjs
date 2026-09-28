@@ -40,4 +40,58 @@ export async function registerFxScenarios({ scenario, openPage, check, baseUrl }
     assert.ok(await allOpaque(rmPage), "every [data-reveal] block is already opacity 1, without scrolling");
     check(rmPage);
   });
+
+  await scenario("Add-to-cart flight", async () => {
+    const page = await openPage();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${baseUrl}/`);
+    await page.waitForLoadState("networkidle");
+    await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
+
+    await page.locator(".card-add").first().click();
+    await page.waitForSelector(".fx-flight", { timeout: 500 });
+    await page.waitForSelector(".fx-flight", { state: "detached", timeout: 1000 });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll("[data-cart-count]")].some((el) => !el.hidden && el.textContent === "1"));
+
+    await page.evaluate(() => localStorage.removeItem("nsamat_cart_v1"));
+    check(page);
+  });
+
+  await scenario("Doors of light entrance", async () => {
+    const page = await openPage();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${baseUrl}/`);
+    await page.evaluate(() => localStorage.removeItem("nsamat_entrance"));
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
+
+    assert.ok(await page.locator("[data-fx-entrance]").count() > 0, "overlay is rendered on a fresh load");
+
+    // Input goes straight through even while the entrance is still playing: a click 100ms after
+    // domcontentloaded must still navigate (pointer-events: none from the first frame).
+    await page.waitForTimeout(100);
+    await Promise.all([
+      page.waitForURL(/\/p\//),
+      page.locator(".card-link").first().click(),
+    ]);
+    check(page);
+
+    // Reload in the same context: the stamp written at the start suppresses a replay.
+    await page.goto(`${baseUrl}/`);
+    await page.waitForLoadState("networkidle");
+    assert.equal(await page.locator("[data-fx-entrance]").count(), 0, "the fresh stamp suppresses the overlay on the next load");
+    check(page);
+
+    // Reduced motion: never shows, even with no stamp at all.
+    const rmPage = await openPage();
+    await rmPage.emulateMedia({ reducedMotion: "reduce" });
+    await rmPage.setViewportSize({ width: 1440, height: 900 });
+    await rmPage.goto(`${baseUrl}/`);
+    await rmPage.evaluate(() => localStorage.removeItem("nsamat_entrance"));
+    await rmPage.reload();
+    await rmPage.waitForLoadState("networkidle");
+    assert.equal(await rmPage.locator("[data-fx-entrance]").count(), 0, "no overlay under reduced motion");
+    check(rmPage);
+  });
 }

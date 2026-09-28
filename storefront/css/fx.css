@@ -83,3 +83,52 @@
    navigation-timing issue is isolated. */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .3s; }
 .fx-motion .gallery-slide:first-child img { view-transition-name: product-hero; }
+
+/* ---------- Add-to-cart flight: a transient image clone, never intercepts input ---------- */
+.fx-flight {
+  position: fixed;
+  margin: 0;
+  z-index: 999;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* ---------- "Doors of light" entrance ----------
+   Hidden entirely unless BOTH html.fx-motion and html.fx-entrance are set (fx-entrance.js is the
+   only thing that adds .fx-entrance) — no-JS and reduced-motion visitors never render this at all.
+   pointer-events: none from the very first frame: nothing here ever blocks a click. */
+.fx-entrance-overlay { display: none; }
+.fx-motion.fx-entrance .fx-entrance-overlay {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  overflow: hidden;
+}
+.fx-entrance-panel {
+  position: absolute;
+  inset: 0 50% 0 0;
+  width: 50%;
+  background: var(--ink, #0E0C0A);
+}
+.fx-entrance-panel-l { animation: fx-entrance-l .7s cubic-bezier(.7,0,.2,1) both; }
+.fx-entrance-panel-r {
+  right: 0; left: auto;
+  animation: fx-entrance-r .7s cubic-bezier(.7,0,.2,1) both;
+}
+.fx-entrance-sweep {
+  position: absolute;
+  inset: 0 -20% 0 -20%;
+  background: linear-gradient(100deg, transparent 40%, var(--gold, #D4AF37) 50%, transparent 60%);
+  opacity: 0;
+  animation: fx-entrance-sweep .8s ease-in both;
+}
+@keyframes fx-entrance-l { from { translate: 0 0; } to { translate: -100% 0; } }
+@keyframes fx-entrance-r { from { translate: 0 0; } to { translate: 100% 0; } }
+@keyframes fx-entrance-sweep {
+  0% { opacity: 0; transform: translateX(-30%); }
+  35% { opacity: .8; }
+  70% { opacity: 0; transform: translateX(30%); }
+  100% { opacity: 0; }
+}

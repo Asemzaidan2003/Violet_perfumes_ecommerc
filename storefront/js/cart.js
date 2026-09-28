@@ -4,6 +4,7 @@
 import { CART_KEY, readCart, add, setQty, remove, priceCart, shopSettings, announce, MAX_QTY, PRICE_NOTE_KEY } from "./shared/cart-store.js";
 import { loadCatalog } from "./shared/catalog-client.js";
 import { money, num, sizeLabel } from "./shared/format.js";
+import { flyToCart } from "./fx-flight.js";
 
 const PLACEHOLDER = "/assets/img/placeholder-bottle.svg" + new URL(import.meta.url).search;
 const drawer = document.getElementById("cart-drawer");
@@ -109,7 +110,8 @@ function quickAdd(btn) {
   announce(`أُضيف ${name} إلى السلة`);
   btn.classList.add("is-added");
   setTimeout(() => btn.classList.remove("is-added"), 1200);
-  open();
+  const img = btn.closest(".card")?.querySelector("[data-vt-img]");
+  flyToCart(img).then(open);
 }
 
 document.addEventListener("click", (e) => {
