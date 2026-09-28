@@ -228,6 +228,7 @@ router.get("/", async (req, res) => {
     settings,
     placements,
     families: familyCounts(products),
+    styles: ["pages.css"],
     scripts: ["fx-entrance.js"],
     body: home({ products, settings, placements, brands }),
   });

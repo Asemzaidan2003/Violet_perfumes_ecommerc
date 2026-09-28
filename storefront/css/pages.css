@@ -237,3 +237,23 @@
   .pdp-actions .btn { min-height: 56px; }
   .pdp-details { grid-template-columns: 1fr 1fr; gap: var(--s-48); padding-block: var(--s-48) var(--s-24); }
 }
+
+/* ---------- Designers (brands) ---------- */
+/* Aisle header logo, next to the brand name in the <h1> (collection.js's brandLogo). */
+.brand-logo { width: 40px; height: 40px; margin-inline-end: var(--s-12); border-radius: 50%;
+  object-fit: contain; background: var(--surface); border: 1px solid var(--line); vertical-align: middle; }
+
+/* Product page: brand name link above the title. */
+.pdp-brand { display: inline-flex; align-items: center; min-height: 44px; margin-block-end: var(--s-4);
+  color: var(--gold-strong); font-weight: 600; font-size: var(--fs-14); }
+.pdp-brand:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Home "تسوّق حسب المصمم" shelf: a row of brand tiles (logo, or the name in El Messiri as a fallback). */
+.designer-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--s-12); }
+.designer-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-8);
+  min-height: 44px; padding: var(--s-16) var(--s-8); border-radius: var(--r-card); border: 1px solid var(--line);
+  background: var(--surface); text-align: center; transition: border-color var(--dur-base), transform var(--dur-base) var(--ease-out); }
+.designer-tile:hover { border-color: var(--gold); transform: translateY(-3px); }
+.designer-tile img { width: 64px; height: 64px; object-fit: contain; }
+.designer-name-fallback { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-18); color: var(--text); }
+.designer-label { color: var(--text-muted); font-size: var(--fs-14); }

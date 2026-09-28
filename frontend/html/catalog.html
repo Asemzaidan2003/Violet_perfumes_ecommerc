@@ -58,13 +58,27 @@
     let FAMILIES = [];
     let BRANDS = [];
 
-    function buildBrandSelect(current) {
-      const select = el("select", { className: "status-select" },
-        el("option", { value: "", textContent: "بدون" }),
-        ...BRANDS.map((b) => el("option", { value: b._id, textContent: b.name_ar })));
-      select.value = current ?? "";
-      return select;
+    // A text input + <datalist>, not a second <select>: each row keeps exactly one <select> (the
+    // category), matching the page's existing "one dropdown per row" shape. Native autocomplete,
+    // 44px target via the shared .status-select-like input styling.
+    let brandsDatalist = null;
+    function ensureBrandsDatalist() {
+      if (brandsDatalist) return brandsDatalist;
+      brandsDatalist = el("datalist", { id: "brandsDatalist" }, ...BRANDS.map((b) => el("option", { value: b.name_ar })));
+      document.body.append(brandsDatalist);
+      return brandsDatalist;
     }
+    function buildBrandInput(currentId) {
+      ensureBrandsDatalist();
+      const current = BRANDS.find((b) => b._id === currentId);
+      // "list" is a read-only IDL property on <input> (Object.assign — used by el() — throws when
+      // assigning to a getter-only accessor); it must be set as a plain attribute instead.
+      const input = el("input", { type: "text", className: "brand-input", value: current?.name_ar ?? "", placeholder: "بدون" });
+      input.setAttribute("list", "brandsDatalist");
+      return input;
+    }
+    // Resolves the typed/selected text back to a brand id — an exact name_ar match, else null.
+    const brandIdFromInput = (input) => BRANDS.find((b) => b.name_ar === input.value.trim())?._id ?? null;
 
     function buildCategorySelect(current) {
       const select = el("select", { className: "status-select" },
@@ -84,14 +98,14 @@
     function buildRow(product) {
       const categorySelect = buildCategorySelect(product.p_category);
       const familyBox = buildFamilyChips(product.families ?? []);
-      const brandSelect = buildBrandSelect(product.brand?._id ?? product.brand ?? "");
+      const brandInput = buildBrandInput(product.brand?._id ?? product.brand ?? "");
       const status = el("span", { className: "text-muted" });
       const saveBtn = el("button", { type: "button", className: "btn btn-secondary btn-sm", textContent: "حفظ" });
 
       saveBtn.addEventListener("click", async () => {
         const families = [...familyBox.querySelectorAll("input:checked")].map((i) => i.value);
         const p_category = categorySelect.value;
-        const brand = brandSelect.value || null;
+        const brand = brandIdFromInput(brandInput);
         status.textContent = "جارٍ الحفظ…";
         status.className = "text-muted";
         try {
@@ -118,7 +132,7 @@
         el("td", { className: "cell-strong", textContent: product.p_name }),
         el("td", {}, categorySelect),
         el("td", {}, familyBox),
-        el("td", {}, brandSelect),
+        el("td", {}, brandInput),
         el("td", {}, saveBtn, status));
     }
 

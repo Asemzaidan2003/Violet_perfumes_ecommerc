@@ -666,6 +666,23 @@ img.row-thumb {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
+/* Bulk-tagging brand field (catalog.html): a text input + datalist, not a <select> — keeps each
+   row's tag controls scoped to one native <select> (the category). */
+.brand-input {
+  min-height: 44px;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border, #d8dde3);
+  min-width: 140px;
+}
+
+.brand-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
 .badge {
   display: inline-block;
   font-size: 12.5px;
