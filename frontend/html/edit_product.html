@@ -37,6 +37,11 @@
       </div>
 
       <div class="field">
+        <label for="offer_ends_at">ينتهي العرض في</label>
+        <input type="datetime-local" id="offer_ends_at">
+      </div>
+
+      <div class="field">
         <label for="oil_id">ID الزيت</label>
         <input type="text" id="oil_id" required>
       </div>
@@ -123,6 +128,12 @@
 
         document.getElementById("p_name").value = product.p_name;
         document.getElementById("p_offer_percentage").value = product.p_offer_percentage;
+        if (product.offer_ends_at) {
+          const d = new Date(product.offer_ends_at);
+          const pad = (n) => String(n).padStart(2, "0");
+          document.getElementById("offer_ends_at").value =
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
         document.getElementById("oil_id").value = product.oil_id;
         document.getElementById("oil_percentage").value = product.oil_percentage;
         document.getElementById("alcohol_percentage").value = product.alcohol_percentage;
@@ -155,6 +166,8 @@
           p_name: document.getElementById("p_name").value,
           p_category: document.getElementById("p_category").value,
           p_offer_percentage: parseFloat(document.getElementById("p_offer_percentage").value),
+          offer_ends_at: document.getElementById("offer_ends_at").value
+            ? new Date(document.getElementById("offer_ends_at").value).toISOString() : null,
           oil_id: document.getElementById("oil_id").value,
           oil_percentage: parseFloat(document.getElementById("oil_percentage").value),
           alcohol_percentage: parseFloat(document.getElementById("alcohol_percentage").value),

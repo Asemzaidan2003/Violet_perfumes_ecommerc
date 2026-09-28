@@ -55,6 +55,21 @@ export function badges(p) {
   return out.length ? html`<div class="badges">${out}</div>` : "";
 }
 
+const OFFER_CHIP_WINDOW_MS = 7 * 24 * 60 * 60_000;
+const RTF_AR = new Intl.RelativeTimeFormat("ar", { numeric: "always" });
+
+// A countdown chip for an offer ending within 7 days, else "". Days while ≥ 1 day remains,
+// hours otherwise. The server renders the text; no client JS is required.
+export function offerChip(p, now = new Date()) {
+  if (!p.offer_ends_at) return "";
+  const end = new Date(p.offer_ends_at);
+  const ms = end - now;
+  if (ms <= 0 || ms > OFFER_CHIP_WINDOW_MS) return "";
+  const days = Math.floor(ms / (24 * 60 * 60_000));
+  const text = days >= 1 ? RTF_AR.format(days, "day") : RTF_AR.format(Math.max(1, Math.ceil(ms / (60 * 60_000))), "hour");
+  return html`<span class="chip-countdown" data-ends-at="${end.toISOString()}">ينتهي ${text}</span>`;
+}
+
 export function familyChip(key) {
   const f = FAMILY_BY_KEY.get(key);
   return f ? html`<span class="chip"><span class="swatch" style="--swatch: ${f.swatch}"></span>${f.ar}</span>` : "";
@@ -85,6 +100,7 @@ export function productCard(p, { priority = false } = {}) {
       ${price(p)}
       ${add ? html`<button class="btn-icon card-add" type="button" data-add-to-cart data-id="${p.id}" data-size="${add.size}" data-name="${p.name}" aria-label="أضف ${p.name} إلى السلة">${icon("plus")}</button>` : ""}
     </div>
+    ${offerChip(p)}
   </div>
 </article>`;
 }

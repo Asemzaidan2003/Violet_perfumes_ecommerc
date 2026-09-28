@@ -16,6 +16,7 @@ const productSchema = new mongoose.Schema(
     p_image: { type: String, required: true, validate: { validator: (v) => v === "." || IMAGE_URL.test(v), message: "رابط صورة غير صالح" } },
     p_category: { type: String, required: [true, "الفئة مطلوبة"], enum: { values: CATEGORY_KEYS, message: "فئة غير صالحة" } },
     p_offer_percentage: { type: Number, default: 0, min: 0, max: 100 },
+    offer_ends_at: { type: Date },
 
     oil_id: {
       type: String,

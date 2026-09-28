@@ -2,7 +2,7 @@ import Product from "../models/product.model.js";
 import Oil from "../models/oil.model.js";
 import Bottle from "../models/bottle.model.js";
 import Order from "../models/order.model.js";
-import { effectivePrice } from "../catalog/pricing.js";
+import { effectivePrice, liveOffer } from "../catalog/pricing.js";
 
 const CATALOG_TTL_MS = 30_000;
 const RANKS_TTL_MS = 10 * 60_000;
@@ -34,15 +34,16 @@ export function computeAvailability(product, oilsById, bottlesByCapacity) {
   return availability;
 }
 
-export function toPublic(product, availability, rank) {
+export function toPublic(product, availability, rank, now = new Date()) {
   const sizes = product.size_list.map((entry) => ({
     size: entry.size,
     list: entry.price,
-    final: effectivePrice(product, entry),
+    final: effectivePrice(product, entry, now),
     in_stock: Boolean(availability[entry.size]),
   }));
   const image = product.p_image === "." ? null : product.p_image;
   const thumb = image && /^\/img\//.test(image) ? image.replace(/\.(webp|jpg|png)$/, "-480.$1") : image;
+  const offer = liveOffer(product, now);
   return {
     id: String(product._id),
     name: product.p_name,
@@ -54,7 +55,12 @@ export function toPublic(product, availability, rank) {
     notes: product.notes,
     description: product.description,
     keywords: product.keywords,
-    offer: product.p_offer_percentage || 0,
+    offer,
+    // ponytail: null unless the offer is live and has an end, so the countdown chip never
+    // shows for an expired or open-ended offer. The 30 s catalogue cache may keep an
+    // expired offer visible up to 30 s longer — acceptable, because placeOrder charges
+    // from the DB product via effectivePrice, not from this cached projection.
+    offer_ends_at: offer > 0 && product.offer_ends_at ? new Date(product.offer_ends_at).toISOString() : null,
     sizes,
     in_stock: sizes.some((s) => s.in_stock),
     rank: rank ?? null,
@@ -103,8 +109,9 @@ export async function getCatalog() {
     bottlesByCapacity.set(b.capacity, list);
   }
 
+  const now = new Date();
   const publicProducts = products
-    .map((p) => toPublic(p, computeAvailability(p, oilsById, bottlesByCapacity), ranks.get(String(p._id)) ?? null))
+    .map((p) => toPublic(p, computeAvailability(p, oilsById, bottlesByCapacity), ranks.get(String(p._id)) ?? null, now))
     .sort(sortByRankThenNewest);
 
   const byId = new Map(publicProducts.map((p) => [p.id, p]));

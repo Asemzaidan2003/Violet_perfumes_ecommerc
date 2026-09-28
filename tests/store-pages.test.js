@@ -215,6 +215,56 @@ test("unknown category and family are 404; family, offers, new, best-sellers ren
   assert.equal((await page("/best-sellers")).status, 200);
 });
 
+test("an offer that ended already is not listed, not badged, and charged full price", async () => {
+  const yesterday = new Date(Date.now() - 24 * 60 * 60_000);
+  const expired = await Product.create({
+    p_image: ".", oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80,
+    p_name: "عود منتهي العرض", p_category: "Men", p_offer_percentage: 30, offer_ends_at: yesterday,
+    size_list: [{ size: "30", price: 40 }],
+  });
+  invalidateCatalog();
+  try {
+    assert.ok(!gridNames((await page("/offers")).body).includes("عود منتهي العرض"), "/offers excludes it");
+    const pdp = await page(`/p/${expired._id}`);
+    assert.equal(pdp.status, 200);
+    assert.ok(!pdp.body.includes("−30%"), "no offer badge on the product page");
+    const res = await fetch(`${t.url}/api/store/orders`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [{ product_id: String(expired._id), size: "30", quantity: 1 }],
+        customer: { name: "سارة علي", phone: "0791234567", city: "عمّان", address: "شارع الجامعة 12", notes: "" },
+        client_key: crypto.randomUUID(),
+      }),
+    });
+    assert.equal(res.status, 201);
+    const body = await res.json();
+    assert.equal(body.data.subtotal, 40, "charged the full price, not the expired offer");
+  } finally {
+    await Product.deleteOne({ _id: expired._id });
+    invalidateCatalog();
+  }
+});
+
+test("a countdown chip renders for an offer ending within 7 days", async () => {
+  const soon = new Date(Date.now() + 2 * 24 * 60 * 60_000);
+  const product = await Product.create({
+    p_image: ".", oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80,
+    p_name: "عود العد التنازلي", p_category: "Men", p_offer_percentage: 15, offer_ends_at: soon,
+    size_list: [{ size: "30", price: 40 }],
+  });
+  invalidateCatalog();
+  try {
+    const home = await page("/");
+    assert.match(home.body, /class="chip-countdown"[^>]*data-ends-at="[^"]+"[^>]*>ينتهي خلال/);
+    const pdp = await page(`/p/${product._id}`);
+    assert.match(pdp.body, /class="chip-countdown"[^>]*data-ends-at="[^"]+"[^>]*>ينتهي خلال/);
+    assert.match(pdp.body, new RegExp(`data-ends-at="${soon.toISOString().replace(/[.]/g, "\\.")}"`));
+  } finally {
+    await Product.deleteOne({ _id: product._id });
+    invalidateCatalog();
+  }
+});
+
 test("/c/home and /c/car link to each other", async () => {
   assert.match((await page("/c/home")).body, /href="\/c\/car"/);
   const car = await page("/c/car");
