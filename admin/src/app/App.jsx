@@ -1,11 +1,11 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, RequireAuth } from "@/app/auth";
 import LoginPage from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
+import Shell from "@/app/Shell";
 
-const Shell = () => <Outlet />; // replaced in Task 5
 const PosPage = () => <div className="p-6">نقطة البيع</div>; // replaced in Task 8
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
