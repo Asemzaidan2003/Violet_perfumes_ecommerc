@@ -165,9 +165,10 @@ export default function DashboardPage() {
   const trend = arr(d?.sales_trend);
   const breakdown = arr(d?.order_status_breakdown);
   const recent = arr(d?.recent_orders);
-  const kpi = (label, v, growth, than) => (
-    <StatCard label={label} value={money(v)} trend={growth} sub={<>{bdi(pct(growth))} {than}</>} />
-  );
+  const kpi = (label, v, growth, than) => {
+    const gv = Number(growth) || 0;
+    return <StatCard label={label} value={money(v)} trend={gv} sub={<>{bdi(pct(gv))} {than}</>} />;
+  };
 
   return (
     <div className="space-y-4 p-4 lg:p-6">

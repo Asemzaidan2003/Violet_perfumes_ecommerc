@@ -52,11 +52,15 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
   const card = (page, label) => page.locator("main div.rounded-xl", { has: page.getByText(label, { exact: true }) }).first();
 
   await scenario("Dashboard (new admin): KPIs, charts, lists match the API", async () => {
-    const s = await seed();
+    let s;
     try {
       const page = await openPage();
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAdmin(page, baseUrl, admin, "/dashboard");
+      await page.getByText("مبيعات اليوم", { exact: true }).waitFor();
+      const before = await apiData(page);
+      s = await seed();
+      await page.reload();
       await page.getByRole("heading", { name: "لوحة المعلومات" }).waitFor();
       await page.getByText("آخر تحديث", { exact: false }).waitFor();
       await page.getByText("مبيعات اليوم", { exact: true }).waitFor();
@@ -66,7 +70,13 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
         ["مبيعات هذا الشهر", money(d.this_month.revenue)], ["أرباح هذا الشهر", money(d.this_month.profit)],
         ["رأس المال في المخزون", money(d.inventory.total_capital)],
       ]) assert.match(await card(page, label).innerText(), new RegExp(esc(value)), label);
-      assert.ok(d.today.revenue >= 123.45);
+      // Only the completed 123.45 order counts: the unconfirmed 22 JOD online order adds nothing to today's figures.
+      const r2 = (n) => Math.round(n * 100) / 100;
+      assert.equal(r2(d.today.revenue - before.today.revenue), 123.45, "revenue delta is exactly the completed order");
+      assert.equal(d.today.orders_count - before.today.orders_count, 1, "one completed order, not the pending one");
+      assert.equal(r2(d.today.profit - before.today.profit), 50.5);
+      assert.equal(d.pending_orders_count - before.pending_orders_count, 1, "the unconfirmed order counts as pending");
+      assert.equal(await page.getByRole("status", { name: "جارٍ التحميل" }).count(), 0, "skeleton gone once loaded");
       assert.ok(d.pending_orders_count >= 1, "the unconfirmed order counts as pending");
       assert.match(await card(page, "طلبات قيد الانتظار").innerText(), new RegExp(`\\b${d.pending_orders_count}\\b`));
       await card(page, "طلبات قيد الانتظار").getByText(/بانتظار التأكيد/).waitFor();
@@ -84,7 +94,8 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
 
       // Lists show hostile names literally, safely.
       await assertPageIsXssSafe(page, [A, B, C]);
-      assert.match(await page.locator("li", { hasText: A }).innerText(), /1/);
+      assert.equal((await page.locator("li", { hasText: A }).locator("span").first().innerText()).trim(), "1", "rank cell");
+      assert.match(await page.locator("li", { hasText: A }).innerText(), /1 قطعة/);
       assert.match(await page.locator("li", { hasText: B }).innerText(), /زيت/);
       assert.match(await page.locator("li", { hasText: B }).innerText(), /1 ML/);
       assert.match(await page.locator("li", { hasText: C }).innerText(), /زجاجة/);
@@ -99,28 +110,40 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
       assert.equal(await page.getByRole("link", { name: "عرض جميع الطلبات" }).getAttribute("href"), "/admin/orders");
       assert.equal(await page.getByRole("link", { name: "عرض الكل" }).getAttribute("href"), "/admin/reports?tab=inventory");
 
-      // Refresh keeps the page.
-      await page.getByRole("button", { name: "تحديث", exact: true }).click();
-      await page.getByText("مبيعات اليوم", { exact: true }).waitFor();
+      // Refresh: a real request (delayed so the disabled state is observable) and a newer "آخر تحديث".
+      await page.route("**/api/reports/dashboard", async (rt) => { await new Promise((r) => setTimeout(r, 1200)); await rt.continue(); });
+      const stamp1 = await page.getByText(/آخر تحديث/).innerText();
+      const btn = page.getByRole("button", { name: "تحديث", exact: true });
+      const refreshed = page.waitForResponse((r) => r.url().endsWith("/api/reports/dashboard") && r.status() === 200);
+      await btn.click();
+      assert.equal(await btn.isDisabled(), true, "button disabled while the request is in flight");
+      await refreshed;
+      await page.waitForFunction((t) => { const el = [...document.querySelectorAll("span")].find((e) => e.textContent.startsWith("آخر تحديث")); return el && el.textContent !== t; }, stamp1);
+      assert.equal(await btn.isDisabled(), false);
+      await page.unroute("**/api/reports/dashboard");
       assert.equal(await noSideScroll(page), true);
       check(page);
-    } finally { await cleanup(s); }
+    } finally { if (s) await cleanup(s); }
   });
 
   await scenario("Dashboard (new admin): a failed load shows one error with a working retry", async () => {
     const page = await openPage();
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.route("**/api/reports/dashboard", (rt) => rt.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ success: false, message: "boom" }) }));
+    await page.route("**/api/reports/dashboard", async (rt) => { await new Promise((r) => setTimeout(r, 800)); await rt.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ success: false, message: "boom" }) }); });
     await openAdmin(page, baseUrl, admin, "/dashboard");
+    const skeleton = page.getByRole("status", { name: "جارٍ التحميل" });
+    await skeleton.waitFor(); // the locator matches the real skeleton markup while loading
+    assert.equal(await skeleton.count(), 1);
     const alert = page.getByRole("alert");
     await alert.waitFor();
     assert.equal(await page.getByRole("alert").count(), 1, "one error state for the whole page");
     assert.equal(await page.getByText("مبيعات اليوم", { exact: true }).count(), 0);
-    assert.equal(await page.getByText("جارٍ التحميل").count(), 0, "no lingering loading placeholders");
+    assert.equal(await skeleton.count(), 0, "no lingering loading placeholders");
     await page.unroute("**/api/reports/dashboard");
     await alert.getByRole("button", { name: "إعادة المحاولة" }).click();
     await page.getByText("مبيعات اليوم", { exact: true }).waitFor();
     assert.equal(await page.getByRole("alert").count(), 0);
+    assert.equal(await skeleton.count(), 0);
     assert.deepEqual(page.errors.filter((e) => !/status of 500/.test(e)), []);
   });
 
