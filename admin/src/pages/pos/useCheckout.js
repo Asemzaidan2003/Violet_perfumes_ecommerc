@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { normalizePhone } from "@store-shared/phone.js";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { buildOrderBody, cartProblems } from "@/lib/cart";
 
 export function useCheckout({ cart, bottles, customer, payment, onCustomerCreated, onDone }) {
@@ -12,6 +12,8 @@ export function useCheckout({ cart, bottles, customer, payment, onCustomerCreate
   const inFlight = useRef(false);
 
   const mutation = useMutation({
+    // "always": offline must fail at once with a message, not pause and then fire the order by itself on reconnect.
+    networkMode: "always",
     // The snapshot is passed as variables (taken from the render that ran submit), so the request never depends on when the mutation options are refreshed.
     mutationFn: async ({ cart, customer, payment }) => {
       let customerId;
@@ -21,7 +23,12 @@ export function useCheckout({ cart, bottles, customer, payment, onCustomerCreate
         const phone = normalizePhone(customer.phone);
         if (phone) {
           const found = await api(`/customers/phone/${encodeURIComponent(phone)}`);
-          if (found.customer?._id) customerId = found.customer._id;
+          if (found.customer?._id) {
+            customerId = found.customer._id;
+            // The typed name is not used: show who the sale went to instead of attaching silently.
+            onCustomerCreated(found.customer);
+            toast.info(`الرقم مسجّل باسم ${found.customer.name}`);
+          }
         }
         if (!customerId) {
           const created = await api("/customers", { method: "POST", body: { name: customer.name.trim(), ...(phone ? { phone } : {}) } });
@@ -40,7 +47,7 @@ export function useCheckout({ cart, bottles, customer, payment, onCustomerCreate
       qc.invalidateQueries({ queryKey: ["pending-count"] });
       onDone(result);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => toast.error(err instanceof ApiError ? err.message : "تعذّر الاتصال بالخادم — تحقّق من قائمة الطلبات قبل إعادة المحاولة"),
     onSettled: () => { inFlight.current = false; },
   });
 
