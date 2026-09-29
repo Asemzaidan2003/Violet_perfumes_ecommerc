@@ -119,6 +119,14 @@
 .tier-name { color: var(--gold-strong); font-size: var(--fs-14); font-weight: 600; }
 .prose { white-space: pre-line; max-width: 65ch; color: var(--text); overflow-wrap: anywhere; }
 
+/* Admin content pages (/page/:slug): a readable measure, generous line-height, RTL. */
+.page-body { max-width: 70ch; padding-block: var(--s-32); }
+.page-content { line-height: 1.8; color: var(--text); overflow-wrap: anywhere; }
+.page-content h1, .page-content h2 { margin-block: var(--s-24) var(--s-12); }
+.page-content p { margin-block-end: var(--s-16); }
+.page-content ul { margin-block-end: var(--s-16); padding-inline-start: var(--s-24); display: grid; gap: var(--s-8); }
+.page-content a { color: var(--gold-strong); text-underline-offset: 3px; }
+
 /* ---------- Interest dialog ---------- */
 .interest-form { display: grid; gap: var(--s-16); padding: 0 var(--s-24) var(--s-24); }
 .field label { display: block; margin-block-end: var(--s-4); font-weight: 600; }

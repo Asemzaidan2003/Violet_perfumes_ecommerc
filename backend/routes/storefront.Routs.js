@@ -11,6 +11,9 @@ import { product } from "../store/views/product.js";
 import { CATEGORIES, FAMILIES, FAMILY_KEYS } from "../../storefront/js/shared/vocab.js";
 import { searchProducts, normalize } from "../../storefront/js/shared/search.js";
 import Brand from "../models/brand.model.js";
+import Page from "../models/page.model.js";
+import { getPublishedPages } from "../services/pages.service.js";
+import { pageView } from "../store/views/page.js";
 import { notFound, serverError } from "../store/views/errors.js";
 import { checkout, cartPage } from "../store/views/checkout.js";
 import { brandsIndex } from "../store/views/brands.js";
@@ -44,12 +47,14 @@ const origin = (req) => `${req.protocol}://${req.get("host")}`;
 // Set by promo.js when a visitor closes the announcement bar: leave it out server-side (no flash).
 const announceDismissed = (req) => /(?:^|;\s*)nsamat_announce_dismissed=1(?:;|$)/.test(req.headers.cookie || "");
 
-function send(req, res, status, page) {
+async function send(req, res, status, page) {
   const placements = page.placements && announceDismissed(req)
     ? page.placements.filter((p) => p.slot !== "announcement") : page.placements;
+  const pages = await getPublishedPages();
   res.status(status).type("html").send(String(layout({
     ...page,
     placements,
+    pages,
     assetV: req.app.locals.assetV,
     origin: origin(req),
   })));
@@ -79,7 +84,7 @@ const aislePage = (resolve) => async (req, res, next) => {
   const q = a.q ?? "";
   const asked = req.query.sort; // own keys only: "__proto__" or "constructor" must not index SORTS
   const sort = typeof asked === "string" && Object.hasOwn(SORTS, asked) && (asked !== "relevance" || q) ? asked : a.defaultSort;
-  send(req, res, 200, {
+  await send(req, res, 200, {
     title: `${a.title} | ${settings.store_name || "نسمات"}`,
     description: a.description ?? `تسوّق ${a.title} من ${settings.store_name || "نسمات"}: عطور مختارة، توصيل لكل الأردن والدفع عند الاستلام.`,
     canonicalPath: a.path, // /search results: canonical without q, and not indexed
@@ -145,7 +150,7 @@ router.get("/brands", async (req, res) => {
   const counts = new Map();
   for (const p of products) if (p.brand) counts.set(p.brand.slug, (counts.get(p.brand.slug) || 0) + 1);
   const rows = brands.filter((b) => counts.has(b.slug)).map((brand) => ({ brand, count: counts.get(brand.slug) }));
-  send(req, res, 200, {
+  await send(req, res, 200, {
     title: `المصممون | ${settings.store_name || "نسمات"}`,
     description: "تصفّح كل دور العطور المتوفرة في نسمات.",
     canonicalPath: "/brands",
@@ -170,7 +175,7 @@ router.get("/brand/:slug", async (req, res, next) => {
   const base = products.filter((p) => p.brand && p.brand.slug === slug);
   const asked = req.query.sort;
   const sort = typeof asked === "string" && Object.hasOwn(SORTS, asked) ? asked : "best";
-  send(req, res, 200, {
+  await send(req, res, 200, {
     title: `${brand.name_ar} | ${settings.store_name || "نسمات"}`,
     description: `تسوّق عطور ${brand.name_ar} من ${settings.store_name || "نسمات"}: توصيل لكل الأردن والدفع عند الاستلام.`,
     canonicalPath: `/brand/${slug}`,
@@ -197,7 +202,7 @@ router.get("/p/:id", async (req, res, next) => {
   const related = (byFamily.length ? byFamily : others.filter((x) => x.category === p.category)).slice(0, 12);
   const cat = CATEGORIES.find((c) => c.key === p.category);
   const relatedHref = byFamily.length ? `/family/${p.families.find((k) => byFamily[0].families.includes(k))}` : `/c/${cat?.slug ?? "men"}`;
-  send(req, res, 200, {
+  await send(req, res, 200, {
     title: `${p.name} | ${settings.store_name || "نسمات"}`,
     description: (p.description || `${p.name} من ${settings.store_name || "نسمات"}${cat ? ` — ${cat.ar}` : ""}. توصيل لكل الأردن والدفع عند الاستلام.`).slice(0, 160),
     canonicalPath: `/p/${p.id}`,
@@ -214,14 +219,34 @@ router.get("/p/:id", async (req, res, next) => {
 
 router.get("/cart", async (req, res) => {
   const [settings, placements] = await Promise.all([getSettings(), getLivePlacements()]);
-  send(req, res, 200, { title: `سلة التسوق | ${settings.store_name || "نسمات"}`, canonicalPath: "/cart", noindex: true, settings, placements, body: cartPage() });
+  await send(req, res, 200, { title: `سلة التسوق | ${settings.store_name || "نسمات"}`, canonicalPath: "/cart", noindex: true, settings, placements, body: cartPage() });
 });
 
 router.get("/checkout", async (req, res) => {
-  const [settings, placements] = await Promise.all([getSettings(), getLivePlacements()]);
-  send(req, res, 200, {
+  const [settings, placements, pages] = await Promise.all([getSettings(), getLivePlacements(), getPublishedPages()]);
+  const termsPublished = pages.some((p) => p.slug === "terms");
+  await send(req, res, 200, {
     title: `إتمام الطلب | ${settings.store_name || "نسمات"}`, canonicalPath: "/checkout", noindex: true, hideBottomBar: true, settings, placements,
-    styles: ["pages.css"], scripts: ["checkout.js"], body: checkout(),
+    styles: ["pages.css"], scripts: ["checkout.js"], body: checkout({ termsPublished }),
+  });
+});
+
+// A single admin-managed content page: terms, privacy, returns, about, etc.
+router.get("/page/:slug", async (req, res, next) => {
+  const slug = req.params.slug;
+  if (!/^[a-z0-9-]{2,40}$/.test(slug)) return next();
+  const [page, settings, placements] = await Promise.all([
+    Page.findOne({ slug, published: true }).lean(), getSettings(), getLivePlacements(),
+  ]);
+  if (!page) return next();
+  await send(req, res, 200, {
+    title: `${page.title} | ${settings.store_name || "نسمات"}`,
+    description: page.meta_description || undefined,
+    canonicalPath: `/page/${slug}`,
+    settings,
+    placements,
+    styles: ["pages.css"],
+    body: pageView(page),
   });
 });
 
@@ -231,7 +256,7 @@ router.get("/order/:ref", async (req, res, next) => {
   const [order, settings, placements] = await Promise.all([getOrderByRef(req.params.ref), getSettings(), getLivePlacements()]);
   if (!order) return next();
   res.set("Cache-Control", "no-store");
-  send(req, res, 200, {
+  await send(req, res, 200, {
     title: `شكرًا لطلبك | ${settings.store_name || "نسمات"}`, noindex: true, hideBottomBar: true, settings, placements,
     styles: ["pages.css"], body: orderConfirmation({ order: publicOrder(order), settings }),
   });
@@ -241,7 +266,7 @@ router.get("/", async (req, res) => {
   const [{ products }, settings, placements, brands] = await Promise.all([
     getCatalog(), getSettings(), getLivePlacements(), Brand.find({ active: true }).lean(),
   ]);
-  send(req, res, 200, {
+  await send(req, res, 200, {
     title: `${settings.store_name || "نسمات"} | عطور فاخرة في الأردن`,
     description: "بوتيك نسمات للعطور: عطور رجالية ونسائية وللجنسين ومعطرات، توصيل لكل الأردن والدفع عند الاستلام.",
     canonicalPath: "/",
@@ -263,9 +288,10 @@ router.get("/robots.txt", (req, res) => {
 // Every indexable page: home, aisles and visible (non-discontinued) products. /search is noindex.
 router.get("/sitemap.xml", async (req, res) => {
   const base = esc(siteBase(origin(req)));
-  const [{ products }, brands] = await Promise.all([getCatalog(), Brand.find({ active: true }).lean()]);
+  const [{ products }, brands, pages] = await Promise.all([getCatalog(), Brand.find({ active: true }).lean(), getPublishedPages()]);
   const paths = ["/", ...CATEGORIES.map((c) => `/c/${c.slug}`), ...FAMILY_KEYS.map((k) => `/family/${k}`),
-    "/offers", "/new", "/best-sellers", "/brands", ...brands.map((b) => `/brand/${b.slug}`), ...products.map((p) => `/p/${p.id}`)];
+    "/offers", "/new", "/best-sellers", "/brands", ...brands.map((b) => `/brand/${b.slug}`), ...products.map((p) => `/p/${p.id}`),
+    ...pages.map((p) => `/page/${p.slug}`)];
   res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${paths.map((p) => `<url><loc>${base}${p}</loc></url>`).join("\n")}
@@ -274,16 +300,16 @@ ${paths.map((p) => `<url><loc>${base}${p}</loc></url>`).join("\n")}
 });
 
 // Catch-all (Express 5 rejects "*" paths). No DB work: bots probing random URLs stay cheap.
-router.use((req, res) => {
-  send(req, res, 404, { title: `الصفحة غير موجودة | ${getCachedSettings().store_name || "نسمات"}`, settings: getCachedSettings(), body: notFound() });
+router.use(async (req, res) => {
+  await send(req, res, 404, { title: `الصفحة غير موجودة | ${getCachedSettings().store_name || "نسمات"}`, settings: getCachedSettings(), body: notFound() });
 });
 
 // Page errors render the styled 500 page (never JSON). Uses no DB, which may be what failed.
-router.use((err, req, res, next) => {
+router.use(async (err, req, res, next) => {
   console.error(err);
   if (res.headersSent) return next(err);
   const settings = getCachedSettings();
-  send(req, res, 500, { title: `خلل مؤقت | ${settings.store_name || "نسمات"}`, settings, body: serverError(settings) });
+  await send(req, res, 500, { title: `خلل مؤقت | ${settings.store_name || "نسمات"}`, settings, body: serverError(settings) });
 });
 
 export default router;

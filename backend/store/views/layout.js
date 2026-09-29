@@ -169,7 +169,17 @@ function bottomBar(path, wa) {
 </nav>`;
 }
 
-function footer(settings, wa) {
+// Footer page groups, already sorted by pages.service.js's query (footer_group, sort, createdAt).
+function footerGroup(title, id, group, pages) {
+  const rows = pages.filter((p) => p.footer_group === group);
+  if (!rows.length) return "";
+  return html`<nav aria-labelledby="${id}">
+      <h2 class="footer-title" id="${id}">${title}</h2>
+      <ul role="list">${rows.map((p) => html`<li><a href="/page/${p.slug}">${p.title}</a></li>`)}</ul>
+    </nav>`;
+}
+
+function footer(settings, wa, pages = []) {
   const name = settings.store_name || "نسمات";
   return html`<footer class="site-footer">
   <div class="container footer-grid">
@@ -185,11 +195,13 @@ function footer(settings, wa) {
         <li><a href="/brands">المصممون</a></li>
       </ul>
     </nav>
+    ${footerGroup("معلومات", "footer-info", "info", pages)}
     <div>
-      <h2 class="footer-title">تواصل معنا</h2>
+      <h2 class="footer-title">مساعدة</h2>
       <ul role="list">
         ${wa ? html`<li><a href="${wa}" target="_blank" rel="noopener">${icon("whatsapp")} واتساب <bdi dir="ltr">+${settings.whatsapp}</bdi></a></li>` : ""}
         ${settings.instagram ? html`<li><a href="${settings.instagram}" target="_blank" rel="noopener">انستغرام</a></li>` : ""}
+        ${pages.filter((p) => p.footer_group === "help").map((p) => html`<li><a href="/page/${p.slug}">${p.title}</a></li>`)}
         <li>الدفع نقدًا عند الاستلام</li>
       </ul>
     </div>
@@ -254,7 +266,7 @@ export const siteBase = (origin = "") => (process.env.PUBLIC_URL || origin).repl
 
 export function layout({
   title, description, canonicalPath, ogImage, body, bodyClass = "", hideBottomBar = false, noindex = false,
-  settings = {}, assetV = "", origin = "", families = [], styles = [], scripts = [], placements = [],
+  settings = {}, assetV = "", origin = "", families = [], styles = [], scripts = [], placements = [], pages = [],
 }) {
   // Promo assets load only when something is live (404/500 pages pass no placements).
   if (placements.length) { styles = [...styles, "promo.css"]; scripts = [...scripts, "promo.js"]; }
@@ -302,7 +314,7 @@ ${header(path, families, settings)}
 <main id="main" tabindex="-1">
 ${body}
 </main>
-${footer(settings, wa)}
+${footer(settings, wa, pages)}
 ${hideBottomBar ? "" : bottomBar(path, wa)}
 ${searchOverlay(families)}
 ${cartDrawer(placements)}

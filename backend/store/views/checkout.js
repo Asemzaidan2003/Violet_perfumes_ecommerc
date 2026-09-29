@@ -51,7 +51,7 @@ function summary() {
 </aside>`;
 }
 
-export function checkout() {
+export function checkout({ termsPublished = false } = {}) {
   return html`<div class="container checkout">
   <h1 class="checkout-title">إتمام الطلب</h1>
   <p class="muted checkout-sub">أربع خانات فقط، ونتصل بك لتأكيد الطلب. الدفع نقدًا عند الاستلام.</p>
@@ -83,6 +83,7 @@ export function checkout() {
       <label class="co-remember"><input type="checkbox" name="remember" checked> تذكّر معلوماتي على هذا الجهاز</label>
       <div class="hp" aria-hidden="true"><label for="co-website">اتركه فارغًا</label><input id="co-website" name="website" tabindex="-1" autocomplete="off"></div>
       <p class="muted co-privacy">نستخدم بياناتك لتوصيل طلبك فقط، ولا نشاركها مع أي جهة.</p>
+      ${termsPublished ? html`<p class="muted co-terms">بإتمام الطلب أنت توافق على <a href="/page/terms">الشروط والأحكام</a>.</p>` : ""}
       <p class="form-error" role="alert" data-co-error hidden></p>
       <a class="btn btn-secondary btn-block" href="" target="_blank" rel="noopener" data-co-wa hidden>${icon("whatsapp")} أرسل طلبك عبر واتساب</a>
       <div class="co-bar">
