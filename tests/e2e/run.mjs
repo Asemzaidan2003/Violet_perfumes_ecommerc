@@ -529,4 +529,8 @@ try {
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} scenarios passed`);
+if (only && results.length === 0) {
+  console.error(`E2E_ONLY=${process.env.E2E_ONLY} matched no scenario`);
+  process.exit(1);
+}
 if (failed.length) process.exit(1);

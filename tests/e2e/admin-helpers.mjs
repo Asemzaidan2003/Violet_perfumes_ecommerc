@@ -12,11 +12,12 @@ export async function openAdmin(page, baseUrl, admin, path = "/") {
 export const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 
 // Hostile strings must render as literal text and never as live markup or scripts.
-export async function assertPageIsXssSafe(page, payloads = []) {
+// `payloads` is required: the page must show every one of them before the negative checks run.
+export async function assertPageIsXssSafe(page, payloads) {
+  if (!Array.isArray(payloads) || payloads.length === 0) throw new Error("assertPageIsXssSafe needs a non-empty payloads array");
+  await page.waitForFunction((ps) => ps.every((p) => document.body.innerText.includes(p)), payloads, { timeout: 10000 });
   assert.equal(await page.evaluate(() => window.__xss), undefined, "a payload script ran");
   assert.equal(await page.locator("img[onerror], svg[onload], [onmouseover]").count(), 0, "hostile markup was injected");
-  const text = await page.evaluate(() => document.body.innerText);
-  for (const p of payloads) assert.ok(text.includes(p), `payload not visible literally: ${p}`);
   const hrefs = await page.$$eval('a[href^="https://wa.me/"]', (as) => as.map((a) => a.getAttribute("href")));
   for (const h of hrefs) assert.match(h, /^https:\/\/wa\.me\/962\d{9}$/);
 }
