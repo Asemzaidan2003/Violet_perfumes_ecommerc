@@ -37,7 +37,8 @@ export function setQuantity(cart, key, raw) {
 
 export function setPrice(cart, key, raw) {
   const line = cart.find((l) => l.key === key);
-  const n = raw === "" || raw == null ? null : Number(raw);
+  const isBlank = raw == null || (typeof raw === "string" && raw.trim() === "");
+  const n = isBlank ? null : Number(raw);
   let priceOverride = n == null || !Number.isFinite(n) ? null : Math.max(0, round2(n));
   if (line && priceOverride === line.unitPrice) priceOverride = null;
   return update(cart, key, { priceOverride });

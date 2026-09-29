@@ -56,6 +56,14 @@ test("a price override that equals the normal price or is blank is dropped; nega
   expect(setPrice(cart, "p1:30", "12.345")[0].priceOverride).toBe(12.35);
 });
 
+test("whitespace-only price input means no override, never a free sale", () => {
+  const cart = addToCart([], product, product.size_list[0], bottles, NOW);
+  const modified = setPrice(cart, "p1:30", "   ");
+  expect(modified[0].priceOverride).toBeNull();
+  const body = buildOrderBody(modified, "c1");
+  expect(body.products[0]).not.toHaveProperty("price");
+});
+
 test("totals use the override price and round to two decimals", () => {
   let cart = addToCart([], product, product.size_list[0], bottles, NOW);
   cart = setQuantity(cart, "p1:30", 3);
