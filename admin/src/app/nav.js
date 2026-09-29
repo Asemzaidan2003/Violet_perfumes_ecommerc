@@ -20,7 +20,7 @@ export const NAV_GROUPS = [
     { key: "brands", label: "المصممون", legacy: `${L}brands.html`, icon: Tag },
   ] },
   { title: "التحليلات", items: [
-    { key: "dashboard", label: "لوحة المعلومات", legacy: `${L}dashboard.html`, icon: LayoutDashboard },
+    { key: "dashboard", label: "لوحة المعلومات", to: "/dashboard", icon: LayoutDashboard },
     { key: "reports", label: "التقارير", legacy: `${L}reports.html`, icon: BarChart3 },
   ] },
   { title: "المتجر", items: [
