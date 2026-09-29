@@ -113,7 +113,11 @@ async function readCaptured(page, method, url, { retries = 50, intervalMs = 200 
   throw new Error(`timed out waiting for captured ${method} ${url} response`);
 }
 
+// E2E_ONLY=<regex> runs only matching scenario names; the rest print SKIP and count as neither pass nor fail.
+const only = process.env.E2E_ONLY ? new RegExp(process.env.E2E_ONLY) : null;
+
 async function scenario(name, fn) {
+  if (only && !only.test(name)) { console.log(`SKIP: ${name}`); return; }
   try {
     await fn();
     console.log(`PASS: ${name}`);
