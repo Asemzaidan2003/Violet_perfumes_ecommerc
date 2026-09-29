@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Sun, Store, X } from "lucide-react";
 import { api } from "@/lib/api";
@@ -10,7 +10,6 @@ import { useAuth } from "@/app/auth";
 import { useTheme } from "@/app/theme";
 import { MOBILE_TABS, NAV_GROUPS } from "@/app/nav";
 
-const ORDERS_URL = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === "orders").legacy;
 const TITLE = "نسمات — لوحة الإدارة";
 
 function usePendingCount() {
@@ -85,7 +84,7 @@ export default function Shell() {
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-base font-bold text-primary">{pageTitle}</span>
             {pending > 0 && (
-              <a href={ORDERS_URL} className="inline-flex min-h-11 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground">الطلبات ({pending})</a>
+              <Link to="/orders" className="inline-flex min-h-11 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground">الطلبات ({pending})</Link>
             )}
           </div>
           <UserActions />

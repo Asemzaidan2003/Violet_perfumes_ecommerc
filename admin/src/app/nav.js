@@ -8,7 +8,7 @@ const L = "/admin/html/"; // legacy pages, replaced one by one in later plans
 export const NAV_GROUPS = [
   { title: "المبيعات", items: [
     { key: "pos", label: "نقطة البيع", to: "/pos", icon: ShoppingCart },
-    { key: "orders", label: "الطلبات", legacy: `${L}orders.html`, icon: ClipboardList, badge: true },
+    { key: "orders", label: "الطلبات", to: "/orders", icon: ClipboardList, badge: true },
     { key: "interests", label: "طلبات الاهتمام", legacy: `${L}interests.html`, icon: Inbox },
   ] },
   { title: "الكتالوج", items: [
