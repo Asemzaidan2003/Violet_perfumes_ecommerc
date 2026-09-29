@@ -45,7 +45,7 @@ export function ProductGrid({ products, loading, error, onRetry, onPick, searchR
   const categories = useMemo(() => [...new Set(products.map((p) => p.p_category).filter(Boolean))], [products]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return products.filter((p) => (category === "all" || p.p_category === category) && (!q || p.p_name.toLowerCase().includes(q)));
+    return products.filter((p) => p.size_list?.length > 0 && (category === "all" || p.p_category === category) && (!q || p.p_name.toLowerCase().includes(q)));
   }, [products, query, category]);
 
   const open = (product) => (product.size_list.length === 1 ? onPick(product, product.size_list[0]) : setSizing(product));
@@ -57,7 +57,7 @@ export function ProductGrid({ products, loading, error, onRetry, onPick, searchR
           <Search className="pointer-events-none absolute start-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} type="search" inputMode="search"
             placeholder="ابحث عن منتج…  ( / )" aria-label="بحث عن منتج" className="h-12 ps-10 text-base"
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && shown[0]) { e.preventDefault(); open(shown[0]); } }} />
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && query.trim() && shown[0]) { e.preventDefault(); open(shown[0]); } }} />
         </div>
         {categories.length > 1 && (
           <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1" role="group" aria-label="التصنيف">

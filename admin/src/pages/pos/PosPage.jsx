@@ -48,7 +48,8 @@ export default function PosPage() {
       const t = e.target;
       const typing = t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runCheckoutRef.current(); return; }
-      if (e.key === "/" && !typing) { e.preventDefault(); searchRef.current?.focus(); }
+      // e.code, not e.key: "/" is not on the same key on an Arabic layout. Not while a modal (size picker, cart sheet, receipt) is open.
+      if (e.code === "Slash" && !e.ctrlKey && !e.metaKey && !e.altKey && !typing && !document.querySelector('[role="dialog"]')) { e.preventDefault(); searchRef.current?.focus(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
