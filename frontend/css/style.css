@@ -814,6 +814,24 @@ img.row-thumb {
   position: relative;
 }
 
+.modal-box-wide {
+  max-width: 640px;
+}
+
+.md-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.prose-preview {
+  border: 1px solid var(--border, #ddd);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
 .modal-box .modal-close {
   position: absolute;
   top: 14px;

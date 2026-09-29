@@ -45,6 +45,7 @@ const NAV_LINKS = [
   { href: "all_products.html", label: "عرض المنتجات" },
   { href: "catalog.html", label: "تصنيف المنتجات" },
   { href: "brands.html", label: "المصممون" },
+  { href: "pages.html", label: "الصفحات" },
   { href: "settings.html", label: "إعدادات المتجر" },
 ];
 

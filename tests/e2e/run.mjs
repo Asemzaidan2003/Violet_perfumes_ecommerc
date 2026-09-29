@@ -30,6 +30,7 @@ import { registerColorScenarios } from "./colors.mjs";
 import { registerBrandScenarios } from "./brands.mjs";
 import { registerNavScenarios } from "./nav.mjs";
 import { registerIdentityScenarios } from "./identity.mjs";
+import { registerPageScenarios } from "./pages.mjs";
 
 process.env.SESSION_SECRET ||= "e2e-secret-".padEnd(48, "x");
 
@@ -498,6 +499,7 @@ async function run() {
   });
   await registerNavScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
   await registerIdentityScenarios({ scenario, openPage, check, baseUrl, pngPath, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(), admin: { username: ADMIN_USER, password: ADMIN_PASS } });
+  await registerPageScenarios({ scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(), admin: { username: ADMIN_USER, password: ADMIN_PASS } });
   // Task 1 (immersive layer: capability gate, reveals, view transitions) — see fx.mjs.
   // Runs last: use3d() swaps the shared browser context to a fresh one with no admin login.
   await registerFxScenarios({ scenario, openPage, use3d, check, baseUrl, productId: String(ysl._id) });
