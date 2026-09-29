@@ -22,6 +22,7 @@ import Product from "../../backend/models/product.model.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
 import Interest from "../../backend/models/interest.model.js";
 import { registerAdminOnlineScenarios } from "./admin-online.mjs";
+import { registerAdminPosScenarios } from "./admin-pos.mjs";
 import { registerCheckoutScenarios } from "./checkout.mjs";
 import { registerPromotionScenarios } from "./promotions.mjs";
 import { registerFxScenarios } from "./fx.mjs";
@@ -487,6 +488,7 @@ async function run() {
 
   // Task 7 (admin interests/settings/online-order pages) — see admin-online.mjs.
   await registerAdminOnlineScenarios({ scenario, openPage, check, baseUrl });
+  await registerAdminPosScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
   await registerPromotionScenarios({
     scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(),
     admin: { username: ADMIN_USER, password: ADMIN_PASS },

@@ -10,7 +10,7 @@
     "dev:admin": "npm --prefix admin run dev",
     "build:admin": "npm --prefix admin ci && npm --prefix admin run build",
     "test:admin": "npm --prefix admin test",
-    "test:e2e": "node tests/e2e/run.mjs",
+    "test:e2e": "npm run build:admin && node tests/e2e/run.mjs",
     "migrate:catalog": "node scripts/migrate-catalog.js"
   },
   "type": "module",
