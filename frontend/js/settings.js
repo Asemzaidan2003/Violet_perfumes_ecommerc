@@ -22,6 +22,7 @@ const OVERRIDE_TOKENS = {
   danger: "لون التنبيه (خطأ)",
   success: "لون النجاح",
   focus: "لون التركيز",
+  "bg-glass": "خلفية الرأس (الشريط العلوي)",
 };
 
 let overrides = {};
@@ -46,9 +47,8 @@ advancedFields.addEventListener("click", (e) => {
   const token = e.target.dataset?.reset;
   if (!token) return;
   e.preventDefault();
-  delete overrides[token];
+  overrides[token] = ""; // "" tells the server to clear it — an absent key would just leave it as-is.
   document.getElementById(`ov_${token}`).value = "#000000";
-  document.getElementById(`ov_${token}`).removeAttribute("value");
 });
 
 // Same WCAG relative-luminance/contrast math as backend/store/theme.js, duplicated here so the

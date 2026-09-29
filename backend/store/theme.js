@@ -14,7 +14,7 @@ export const DEFAULT_THEME = { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3
 // so there's nothing extra to whitelist for them.
 export const OVERRIDE_TOKENS = [
   "surface-2", "line", "text-muted", "gold-strong", "gold-ink", "cream", "ink", "ink-muted",
-  "danger", "success", "focus",
+  "danger", "success", "focus", "bg-glass",
 ];
 
 const hexToRgb = (hex) => {
