@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { NativeSelect } from "@/components/native-select";
 import { Input } from "@/components/ui/input";
-import { bottlesFor, linePrice, lineTotal, setPrice } from "@/lib/cart";
+import { bottlesFor, linePrice, lineTotal, setPrice, setQuantity } from "@/lib/cart";
 import { money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,23 @@ function PriceInput({ line, onPrice }) {
     <Input dir="ltr" inputMode="decimal" value={text} aria-label={`سعر ${line.name} ${line.size} مل`}
       onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
       className={cn("h-11 w-24 text-center text-base", line.priceOverride != null && "border-primary")} />
+  );
+}
+
+function QtyInput({ line, onQty }) {
+  const shown = String(line.quantity);
+  const [text, setText] = useState(shown);
+  useEffect(() => setText(shown), [shown]);
+  // Commit on blur/Enter so clearing the field and typing a new number works; the text then shows the quantity actually kept.
+  const commit = () => {
+    const [next] = setQuantity([line], line.key, text);
+    setText(String(next.quantity));
+    onQty(line.key, text);
+  };
+  return (
+    <Input dir="ltr" inputMode="numeric" value={text} aria-label={`كمية ${line.name} ${line.size} مل`}
+      onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+      className="h-11 w-14 text-center text-base" />
   );
 }
 
@@ -41,8 +58,7 @@ export function CartLine({ line, bottles, attempted, onQty, onPrice, onBottle, o
         <div className="flex items-center gap-2" role="group" aria-label="الكمية">
           <button type="button" onClick={() => onQty(line.key, line.quantity - 1)} aria-label="إنقاص الكمية" disabled={line.quantity <= 1}
             className="grid size-11 place-items-center rounded-lg border bg-background disabled:bg-muted disabled:text-muted-foreground focus-visible:outline-2"><Minus className="size-4" aria-hidden /></button>
-          <Input dir="ltr" inputMode="numeric" value={line.quantity} aria-label={`كمية ${line.name} ${line.size} مل`}
-            onChange={(e) => onQty(line.key, e.target.value.replace(/\D/g, "") || 1)} className="h-11 w-14 text-center text-base" />
+          <QtyInput line={line} onQty={onQty} />
           <button type="button" onClick={() => onQty(line.key, line.quantity + 1)} aria-label="زيادة الكمية"
             className="grid size-11 place-items-center rounded-lg border bg-background focus-visible:outline-2"><Plus className="size-4" aria-hidden /></button>
         </div>

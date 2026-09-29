@@ -56,6 +56,18 @@ test("a price override that equals the normal price or is blank is dropped; nega
   expect(setPrice(cart, "p1:30", "12.345")[0].priceOverride).toBe(12.35);
 });
 
+test("Arabic-Indic digits and decimal commas are read as the number the cashier typed", () => {
+  const cart = addToCart([], product, product.size_list[0], bottles, NOW);
+  expect(setPrice(cart, "p1:30", "٢٠")[0].priceOverride).toBe(20);
+  expect(setPrice(cart, "p1:30", "۲۰")[0].priceOverride).toBe(20);
+  expect(setPrice(cart, "p1:30", "٧٫٥")[0].priceOverride).toBe(7.5);
+  expect(setPrice(cart, "p1:30", "7,5")[0].priceOverride).toBe(7.5);
+  expect(setPrice(cart, "p1:30", "  ")[0].priceOverride).toBeNull();
+  expect(setPrice(cart, "p1:30", "abc")[0].priceOverride).toBeNull();
+  expect(setQuantity(cart, "p1:30", "٥")[0].quantity).toBe(5);
+  expect(setQuantity(cart, "p1:30", "abc")[0].quantity).toBe(1);
+});
+
 test("whitespace-only price input means no override, never a free sale", () => {
   const cart = addToCart([], product, product.size_list[0], bottles, NOW);
   const modified = setPrice(cart, "p1:30", "   ");

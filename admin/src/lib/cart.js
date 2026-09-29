@@ -30,15 +30,24 @@ export function addToCart(cart, product, sizeEntry, bottles, now = new Date()) {
   }];
 }
 
+// Arabic-Indic (U+0660-0669) and Persian (U+06F0-06F9) digits to ASCII; "," and "٫" (U+066B) to ".".
+export function normalizeNumberInput(raw) {
+  if (typeof raw !== "string") return raw;
+  return raw
+    .replace(/[٠-٩]/g, (d) => d.charCodeAt(0) - 0x660)
+    .replace(/[۰-۹]/g, (d) => d.charCodeAt(0) - 0x6f0)
+    .replace(/[٫,]/g, ".");
+}
+
 export function setQuantity(cart, key, raw) {
-  const n = Math.floor(Number(raw));
+  const n = Math.floor(Number(normalizeNumberInput(raw)));
   return update(cart, key, { quantity: Number.isFinite(n) ? Math.min(MAX_QTY, Math.max(1, n)) : 1 });
 }
 
 export function setPrice(cart, key, raw) {
   const line = cart.find((l) => l.key === key);
   const isBlank = raw == null || (typeof raw === "string" && raw.trim() === "");
-  const n = isBlank ? null : Number(raw);
+  const n = isBlank ? null : Number(normalizeNumberInput(raw));
   let priceOverride = n == null || !Number.isFinite(n) ? null : Math.max(0, round2(n));
   if (line && priceOverride === line.unitPrice) priceOverride = null;
   return update(cart, key, { priceOverride });
