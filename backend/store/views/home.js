@@ -168,7 +168,9 @@ export function home({ products, settings, placements = [], brands = [], categor
     new_arrivals: () => shelf({ title: sectionTitle("new_arrivals"), href: "/new", products: newest }),
     offers: () => shelf({ title: sectionTitle("offers"), href: "/offers", products: offers }),
     promo_bottom: () => slot("home_bottom", placements),
-    service: () => serviceStrip(home.service_items?.length ? home.service_items : []),
+    // {free_delivery_over} keeps the strip in step with the delivery settings.
+    service: () => serviceStrip((home.service_items || []).map((i) => ({ title: i.title,
+      text: String(i.text ?? "").replace(/\{free_delivery_over\}/g, `${Number(settings.free_delivery_over) || 0} د.أ` ) }))),
   };
   const sectionTitle = (key) => sections.find((s) => s.key === key)?.title || DEFAULT_TITLES[key];
 

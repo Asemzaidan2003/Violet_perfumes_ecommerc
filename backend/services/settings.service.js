@@ -12,7 +12,7 @@ const DEFAULT_HOME = {
   cta_secondary: { label: "تسوّق النسائي", link: "/c/women" },
   sections: HOME_SECTION_KEYS.map((key) => ({ key, visible: true, title: "" })),
   service_items: [
-    { title: "توصيل لكل الأردن", text: "إلى باب بيتك في كل المحافظات" },
+    { title: "توصيل لكل الأردن", text: "مجاني للطلبات فوق {free_delivery_over}" },
     { title: "الدفع عند الاستلام", text: "ادفع نقدًا عند وصول طلبك" },
     { title: "خدمة واتساب", text: "نرد على استفساراتك بسرعة" },
   ],
