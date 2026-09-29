@@ -21,7 +21,7 @@ export const NAV_GROUPS = [
   ] },
   { title: "التحليلات", items: [
     { key: "dashboard", label: "لوحة المعلومات", to: "/dashboard", icon: LayoutDashboard },
-    { key: "reports", label: "التقارير", legacy: `${L}reports.html`, icon: BarChart3 },
+    { key: "reports", label: "التقارير", to: "/reports", icon: BarChart3 },
   ] },
   { title: "المتجر", items: [
     { key: "storefront", label: "واجهة المتجر", legacy: `${L}storefront.html`, icon: Store },

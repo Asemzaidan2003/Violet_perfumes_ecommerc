@@ -1,6 +1,8 @@
 // New React admin dashboard/reports. registerAdminInsightsScenarios({ scenario, openPage, check, baseUrl, admin })
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import mongoose from "mongoose";
 import Bottle from "../../backend/models/bottle.model.js";
 import Oil from "../../backend/models/oil.model.js";
 import Order from "../../backend/models/order.model.js";
@@ -160,5 +162,134 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
       assert.deepEqual(await small(page), [], "every control is at least 44px tall");
       check(page);
     } finally { await cleanup(s); }
+  });
+
+  // ---- Reports (Sales tab): three completed orders in March 2020, two in ISO week 10, one in week 11.
+  const RANGE = { from: "2020-03-01", to: "2020-03-31" };
+  async function seedSales() {
+    const mk = (day, rev, cost, profit) => Order.create({
+      products: [{ product_id: new mongoose.Types.ObjectId(), p_name: "rep", product_size: "30", quantity: 1, selling_price: rev, total_revenue: rev, oil_id: "OIL1", oil_ml: 6, alcohol_ml: 24 }],
+      total_items: 1, payment_method: "Cash", delivery_fee: 0, created_by: "admin", total_revenue: rev, total_cost: cost, total_profit: profit,
+      final_total: rev, status: "completed", source: "pos", stock_deducted: true, createdAt: new Date(`${day}T12:00:00Z`),
+    });
+    return (await Promise.all([mk("2020-03-02", 100, 40, 60), mk("2020-03-04", 50, 20, 30), mk("2020-03-10", 10, 15, -5)])).map((o) => o._id);
+  }
+  const salesApi = (page, qs) => page.evaluate(async (q) => (await (await fetch(`/api/reports/sales?${q}`)).json()).data, qs);
+  const tab = (page, name) => page.locator(`[role="tab"][data-tab="${name}"]`);
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return ymd(d); };
+  const applyRange = async (page, from, to) => {
+    await page.getByLabel("من تاريخ").fill(from);
+    await page.getByLabel("إلى تاريخ").fill(to);
+    const resp = page.waitForResponse((r) => r.url().includes("/api/reports/sales") && r.url().includes(`from=${from}`));
+    await page.getByRole("button", { name: "تطبيق", exact: true }).click();
+    await resp;
+  };
+
+  await scenario("Reports (new admin): Sales tab stats, presets, group-by, CSV, empty state, tab deep link", async () => {
+    const ids = await seedSales();
+    try {
+      const page = await openPage();
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await openAdmin(page, baseUrl, admin, "/reports");
+      await page.getByRole("heading", { name: "التقارير" }).waitFor();
+      assert.equal(await tab(page, "sales").getAttribute("aria-selected"), "true", "sales is the default tab");
+      for (const t of ["sales", "products", "inventory", "customers"]) assert.equal(await tab(page, t).count(), 1, t);
+      await page.getByText(/الطلبات الملغاة لا تظهر في التقارير/).waitFor();
+      assert.equal(await page.getByLabel("حالة الطلبات").locator("option").count(), 4);
+      assert.equal(await page.getByLabel("حالة الطلبات").inputValue(), "completed");
+      assert.equal(await page.getByLabel("من تاريخ").inputValue(), daysAgo(29), "default preset is 30d");
+      assert.equal(await page.getByRole("button", { name: "آخر 30 يوم" }).getAttribute("aria-pressed"), "true");
+
+      // Presets apply immediately and change the query.
+      let req = page.waitForRequest((r) => r.url().includes("/api/reports/sales") && r.url().includes(`from=${daysAgo(89)}`));
+      await page.getByRole("button", { name: "آخر 90 يوم" }).click();
+      const u = new URL((await req).url());
+      assert.equal(u.searchParams.get("to"), daysAgo(0));
+      assert.equal(u.searchParams.get("status"), "completed");
+      assert.equal(await page.getByRole("button", { name: "آخر 90 يوم" }).getAttribute("aria-pressed"), "true");
+      req = page.waitForRequest((r) => r.url().includes("/api/reports/sales") && r.url().includes(`from=${daysAgo(0)}&to=${daysAgo(0)}`));
+      await page.getByRole("button", { name: "اليوم", exact: true }).click();
+      await req;
+
+      // Exact range: totals equal the seeded orders and the API.
+      await applyRange(page, RANGE.from, RANGE.to);
+      assert.equal(await page.getByRole("button", { name: "آخر 90 يوم" }).getAttribute("aria-pressed"), "false", "applying dates clears the preset highlight");
+      const api = await salesApi(page, `from=${RANGE.from}&to=${RANGE.to}&status=completed&groupBy=day`);
+      assert.equal(api.totals.revenue, 160);
+      await page.getByText(money(160), { exact: false }).first().waitFor();
+      const stat = (label) => card(page, label).innerText();
+      assert.match(await stat("إجمالي المبيعات"), new RegExp(esc(money(api.totals.revenue))));
+      assert.match(await stat("إجمالي التكلفة"), new RegExp(esc(money(75))));
+      assert.match(await stat("إجمالي الربح"), new RegExp(esc(money(85))));
+      assert.match(await stat("هامش الربح"), /53\.1%/);
+      assert.match(await stat("عدد الطلبات"), /\b3\b/);
+      assert.match(await stat("متوسط قيمة الطلب"), new RegExp(esc(money(api.totals.avg_order_value))));
+      assert.equal(await page.locator("main svg.recharts-surface").first().isVisible(), true, "chart renders");
+      assert.equal(await page.locator("tbody tr").count(), 3, "one row per day");
+
+      // Group by week changes the table and the request.
+      req = page.waitForRequest((r) => r.url().includes("/api/reports/sales") && r.url().includes("groupBy=week"));
+      await page.getByLabel("تجميع حسب").selectOption("week");
+      await req;
+      await page.locator("tbody").getByText("2020-W11", { exact: true }).waitFor();
+      assert.equal(await page.locator("tbody tr").count(), 2, "two ISO weeks");
+      assert.match(await page.locator("tr", { hasText: "2020-W10" }).innerText(), /150\.00 JOD/);
+
+      // CSV: BOM, exact header, guarded negative profit, filename.
+      const [dl] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "تصدير CSV" }).click()]);
+      assert.equal(dl.suggestedFilename(), "sales-report.csv");
+      const csv = await fs.readFile(await dl.path(), "utf8");
+      assert.ok(csv.startsWith("﻿Period,Revenue,Cost,Profit,Orders,Avg Order Value\n"), "BOM + legacy header");
+      assert.ok(csv.includes("\n2020-W10,150,60,90,2,75\n2020-W11,10,15,'-5,1,10"), `rows: ${JSON.stringify(csv)}`);
+
+      // Empty range: empty state.
+      await applyRange(page, "2001-01-01", "2001-01-02");
+      await page.getByText("لا توجد بيانات لهذه الفترة").waitFor();
+      assert.equal(await page.locator("tbody tr").count(), 0);
+
+      // Switching tabs refetches; ?tab= deep link opens a tab and hides the date bar on inventory.
+      await tab(page, "products").click();
+      await page.getByText("قريبًا").waitFor();
+      assert.match(page.url(), /tab=products/);
+      req = page.waitForRequest((r) => r.url().includes("/api/reports/sales"));
+      await tab(page, "sales").click();
+      await req;
+      await page.goto(`${baseUrl}/admin/reports?tab=inventory`);
+      await tab(page, "inventory").waitFor();
+      assert.equal(await tab(page, "inventory").getAttribute("aria-selected"), "true");
+      assert.equal(await page.getByRole("button", { name: "تطبيق", exact: true }).count(), 0, "filters hidden on inventory");
+      check(page);
+    } finally { await Order.deleteMany({ _id: { $in: ids } }); }
+  });
+
+  await scenario("Reports (new admin): a failed Sales load shows an error with a working retry", async () => {
+    const page = await openPage();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.route("**/api/reports/sales*", (rt) => rt.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ success: false, message: "boom" }) }));
+    await openAdmin(page, baseUrl, admin, "/reports");
+    const alert = page.getByRole("alert");
+    await alert.waitFor();
+    assert.equal(await page.getByRole("alert").count(), 1);
+    await page.unroute("**/api/reports/sales*");
+    await alert.getByRole("button", { name: "إعادة المحاولة" }).click();
+    await page.getByText("إجمالي المبيعات", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("alert").count(), 0);
+    assert.deepEqual(page.errors.filter((e) => !/status of 500/.test(e)), []);
+  });
+
+  await scenario("Reports (new admin): phone layout", async () => {
+    const ids = await seedSales();
+    try {
+      const page = await openPage({ mobile: true });
+      await openAdmin(page, baseUrl, admin, "/reports");
+      await page.getByText("إجمالي المبيعات", { exact: true }).waitFor();
+      await applyRange(page, RANGE.from, RANGE.to);
+      await page.getByText("2020-03-10", { exact: true }).first().waitFor();
+      assert.equal(await page.locator("table").count(), 0, "cards, not a table, on a phone");
+      assert.equal(await noSideScroll(page), true, "no sideways scroll");
+      assert.deepEqual(await small(page), [], "every control is at least 44px tall");
+      check(page);
+    } finally { await Order.deleteMany({ _id: { $in: ids } }); }
   });
 }

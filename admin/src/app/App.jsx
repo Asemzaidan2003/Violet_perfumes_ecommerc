@@ -9,6 +9,7 @@ import PosPage from "@/pages/pos/PosPage";
 import OrdersPage from "@/pages/orders/OrdersPage";
 import OrderDetailsPage from "@/pages/orders/OrderDetailsPage";
 import InterestsPage from "@/pages/interests/InterestsPage";
+import ReportsPage from "@/pages/reports/ReportsPage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
@@ -28,6 +29,7 @@ export function App() {
                 <Route path="/orders/:id" element={<OrderDetailsPage />} />
                 <Route path="/interests" element={<InterestsPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Route>
