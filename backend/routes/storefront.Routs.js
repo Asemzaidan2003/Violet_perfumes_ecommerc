@@ -230,7 +230,8 @@ router.get("/checkout", async (req, res) => {
   const termsPublished = pages.some((p) => p.slug === "terms");
   await send(req, res, 200, {
     title: `إتمام الطلب | ${settings.store_name || "نسمات"}`, canonicalPath: "/checkout", noindex: true, hideBottomBar: true, settings, placements,
-    styles: ["pages.css"], scripts: ["checkout.js"], body: checkout({ termsPublished, categories }),
+    styles: ["pages.css"], scripts: ["checkout.js"],
+    body: checkout({ termsPublished, categories, governorates: settings.delivery?.governorates, checkoutNote: settings.texts?.checkout_note }),
   });
 });
 
@@ -270,8 +271,8 @@ router.get("/", async (req, res) => {
     getCatalog(), getSettings(), getLivePlacements(), Brand.find({ active: true }).lean(), getVisibleCategories(),
   ]);
   await send(req, res, 200, {
-    title: `${settings.store_name || "نسمات"} | عطور فاخرة في الأردن`,
-    description: "بوتيك نسمات للعطور: عطور رجالية ونسائية وللجنسين ومعطرات، توصيل لكل الأردن والدفع عند الاستلام.",
+    title: settings.seo?.home_title || `${settings.store_name || "نسمات"} | عطور فاخرة في الأردن`,
+    description: settings.seo?.home_description || "بوتيك نسمات للعطور: عطور رجالية ونسائية وللجنسين ومعطرات، توصيل لكل الأردن والدفع عند الاستلام.",
     canonicalPath: "/",
     settings,
     placements,

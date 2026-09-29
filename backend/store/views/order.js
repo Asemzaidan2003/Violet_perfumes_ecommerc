@@ -15,7 +15,7 @@ export function orderConfirmation({ order, settings }) {
     <span class="done-mark" aria-hidden="true"></span>
     <h1 class="checkout-title">شكرًا لك، وصلنا طلبك</h1>
     <p class="order-ref">رقم الطلب <bdi dir="ltr">${ref}</bdi></p>
-    <p class="muted">سنتواصل معك قريبًا لتأكيد طلبك وموعد التوصيل. الدفع نقدًا عند الاستلام.</p>
+    <p class="muted">${settings.texts?.order_thanks || "سنتواصل معك قريبًا لتأكيد طلبك وموعد التوصيل. الدفع نقدًا عند الاستلام."}</p>
     <p class="muted" data-price-note hidden>تم تحديث السعر</p>
   </section>
   <section class="order-box" aria-labelledby="order-items-title">

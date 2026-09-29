@@ -35,8 +35,8 @@ export const warmSettings = async (req, res, next) => {
 
 // POST /api/store/orders — place an online order (public, no auth).
 export const createStoreOrder = async (req, res) => {
-  const { items, customer, client_key, coupon } = validateOrderBody(req.body);
   const settings = req.settings ?? await getSettings();
+  const { items, customer, client_key, coupon } = validateOrderBody(req.body, settings.delivery?.governorates);
   try {
     const { order, replay } = await placeOrder({
       products: items,

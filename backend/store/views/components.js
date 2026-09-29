@@ -29,6 +29,10 @@ const ICONS = {
   wallet: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M15.5 14.5h2"/><path d="M6 6 15.5 3.5l1 2.5"/>',
   cube: '<path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1"/>',
+  tiktok: '<path d="M14 4v10.2a3.3 3.3 0 1 1-3-3.28"/><path d="M14 4a5 5 0 0 0 5 5"/>',
+  facebook: '<path d="M14 21v-7.5h2.5l.5-3H14V8.5c0-.9.3-1.5 1.6-1.5H17V4.3C16.6 4.2 15.7 4 14.7 4 12.4 4 11 5.4 11 8v2.5H8.5v3H11V21z"/>',
+  snapchat: '<path d="M12 4c-2.5 0-4 1.7-4 4v1.5c-1 .2-2 .8-2 1.8 0 .7.6 1.1 1.2 1.4-.3.9-1 2-2.2 2.6.2.7 1.3 1 2.2 1.1.1.5.4 1 1.3 1 .8 0 1.2.5 2 .5s1.2-.5 2-.5 1.2-.5 2 .5c.9 0 1.2-.5 1.3-1 .9-.1 2-.4 2.2-1.1-1.2-.6-1.9-1.7-2.2-2.6.6-.3 1.2-.7 1.2-1.4 0-1-1-1.6-2-1.8V8c0-2.3-1.5-4-4-4z"/>',
 };
 
 // Decorative by default (aria-hidden); the button or link that holds it carries the label.

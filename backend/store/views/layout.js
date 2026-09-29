@@ -178,13 +178,36 @@ function footerGroup(title, id, group, pages) {
     </nav>`;
 }
 
+// {store_name}/{year} placeholders in admin-entered footer copy.
+const withPlaceholders = (s, name) => String(s ?? "").replace(/\{store_name\}/g, name).replace(/\{year\}/g, String(new Date().getFullYear()));
+
+const SOCIAL_LINKS = [["instagram", "انستغرام"], ["tiktok", "تيك توك"], ["facebook", "فيسبوك"], ["snapchat", "سناب شات"]];
+
+function contactList(settings, wa) {
+  const c = settings.contact || {};
+  const social = settings.social || {};
+  const rows = [];
+  if (wa) rows.push(html`<li><a href="${wa}" target="_blank" rel="noopener">${icon("whatsapp")} واتساب <bdi dir="ltr">+${settings.whatsapp}</bdi></a></li>`);
+  if (c.phone) rows.push(html`<li><a href="tel:${c.phone}">${c.phone}</a></li>`);
+  if (c.email) rows.push(html`<li><a href="mailto:${c.email}">${c.email}</a></li>`);
+  if (c.address) rows.push(c.map_url
+    ? html`<li><a href="${c.map_url}" target="_blank" rel="noopener">${c.address}</a></li>`
+    : html`<li>${c.address}</li>`);
+  if (c.hours) rows.push(html`<li>${c.hours}</li>`);
+  for (const [key, label] of SOCIAL_LINKS) if (social[key]) rows.push(html`<li><a href="${social[key]}" target="_blank" rel="noopener">${icon(key)} ${label}</a></li>`);
+  return rows;
+}
+
 function footer(settings, wa, pages = [], categories = []) {
   const name = settings.store_name || "نسمات";
+  const footerSettings = settings.footer || {};
+  const about = footerSettings.about_text || "عطور مختارة بعناية، تُحضَّر لك في عمّان وتصلك إلى أي مكان في الأردن.";
+  const copyright = withPlaceholders(footerSettings.copyright || "© {year} {store_name}. جميع الحقوق محفوظة.", name);
   return html`<footer class="site-footer">
   <div class="container footer-grid">
     <div class="footer-brand">
       <a class="brand" href="/">${brandMark(settings)}<span class="wordmark">${name}</span></a>
-      <p>عطور مختارة بعناية، تُحضَّر لك في عمّان وتصلك إلى أي مكان في الأردن.</p>
+      <p>${about}</p>
     </div>
     <nav aria-labelledby="footer-aisles">
       <h2 class="footer-title" id="footer-aisles">الأقسام</h2>
@@ -198,14 +221,13 @@ function footer(settings, wa, pages = [], categories = []) {
     <div>
       <h2 class="footer-title">مساعدة</h2>
       <ul role="list">
-        ${wa ? html`<li><a href="${wa}" target="_blank" rel="noopener">${icon("whatsapp")} واتساب <bdi dir="ltr">+${settings.whatsapp}</bdi></a></li>` : ""}
-        ${settings.instagram ? html`<li><a href="${settings.instagram}" target="_blank" rel="noopener">انستغرام</a></li>` : ""}
+        ${contactList(settings, wa)}
         ${pages.filter((p) => p.footer_group === "help").map((p) => html`<li><a href="/page/${p.slug}">${p.title}</a></li>`)}
         <li>الدفع نقدًا عند الاستلام</li>
       </ul>
     </div>
   </div>
-  <p class="container copyright">© <bdi>${new Date().getFullYear()}</bdi> ${name}. جميع الحقوق محفوظة.</p>
+  <p class="container copyright">${copyright}</p>
 </footer>`;
 }
 

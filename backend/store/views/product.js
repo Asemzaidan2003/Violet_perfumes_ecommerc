@@ -6,7 +6,6 @@ import { FAMILIES } from "../../../storefront/js/shared/vocab.js";
 import { money, num, sizeLabel } from "../../../storefront/js/shared/format.js";
 
 const FAMILY = new Map(FAMILIES.map((f) => [f.key, f]));
-const OOS_NOTE = "نحضّره لك عند الطلب وقد يستغرق وقتًا أطول";
 const TIERS = [["top", "المقدمة"], ["heart", "القلب"], ["base", "القاعدة"]];
 
 const cheapest = (sizes) => sizes.reduce((a, b) => (b.final < a.final ? b : a), sizes[0]);
@@ -130,6 +129,7 @@ function jsonLd(p, url, abs, cat) {
 
 // base: absolute site origin (PUBLIC_URL or the request's), for the share URL and JSON-LD.
 export function product({ p, related, relatedHref, settings, base, placements = [], categories = [] }) {
+  const oosNote = settings.texts?.oos_note || "نحضّره لك عند الطلب وقد يستغرق وقتًا أطول";
   const cat = categories.find((c) => c.key === p.category);
   const selected = defaultSize(p);
   const url = `${base}/p/${p.id}`;
@@ -155,7 +155,7 @@ export function product({ p, related, relatedHref, settings, base, placements = 
       ${slot("product_promo", placements)}
       ${p.sizes.length ? sizes(p, selected) : ""}
       ${anyOut ? html`<div class="oos" data-oos${selected?.in_stock ? html` hidden` : ""}>
-        <p class="oos-note"><strong>غير متوفر حاليًا</strong> — ${OOS_NOTE}</p>
+        <p class="oos-note"><strong>غير متوفر حاليًا</strong> — ${oosNote}</p>
         <button class="btn btn-secondary" type="button" data-open-interest>أعلمني عند التوفر</button>
       </div>` : ""}
       <div class="qty">

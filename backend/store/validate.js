@@ -31,7 +31,9 @@ function checkPhone(raw) {
 }
 
 // { items: [{ product_id, size, quantity }], customer: { name, phone, city, address, notes }, client_key, coupon? }
-export function validateOrderBody(body = {}) {
+// allowedCities: the admin-enabled governorate subset (backend/services/settings.service.js's
+// delivery.governorates); defaults to every governorate when not given (e.g. internal/admin orders).
+export function validateOrderBody(body = {}, allowedCities = GOVERNORATES) {
   if (body.website) throw fail(400, "تعذر إرسال الطلب"); // honeypot
 
   const rawItems = Array.isArray(body.items) ? body.items : [];
@@ -52,7 +54,7 @@ export function validateOrderBody(body = {}) {
   const name = cleanText(c.name, { min: 2, max: 80, field: "الاسم" });
   const phone = checkPhone(c.phone);
   const city = String(c.city ?? "").trim();
-  if (!GOVERNORATES.includes(city)) throw fail(400, "المحافظة غير صالحة");
+  if (!allowedCities.includes(city)) throw fail(400, "المحافظة غير صالحة");
   const address = cleanText(c.address, { min: 5, max: 300, field: "العنوان" });
   const notes = c.notes ? cleanText(c.notes, { min: 0, max: 500, field: "الملاحظات" }) : "";
 

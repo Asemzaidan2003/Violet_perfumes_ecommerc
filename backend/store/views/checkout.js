@@ -50,7 +50,7 @@ function summary() {
 </aside>`;
 }
 
-export function checkout({ termsPublished = false, categories = [] } = {}) {
+export function checkout({ termsPublished = false, categories = [], governorates = GOVERNORATES, checkoutNote = "" } = {}) {
   return html`<div class="container checkout">
   <h1 class="checkout-title">إتمام الطلب</h1>
   <p class="muted checkout-sub">أربع خانات فقط، ونتصل بك لتأكيد الطلب. الدفع نقدًا عند الاستلام.</p>
@@ -73,7 +73,7 @@ export function checkout({ termsPublished = false, categories = [] } = {}) {
         ${field({ id: "co-phone", label: "رقم الهاتف", input: html`<input id="co-phone" name="phone" type="tel" inputmode="tel" dir="ltr" autocomplete="tel" required placeholder="07XXXXXXXX" enterkeyhint="next" aria-describedby="co-phone-err">` })}
         ${field({ id: "co-city", label: "المحافظة", input: html`<select id="co-city" name="city" required autocomplete="address-level1" aria-describedby="co-city-err">
           <option value="">اختر المحافظة</option>
-          ${GOVERNORATES.map((g) => html`<option value="${g}">${g}</option>`)}
+          ${governorates.map((g) => html`<option value="${g}">${g}</option>`)}
         </select>` })}
         ${field({ id: "co-address", label: "العنوان بالتفصيل", input: html`<textarea id="co-address" name="address" autocomplete="street-address" required minlength="5" maxlength="300" rows="2" placeholder="المنطقة، الشارع، رقم العمارة" aria-describedby="co-address-err"></textarea>` })}
         ${field({ id: "co-notes", label: "ملاحظات", hint: "(اختياري)", input: html`<textarea id="co-notes" name="notes" maxlength="500" rows="2" placeholder="مثال: الاتصال قبل الوصول" aria-describedby="co-notes-err"></textarea>` })}
@@ -83,6 +83,7 @@ export function checkout({ termsPublished = false, categories = [] } = {}) {
       <div class="hp" aria-hidden="true"><label for="co-website">اتركه فارغًا</label><input id="co-website" name="website" tabindex="-1" autocomplete="off"></div>
       <p class="muted co-privacy">نستخدم بياناتك لتوصيل طلبك فقط، ولا نشاركها مع أي جهة.</p>
       ${termsPublished ? html`<p class="muted co-terms">بإتمام الطلب أنت توافق على <a href="/page/terms">الشروط والأحكام</a>.</p>` : ""}
+      ${checkoutNote ? html`<p class="muted co-note">${checkoutNote}</p>` : ""}
       <p class="form-error" role="alert" data-co-error hidden></p>
       <a class="btn btn-secondary btn-block" href="" target="_blank" rel="noopener" data-co-wa hidden>${icon("whatsapp")} أرسل طلبك عبر واتساب</a>
       <div class="co-bar">

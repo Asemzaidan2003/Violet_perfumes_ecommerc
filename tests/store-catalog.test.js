@@ -175,11 +175,25 @@ test("PUT /api/settings then GET round-trips valid values", async () => {
   const get = await fetch(`${t.url}/api/settings`, { headers: { cookie } });
   assert.equal(get.status, 200);
   const getBody = await get.json();
-  assert.deepEqual(getBody.data, {
-    store_name: "نسمات", tagline: "بوتيك العطور في الأردن",
-    logo_light: "", logo_dark: "", favicon: "", share_image: "",
-    whatsapp: "962791234567", instagram: "https://instagram.com/nsamat",
-    delivery_fee: 2, free_delivery_over: 50,
-    theme: { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37", overrides: {} },
-  });
+  // Stage D added home/contact/social/footer/texts/delivery/seo — checked in their own tests;
+  // this test only round-trips the fields it itself wrote, plus their untouched defaults.
+  assert.deepEqual(
+    {
+      store_name: getBody.data.store_name, tagline: getBody.data.tagline,
+      logo_light: getBody.data.logo_light, logo_dark: getBody.data.logo_dark,
+      favicon: getBody.data.favicon, share_image: getBody.data.share_image,
+      whatsapp: getBody.data.whatsapp, instagram: getBody.data.instagram,
+      delivery_fee: getBody.data.delivery_fee, free_delivery_over: getBody.data.free_delivery_over,
+      theme: getBody.data.theme,
+    },
+    {
+      store_name: "نسمات", tagline: "بوتيك العطور في الأردن",
+      logo_light: "", logo_dark: "", favicon: "", share_image: "",
+      whatsapp: "962791234567", instagram: "https://instagram.com/nsamat",
+      delivery_fee: 2, free_delivery_over: 50,
+      theme: { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37", overrides: {} },
+    }
+  );
+  assert.equal(getBody.data.social.instagram, "https://instagram.com/nsamat", "legacy instagram folded into social.instagram");
+  assert.equal(getBody.data.delivery.governorates.length, 12);
 });

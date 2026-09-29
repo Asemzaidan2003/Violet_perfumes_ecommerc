@@ -2,12 +2,13 @@
 import { html, raw } from "../html.js";
 import { icon, shelf, slot, familyCounts } from "./components.js";
 import { heroSlider } from "./promo.js";
-import { money, perfumeCount } from "../../../storefront/js/shared/format.js";
+import { perfumeCount } from "../../../storefront/js/shared/format.js";
 
 const SHELF_SIZE = 12;
 
 // Window display artwork: a bottle on a cream plinth under a spotlight. Our own markup.
-const HERO_ART = raw(`<svg class="hero-art" viewBox="0 0 400 480" aria-hidden="true" focusable="false">
+// Takes the store name for the bottle label (escaped by the `html` tag, same as everywhere else).
+const HERO_ART_HEAD = raw(`<svg class="hero-art" viewBox="0 0 400 480" aria-hidden="true" focusable="false">
 <defs>
   <linearGradient id="hx-beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2D27A" stop-opacity=".38"/><stop offset="1" stop-color="#F2D27A" stop-opacity="0"/></linearGradient>
   <linearGradient id="hx-glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5A3C16"/><stop offset=".38" stop-color="#C99A2E"/><stop offset=".55" stop-color="#E6C46A"/><stop offset=".72" stop-color="#B8862A"/><stop offset="1" stop-color="#4A3012"/></linearGradient>
@@ -29,24 +30,33 @@ const HERO_ART = raw(`<svg class="hero-art" viewBox="0 0 400 480" aria-hidden="t
 <rect x="144" y="214" width="10" height="156" rx="5" fill="#FFFDF8" opacity=".32"/>
 <rect x="156" y="276" width="88" height="54" rx="6" fill="#1A1206" opacity=".62"/>
 <rect x="161" y="281" width="78" height="44" rx="4" fill="none" stroke="#E6C46A" stroke-width="1"/>
-<text x="200" y="311" text-anchor="middle" font-family="El Messiri, serif" font-weight="700" font-size="20" fill="#E6C46A">نسمات</text>
+<text x="200" y="311" text-anchor="middle" font-family="El Messiri, serif" font-weight="700" font-size="20" fill="#E6C46A">`);
+const HERO_ART_TAIL = raw(`</text>
 <g class="hero-glints" fill="#F2D27A"><circle cx="96" cy="150" r="2"/><circle cx="318" cy="112" r="1.6"/><circle cx="300" cy="236" r="2.2"/><circle cx="84" cy="276" r="1.4"/></g>
 </svg>`);
+const heroArt = (name) => html`${HERO_ART_HEAD}${name}${HERO_ART_TAIL}`;
+
+// {store_name} placeholder support for admin-entered hero/footer copy.
+const withStoreName = (s, storeName) => String(s ?? "").replace(/\{store_name\}/g, storeName);
 
 // Window display (spec §2): slide 1 is always this brand welcome; live admin hero slides follow
 // (promo.js). With none, the hero is exactly the brand welcome and no slider markup is rendered.
-function hero(placements) {
+function hero(placements, home, storeName) {
+  const title = withStoreName(home.hero_title || "{store_name} — عطرك يحكي عنك", storeName);
+  const sub = home.hero_subtitle || "تركيبات فاخرة بزيوت عطرية مختارة، تُحضَّر لك بعناية وتصلك إلى باب بيتك في كل محافظات الأردن.";
+  const primary = home.cta_primary?.link ? home.cta_primary : { label: "تسوّق الرجالي", link: "/c/men" };
+  const secondary = home.cta_secondary?.link ? home.cta_secondary : { label: "تسوّق النسائي", link: "/c/women" };
   const brand = html`<div class="container hero-inner">
     <div class="hero-copy">
       <p class="eyebrow">بوتيك العطور في الأردن</p>
-      <h1 id="hero-title" class="hero-title">نسمات — عطرك يحكي عنك</h1>
-      <p class="hero-sub">تركيبات فاخرة بزيوت عطرية مختارة، تُحضَّر لك بعناية وتصلك إلى باب بيتك في كل محافظات الأردن.</p>
+      <h1 id="hero-title" class="hero-title">${title}</h1>
+      <p class="hero-sub">${sub}</p>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="/c/men">تسوّق الرجالي</a>
-        <a class="btn btn-secondary" href="/c/women">تسوّق النسائي</a>
+        <a class="btn btn-primary" href="${primary.link}">${primary.label}</a>
+        <a class="btn btn-secondary" href="${secondary.link}">${secondary.label}</a>
       </div>
     </div>
-    <div class="hero-display" data-hero3d-slot>${HERO_ART}<canvas class="hero3d-canvas" role="img" aria-label="عرض ثلاثي الأبعاد لزجاجة نسمات" hidden></canvas></div>
+    <div class="hero-display" data-hero3d-slot>${heroArt(storeName)}<canvas class="hero3d-canvas" role="img" aria-label="عرض ثلاثي الأبعاد لزجاجة ${storeName}" hidden></canvas></div>
   </div>`;
   const { slider, body } = heroSlider(brand, placements);
   return html`<section class="hero${slider ? " is-slider" : ""}" aria-labelledby="hero-title"${slider ? html` aria-roledescription="عرض شرائح" data-hero-slider` : ""}>
@@ -56,10 +66,10 @@ function hero(placements) {
 
 // Admin-managed category tiles: a generic icon (from components.js's ICONS set) per category,
 // defaulting to "cube" when the category has none set.
-function aisles(products, categories = []) {
+function aisles(products, categories = [], title = "") {
   return html`<section class="section" id="aisles" aria-labelledby="aisles-title">
   <div class="container">
-    <div class="section-head"><h2 id="aisles-title" class="section-title">تجوّل في الأقسام</h2></div>
+    <div class="section-head"><h2 id="aisles-title" class="section-title">${title || "تجوّل في الأقسام"}</h2></div>
     <ul class="aisles" role="list">
       ${categories.map((c, i) => {
         const count = products.filter((p) => p.category === c.key).length;
@@ -112,19 +122,13 @@ function designerShelf(products, brands = []) {
 </section>`;
 }
 
-function serviceStrip(settings) {
-  const wa = settings.whatsapp ? `https://wa.me/${settings.whatsapp}` : "";
-  const delivery = settings.free_delivery_over > 0
-    ? html`توصيل مجاني للطلبات من <bdi>${money(settings.free_delivery_over)}</bdi>`
-    : "إلى باب بيتك في كل المحافظات";
-  const items = [
-    { icon: "truck", title: "توصيل لكل الأردن", sub: delivery },
-    { icon: "wallet", title: "الدفع عند الاستلام", sub: "ادفع نقدًا عند وصول طلبك" },
-    { icon: "whatsapp", title: "خدمة واتساب", sub: wa ? html`<a href="${wa}" target="_blank" rel="noopener">راسلنا الآن</a>` : "نرد على استفساراتك بسرعة" },
-  ];
+// Admin-editable (up to 4 { title, text }); icon assigned by position, cycling the fixed set.
+const SERVICE_ICONS = ["truck", "wallet", "whatsapp", "cube"];
+function serviceStrip(items = []) {
+  if (!items.length) return "";
   return html`<section class="section services" aria-label="خدماتنا" data-reveal>
   <ul class="container service-list" role="list">
-    ${items.map((i) => html`<li class="service"><span class="service-icon">${icon(i.icon)}</span><span><strong>${i.title}</strong><span class="muted">${i.sub}</span></span></li>`)}
+    ${items.map((i, idx) => html`<li class="service"><span class="service-icon">${icon(SERVICE_ICONS[idx % SERVICE_ICONS.length])}</span><span><strong>${i.title}</strong><span class="muted">${i.text}</span></span></li>`)}
   </ul>
 </section>`;
 }
@@ -137,20 +141,38 @@ const ENTRANCE = raw(`<div class="fx-entrance-overlay" data-fx-entrance aria-hid
   <span class="fx-entrance-sweep"></span>
 </div>`);
 
+const DEFAULT_TITLES = {
+  aisles: "تجوّل في الأقسام", best_sellers: "الأكثر مبيعًا", designers: "تسوّق حسب المصمم",
+  testers: "ركن التجربة", new_arrivals: "وصل حديثًا", offers: "عروض المتجر", service: "خدماتنا",
+};
+
 export function home({ products, settings, placements = [], brands = [], categories = [] }) {
   // getCatalog() order is best-seller rank, then newest — exactly the best-sellers fallback rule.
   const best = products.slice(0, SHELF_SIZE);
   const newest = [...products].sort((a, b) => new Date(b.created) - new Date(a.created)).slice(0, SHELF_SIZE);
   const offers = products.filter((p) => p.offer > 0).slice(0, SHELF_SIZE);
+  const storeName = settings.store_name || "نسمات";
+  const home = settings.home || {};
+  const sections = home.sections?.length ? home.sections : [
+    "aisles", "best_sellers", "promo_mid", "designers", "testers", "new_arrivals", "offers", "promo_bottom", "service",
+  ].map((key) => ({ key, visible: true, title: "" }));
+
+  // Rendering by fixed section key: a custom `title` only applies to sections with their own
+  // <h2> (slots have none, and are not user-titled). Order is admin-controlled; hero stays first.
+  const RENDER = {
+    aisles: () => aisles(products, categories, home.sections.find((s) => s.key === "aisles")?.title),
+    best_sellers: () => shelf({ title: sectionTitle("best_sellers"), href: "/best-sellers", products: best }),
+    promo_mid: () => slot("home_mid", placements),
+    designers: () => designerShelf(products, brands),
+    testers: () => testerBar(familyCounts(products)),
+    new_arrivals: () => shelf({ title: sectionTitle("new_arrivals"), href: "/new", products: newest }),
+    offers: () => shelf({ title: sectionTitle("offers"), href: "/offers", products: offers }),
+    promo_bottom: () => slot("home_bottom", placements),
+    service: () => serviceStrip(home.service_items?.length ? home.service_items : []),
+  };
+  const sectionTitle = (key) => sections.find((s) => s.key === key)?.title || DEFAULT_TITLES[key];
+
   return html`${ENTRANCE}
-${hero(placements)}
-${aisles(products, categories)}
-${shelf({ title: "الأكثر مبيعًا", href: "/best-sellers", products: best })}
-${slot("home_mid", placements)}
-${designerShelf(products, brands)}
-${testerBar(familyCounts(products))}
-${shelf({ title: "وصل حديثًا", href: "/new", products: newest })}
-${shelf({ title: "عروض المتجر", href: "/offers", products: offers })}
-${slot("home_bottom", placements)}
-${serviceStrip(settings)}`;
+${hero(placements, home, storeName)}
+${sections.filter((s) => s.visible !== false && RENDER[s.key]).map((s) => RENDER[s.key]())}`;
 }
