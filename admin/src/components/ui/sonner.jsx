@@ -7,20 +7,13 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react"
-import { useSyncExternalStore } from "react"
 import { Toaster as Sonner } from "sonner";
-
-const subscribe = (cb) => {
-  const mo = new MutationObserver(cb)
-  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
-  return () => mo.disconnect()
-}
-const getTheme = () => (document.documentElement.classList.contains("dark") ? "dark" : "light")
+import { useTheme } from "@/app/theme";
 
 const Toaster = ({
   ...props
 }) => {
-  const theme = useSyncExternalStore(subscribe, getTheme, () => "light")
+  const { theme } = useTheme()
 
   return (
     <Sonner
