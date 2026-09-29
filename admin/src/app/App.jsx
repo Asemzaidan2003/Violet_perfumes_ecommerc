@@ -7,6 +7,7 @@ import NotFound from "@/pages/NotFound";
 import Shell from "@/app/Shell";
 import PosPage from "@/pages/pos/PosPage";
 import OrdersPage from "@/pages/orders/OrdersPage";
+import OrderDetailsPage from "@/pages/orders/OrderDetailsPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
 
@@ -22,6 +23,7 @@ export function App() {
                 <Route index element={<Navigate to="/pos" replace />} />
                 <Route path="/pos" element={<PosPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
+                <Route path="/orders/:id" element={<OrderDetailsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Route>
