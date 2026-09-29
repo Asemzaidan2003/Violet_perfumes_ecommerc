@@ -9,7 +9,7 @@ export const NAV_GROUPS = [
   { title: "المبيعات", items: [
     { key: "pos", label: "نقطة البيع", to: "/pos", icon: ShoppingCart },
     { key: "orders", label: "الطلبات", to: "/orders", icon: ClipboardList, badge: true },
-    { key: "interests", label: "طلبات الاهتمام", legacy: `${L}interests.html`, icon: Inbox },
+    { key: "interests", label: "طلبات الاهتمام", to: "/interests", icon: Inbox },
   ] },
   { title: "الكتالوج", items: [
     { key: "products", label: "المنتجات", legacy: `${L}all_products.html`, icon: Package },
