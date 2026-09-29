@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { NativeSelect } from "@/components/native-select";
 import { Input } from "@/components/ui/input";
-import { bottlesFor, linePrice, lineTotal } from "@/lib/cart";
+import { bottlesFor, linePrice, lineTotal, setPrice } from "@/lib/cart";
 import { money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,12 @@ function PriceInput({ line, onPrice }) {
   const shown = String(linePrice(line));
   const [text, setText] = useState(shown);
   useEffect(() => setText(shown), [shown]);
-  const commit = () => { onPrice(line.key, text); };
+  // Reset the text to what setPrice actually charges (same function the parent runs), so blank/garbage/equal-to-unit input never lingers.
+  const commit = () => {
+    const [next] = setPrice([line], line.key, text);
+    setText(String(linePrice(next)));
+    onPrice(line.key, text);
+  };
   return (
     <Input dir="ltr" inputMode="decimal" value={text} aria-label={`سعر ${line.name} ${line.size} مل`}
       onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}

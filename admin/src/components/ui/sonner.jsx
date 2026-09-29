@@ -25,7 +25,8 @@ const Toaster = ({
   return (
     <Sonner
       theme={theme}
-      className="toaster group"
+      // pointer-events-auto: an open Radix modal sets pointer-events:none on <body>, which the toaster would inherit and make toast actions untappable.
+      className="toaster group pointer-events-auto"
       icons={{
         success: <CircleCheckIcon className="size-4" />,
         info: <InfoIcon className="size-4" />,
