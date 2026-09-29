@@ -4,6 +4,7 @@ import Bottle from "../models/bottle.model.js";
 import Alcohol from "../models/alcohol.model.js";
 import Product from "../models/product.model.js";
 import Customer from "../models/customer.model.js";
+import { getCategories } from "../services/categories.service.js";
 
 /*
   ============================================================================
@@ -448,14 +449,17 @@ export const getProductsReport = async (req, res) => {
       ]),
     ]);
 
+    const nameByKey = new Map((await getCategories()).map((c) => [c.key, c.name_ar]));
+    const categoryLabel = (key) => nameByKey.get(key) || key;
+
     res.status(200).json({
       success: true,
       data: {
         from,
         to,
-        top_products: byProduct,
+        top_products: byProduct.map((p) => ({ ...p, category: categoryLabel(p.category) })),
         by_category: byCategory.map((c) => ({
-          category: c._id,
+          category: categoryLabel(c._id),
           revenue: round2(c.revenue),
           profit: round2(c.profit),
           quantity: c.quantity,

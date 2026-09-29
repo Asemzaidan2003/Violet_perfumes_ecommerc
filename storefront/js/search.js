@@ -3,12 +3,17 @@
 // per keystroke. Results are cloned from a <template> and filled with textContent only.
 import { searchProducts } from "./shared/search.js";
 import { money, perfumeCount } from "./shared/format.js";
-import { CATEGORIES, FAMILIES } from "./shared/vocab.js";
+import { FAMILIES } from "./shared/vocab.js";
 import { loadCatalog } from "./shared/catalog-client.js";
 
 const MAX_RESULTS = 8;
 const PLACEHOLDER = "/assets/img/placeholder-bottle.svg" + new URL(import.meta.url).search;
-const CATEGORY_AR = new Map(CATEGORIES.map((c) => [c.key, c.ar]));
+// Admin-managed categories, embedded in #shop-settings by the layout (never hard-coded here).
+let CATEGORY_AR = new Map();
+try {
+  const shop = JSON.parse(document.getElementById("shop-settings")?.textContent || "{}");
+  CATEGORY_AR = new Map((shop.categories || []).map((c) => [c.key, c.ar]));
+} catch { /* best-effort */ }
 const FAMILY_AR = new Map(FAMILIES.map((f) => [f.key, f.ar]));
 
 const dialog = document.getElementById("search-overlay");

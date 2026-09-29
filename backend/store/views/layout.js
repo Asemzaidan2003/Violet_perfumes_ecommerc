@@ -1,7 +1,6 @@
 // Page shell for every storefront page: head (SEO, Open Graph), header, bottom bar, footer.
 import { html, json, raw } from "../html.js";
 import { icon, slot } from "./components.js";
-import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { num } from "../../../storefront/js/shared/format.js";
 import { asset } from "../assets.js";
 import { IMPORT_MAP_JSON } from "../importmap.js";
@@ -43,11 +42,9 @@ function brandMark(settings) {
   return html`<img class="brand-mark" src="${LOGO}" width="24" height="36" alt="">`;
 }
 
-const NAV = [
-  { href: "/c/men", label: "رجالي" },
-  { href: "/c/women", label: "نسائي" },
-  { href: "/c/unisex", label: "للجنسين" },
-  { href: "/c/home", label: "معطرات" },
+// Admin-managed categories, plus the fixed المصممون link.
+const navLinks = (categories) => [
+  ...categories.map((c) => ({ href: `/c/${c.slug}`, label: c.name_ar })),
   { href: "/brands", label: "المصممون" },
 ];
 
@@ -71,8 +68,9 @@ function familiesMenu(families) {
 </details></li>`;
 }
 
-function header(path, families, settings = {}) {
+function header(path, families, settings = {}, categories = []) {
   const name = settings.store_name || "نسمات";
+  const NAV = navLinks(categories);
   return html`<header class="site-header" data-header>
   <div class="container header-row">
     <button class="btn-icon nav-menu-btn" type="button" data-open-nav aria-label="القائمة" aria-controls="nav-drawer">${icon("menu")}</button>
@@ -98,7 +96,8 @@ function header(path, families, settings = {}) {
 
 // Mobile menu drawer: everything the desktop's row nav + families disclosure carries, in one
 // place with >= 44px targets. Hidden entirely at >= 900px (CSS), where the row nav is used instead.
-function navDrawer(path, families) {
+function navDrawer(path, families, categories = []) {
+  const NAV = navLinks(categories);
   return html`<dialog class="drawer nav-drawer" id="nav-drawer" aria-label="القائمة">
   <div class="drawer-panel">
     <div class="drawer-head">
@@ -121,7 +120,7 @@ function navDrawer(path, families) {
 }
 
 // Search overlay shell, filled by search.js. Family and category suggestions are server-rendered.
-function searchOverlay(families) {
+function searchOverlay(families, categories = []) {
   return html`<dialog class="search-overlay" id="search-overlay" aria-label="البحث في المتجر">
   <div class="so-panel">
     <form class="search-field so-form" action="/search" method="get" role="search">
@@ -144,7 +143,7 @@ function searchOverlay(families) {
       <ul class="so-chips" role="list">${families.map((f) => html`<li><a class="chip chip-link" href="/family/${f.key}"><span class="swatch" style="--swatch: ${f.swatch}"></span>${f.ar}</a></li>`)}</ul>` : ""}
       <h2 class="so-title">الأقسام</h2>
       <ul class="so-chips" role="list">
-        ${CATEGORIES.map((c) => html`<li><a class="chip chip-link" href="/c/${c.slug}">${c.ar}</a></li>`)}
+        ${categories.map((c) => html`<li><a class="chip chip-link" href="/c/${c.slug}">${c.name_ar}</a></li>`)}
         <li><a class="chip chip-link" href="/offers">العروض</a></li>
       </ul>
     </div>
@@ -179,7 +178,7 @@ function footerGroup(title, id, group, pages) {
     </nav>`;
 }
 
-function footer(settings, wa, pages = []) {
+function footer(settings, wa, pages = [], categories = []) {
   const name = settings.store_name || "نسمات";
   return html`<footer class="site-footer">
   <div class="container footer-grid">
@@ -190,7 +189,7 @@ function footer(settings, wa, pages = []) {
     <nav aria-labelledby="footer-aisles">
       <h2 class="footer-title" id="footer-aisles">الأقسام</h2>
       <ul role="list">
-        ${CATEGORIES.map((c) => html`<li><a href="/c/${c.slug}">${c.ar}</a></li>`)}
+        ${categories.map((c) => html`<li><a href="/c/${c.slug}">${c.name_ar}</a></li>`)}
         <li><a href="/offers">العروض</a></li>
         <li><a href="/brands">المصممون</a></li>
       </ul>
@@ -211,7 +210,7 @@ function footer(settings, wa, pages = []) {
 }
 
 // Cart drawer shell, filled by cart.js from the <template> (textContent only, never innerHTML).
-function cartDrawer(placements) {
+function cartDrawer(placements, categories = []) {
   return html`<dialog id="cart-drawer" class="drawer" aria-labelledby="cart-title">
   <div class="drawer-panel">
     <div class="drawer-head">
@@ -224,7 +223,7 @@ function cartDrawer(placements) {
         <span class="cart-empty-icon" aria-hidden="true">${icon("cart")}</span>
         <p class="modal-title">سلتك فارغة</p>
         <p class="muted">اختر عطرك من الأقسام، ونوصله لك لأي مكان في الأردن.</p>
-        <div class="error-links">${CATEGORIES.slice(0, 3).map((c) => html`<a class="chip chip-link" href="/c/${c.slug}">${c.ar}</a>`)}</div>
+        <div class="error-links">${categories.slice(0, 3).map((c) => html`<a class="chip chip-link" href="/c/${c.slug}">${c.name_ar}</a>`)}</div>
       </div>
       <ul class="cart-lines" role="list" data-cart-lines></ul>
       ${slot("cart_upsell", placements)}
@@ -266,7 +265,7 @@ export const siteBase = (origin = "") => (process.env.PUBLIC_URL || origin).repl
 
 export function layout({
   title, description, canonicalPath, ogImage, body, bodyClass = "", hideBottomBar = false, noindex = false,
-  settings = {}, assetV = "", origin = "", families = [], styles = [], scripts = [], placements = [], pages = [],
+  settings = {}, assetV = "", origin = "", families = [], styles = [], scripts = [], placements = [], pages = [], categories = [],
 }) {
   // Promo assets load only when something is live (404/500 pages pass no placements).
   if (placements.length) { styles = [...styles, "promo.css"]; scripts = [...scripts, "promo.js"]; }
@@ -310,16 +309,16 @@ ${scripts.map((f) => html`<script type="module" src="/assets/js/${f}?v=${assetV}
 <body class="${[bodyClass, hideBottomBar ? "no-bottom-bar" : ""].filter(Boolean).join(" ")}">
 <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
 ${slot("announcement", placements)}
-${header(path, families, settings)}
+${header(path, families, settings, categories)}
 <main id="main" tabindex="-1">
 ${body}
 </main>
-${footer(settings, wa, pages)}
+${footer(settings, wa, pages, categories)}
 ${hideBottomBar ? "" : bottomBar(path, wa)}
-${searchOverlay(families)}
-${cartDrawer(placements)}
-${navDrawer(path, families)}
-<script type="application/json" id="shop-settings">${json({ delivery_fee: settings.delivery_fee ?? 0, free_delivery_over: settings.free_delivery_over ?? 0, whatsapp: settings.whatsapp ?? "", store_name: name })}</script>
+${searchOverlay(families, categories)}
+${cartDrawer(placements, categories)}
+${navDrawer(path, families, categories)}
+<script type="application/json" id="shop-settings">${json({ delivery_fee: settings.delivery_fee ?? 0, free_delivery_over: settings.free_delivery_over ?? 0, whatsapp: settings.whatsapp ?? "", store_name: name, categories: categories.map((c) => ({ key: c.key, slug: c.slug, ar: c.name_ar })) })}</script>
 <div id="live-region" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>`;

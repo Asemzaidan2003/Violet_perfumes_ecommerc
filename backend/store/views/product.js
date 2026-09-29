@@ -2,10 +2,9 @@
 // product.js wires the interactions; Task 6's cart module takes over the cart buttons.
 import { html, json } from "../html.js";
 import { icon, price, shelf, offerChip, slot, PLACEHOLDER_IMG } from "./components.js";
-import { CATEGORIES, FAMILIES } from "../../../storefront/js/shared/vocab.js";
+import { FAMILIES } from "../../../storefront/js/shared/vocab.js";
 import { money, num, sizeLabel } from "../../../storefront/js/shared/format.js";
 
-const CATEGORY = new Map(CATEGORIES.map((c) => [c.key, c]));
 const FAMILY = new Map(FAMILIES.map((f) => [f.key, f]));
 const OOS_NOTE = "نحضّره لك عند الطلب وقد يستغرق وقتًا أطول";
 const TIERS = [["top", "المقدمة"], ["heart", "القلب"], ["base", "القاعدة"]];
@@ -107,7 +106,7 @@ function recentlyViewed() {
 </section>`;
 }
 
-function jsonLd(p, url, abs) {
+function jsonLd(p, url, abs, cat) {
   const images = [p.image, ...p.images].filter(Boolean).map(abs);
   return {
     "@context": "https://schema.org",
@@ -116,7 +115,7 @@ function jsonLd(p, url, abs) {
     sku: p.id,
     ...(images.length ? { image: images } : {}),
     ...(p.description ? { description: p.description } : {}),
-    category: CATEGORY.get(p.category)?.ar,
+    category: cat?.ar,
     ...(p.brand ? { brand: { "@type": "Brand", name: p.brand.name_en } } : {}),
     offers: p.sizes.map((s) => ({
       "@type": "Offer",
@@ -130,8 +129,8 @@ function jsonLd(p, url, abs) {
 }
 
 // base: absolute site origin (PUBLIC_URL or the request's), for the share URL and JSON-LD.
-export function product({ p, related, relatedHref, settings, base, placements = [] }) {
-  const cat = CATEGORY.get(p.category);
+export function product({ p, related, relatedHref, settings, base, placements = [], categories = [] }) {
+  const cat = categories.find((c) => c.key === p.category);
   const selected = defaultSize(p);
   const url = `${base}/p/${p.id}`;
   const abs = (u) => (/^https?:/.test(u) ? u : base + u);
@@ -142,13 +141,13 @@ export function product({ p, related, relatedHref, settings, base, placements = 
   return html`<div class="container">
   <nav class="crumbs" aria-label="مسار التنقل"><ol role="list">
     <li><a href="/">الرئيسية</a></li>
-    ${cat ? html`<li><a href="/c/${cat.slug}">${cat.ar}</a></li>` : ""}
+    ${cat ? html`<li><a href="/c/${cat.slug}">${cat.name_ar}</a></li>` : ""}
     <li aria-current="page">${p.name}</li>
   </ol></nav>
   <div class="pdp" data-product data-id="${p.id}" data-name="${p.name}">
     ${gallery(p)}
     <div class="pdp-info">
-      ${cat ? html`<a class="eyebrow pdp-cat" href="/c/${cat.slug}">${cat.ar}</a>` : ""}
+      ${cat ? html`<a class="eyebrow pdp-cat" href="/c/${cat.slug}">${cat.name_ar}</a>` : ""}
       ${p.brand ? html`<a class="pdp-brand" href="/brand/${p.brand.slug}">${p.brand.name_ar}</a>` : ""}
       <h1 class="pdp-title">${p.name}</h1>
       ${p.families.length ? html`<ul class="pdp-families" role="list">${p.families.filter((k) => FAMILY.has(k)).map((k) => html`<li><a class="chip chip-link" href="/family/${k}"><span class="swatch" style="--swatch: ${FAMILY.get(k).swatch}"></span>${FAMILY.get(k).ar}</a></li>`)}</ul>` : ""}
@@ -188,5 +187,5 @@ export function product({ p, related, relatedHref, settings, base, placements = 
 ${shelf({ title: "قد يعجبك أيضًا", href: relatedHref, products: related })}
 ${recentlyViewed()}
 ${anyOut && selected ? interestDialog(p, selected) : ""}
-<script type="application/ld+json">${json(jsonLd(p, url, abs))}</script>`;
+<script type="application/ld+json">${json(jsonLd(p, url, abs, cat))}</script>`;
 }

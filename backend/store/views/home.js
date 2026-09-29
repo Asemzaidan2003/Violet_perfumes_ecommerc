@@ -54,30 +54,18 @@ function hero(placements) {
 </section>`;
 }
 
-// Line drawings for the aisle tiles (our own markup).
-const AISLE_ART = {
-  men: '<rect x="18" y="22" width="28" height="34" rx="3"/><path d="M26 22v-6h12v6M24 16h16"/>',
-  women: '<path d="M32 24c-10 0-15 8-15 17s6 15 15 15 15-6 15-15-5-17-15-17z"/><path d="M28 24v-6h8v6M26 18h12"/>',
-  unisex: '<rect x="12" y="28" width="20" height="28" rx="3"/><path d="M18 28v-5h8v5"/><path d="M42 30c-6 0-9 5-9 11s4 15 9 15 9-9 9-15-3-11-9-11z"/><path d="M40 30v-4h4v4"/>',
-  home: '<path d="M22 36h20l-2 20H24z"/><path d="M28 36 24 12M32 36V10M36 36l4-24"/>',
-};
-const AISLES = [
-  { slug: "men", label: "رجالي", keys: ["Men"], glow: "var(--glow-men)" },
-  { slug: "women", label: "نسائي", keys: ["Women"], glow: "var(--glow-women)" },
-  { slug: "unisex", label: "للجنسين", keys: ["Unisex"], glow: "var(--gold)" },
-  { slug: "home", label: "معطرات", keys: ["Home", "Car"], glow: "var(--glow-home)" },
-];
-
-function aisles(products) {
+// Admin-managed category tiles: a generic icon (from components.js's ICONS set) per category,
+// defaulting to "cube" when the category has none set.
+function aisles(products, categories = []) {
   return html`<section class="section" id="aisles" aria-labelledby="aisles-title">
   <div class="container">
     <div class="section-head"><h2 id="aisles-title" class="section-title">تجوّل في الأقسام</h2></div>
     <ul class="aisles" role="list">
-      ${AISLES.map((a, i) => {
-        const count = products.filter((p) => a.keys.includes(p.category)).length;
-        return html`<li data-reveal style="--i: ${i}"><a class="aisle" href="/c/${a.slug}" style="--glow: ${a.glow}">
-          <svg class="aisle-art" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true" focusable="false">${raw(AISLE_ART[a.slug])}</svg>
-          <span class="aisle-name">${a.label}</span>
+      ${categories.map((c, i) => {
+        const count = products.filter((p) => p.category === c.key).length;
+        return html`<li data-reveal style="--i: ${i}"><a class="aisle" href="/c/${c.slug}">
+          ${icon(c.icon || "cube")}
+          <span class="aisle-name">${c.name_ar}</span>
           <span class="aisle-count">${count ? perfumeCount(count) : "قريبًا"}</span>
           <span class="aisle-go">${icon("chevron")}</span>
         </a></li>`;
@@ -149,14 +137,14 @@ const ENTRANCE = raw(`<div class="fx-entrance-overlay" data-fx-entrance aria-hid
   <span class="fx-entrance-sweep"></span>
 </div>`);
 
-export function home({ products, settings, placements = [], brands = [] }) {
+export function home({ products, settings, placements = [], brands = [], categories = [] }) {
   // getCatalog() order is best-seller rank, then newest — exactly the best-sellers fallback rule.
   const best = products.slice(0, SHELF_SIZE);
   const newest = [...products].sort((a, b) => new Date(b.created) - new Date(a.created)).slice(0, SHELF_SIZE);
   const offers = products.filter((p) => p.offer > 0).slice(0, SHELF_SIZE);
   return html`${ENTRANCE}
 ${hero(placements)}
-${aisles(products)}
+${aisles(products, categories)}
 ${shelf({ title: "الأكثر مبيعًا", href: "/best-sellers", products: best })}
 ${slot("home_mid", placements)}
 ${designerShelf(products, brands)}

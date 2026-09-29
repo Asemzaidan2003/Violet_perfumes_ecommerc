@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
-import { CATEGORIES, FAMILY_KEYS } from "../../storefront/js/shared/vocab.js";
+import { FAMILY_KEYS } from "../../storefront/js/shared/vocab.js";
 import { IMAGE_URL } from "./product.model.js";
+import { getCategories } from "../services/categories.service.js";
 
 export const SLOTS = [
   "announcement",
@@ -14,8 +15,6 @@ export const SLOTS = [
 ];
 export const IMAGE_SLOTS = ["hero", "home_mid", "home_bottom", "collection_banner", "grid_tile"];
 export const THEMES = ["dark", "light", "gold"];
-
-const CATEGORY_SLUGS = CATEGORIES.map((c) => c.slug);
 
 // Internal path (no protocol-relative or backslash tricks) or an https absolute URL.
 export const validLink = (l) =>
@@ -57,7 +56,13 @@ const placementSchema = new mongoose.Schema(
     cta: { type: String, trim: true, maxlength: 30 },
     theme: { type: String, enum: { values: THEMES, message: "سمة غير صالحة" }, default: "dark" },
     target: {
-      category: { type: String, enum: { values: [...CATEGORY_SLUGS, null], message: "فئة غير صالحة" } },
+      category: {
+        type: String,
+        validate: {
+          validator: async (v) => !v || (await getCategories()).some((c) => c.slug === v),
+          message: "فئة غير صالحة",
+        },
+      },
       family: { type: String, enum: { values: [...FAMILY_KEYS, null], message: "عائلة غير صالحة" } },
     },
     starts_at: { type: Date },

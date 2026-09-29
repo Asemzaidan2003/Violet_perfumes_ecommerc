@@ -83,7 +83,7 @@
     function buildCategorySelect(current) {
       const select = el("select", { className: "status-select" },
         el("option", { value: "", textContent: "— اختر الفئة —" }),
-        ...CATEGORIES.map((c) => el("option", { value: c.key, textContent: c.ar })));
+        ...CATEGORIES.map((c) => el("option", { value: c.key, textContent: c.name_ar })));
       select.value = current ?? "";
       return select;
     }
@@ -154,10 +154,9 @@
 
     async function init() {
       const vocab = await import("/assets/js/shared/vocab.js");
-      CATEGORIES = vocab.CATEGORIES;
       FAMILIES = vocab.FAMILIES;
       try {
-        const [res, brandsRes] = await Promise.all([fetch("/api/products"), fetch("/api/brands")]);
+        const [res, brandsRes, categoriesRes] = await Promise.all([fetch("/api/products"), fetch("/api/brands"), fetch("/api/categories")]);
         const json = await res.json().catch(() => ({}));
         // getProducts responds 404 (success:false) when the catalogue is legitimately
         // empty — that's not a failure; any other non-ok status is.
@@ -165,6 +164,8 @@
         productsData = json.data ?? [];
         const brandsJson = await brandsRes.json().catch(() => ({}));
         BRANDS = (brandsJson.data ?? []).filter((b) => b.active);
+        const categoriesJson = await categoriesRes.json().catch(() => ({}));
+        CATEGORIES = categoriesJson.data ?? [];
         renderRows();
       } catch (err) {
         document.getElementById("catalogBody").replaceChildren(el("tr", {},

@@ -356,7 +356,10 @@ test("every page embeds the shop settings as inert JSON and the cart drawer temp
   try {
     const { body } = await page("/");
     const raw = body.match(/<script type="application\/json" id="shop-settings">([\s\S]*?)<\/script>/)[1];
-    assert.deepEqual(JSON.parse(raw), { delivery_fee: 2, free_delivery_over: 30, whatsapp: "", store_name: "نسمات" });
+    const shop = JSON.parse(raw);
+    assert.ok(Array.isArray(shop.categories) && shop.categories.length > 0, "categories are embedded for client-side search");
+    delete shop.categories;
+    assert.deepEqual(shop, { delivery_fee: 2, free_delivery_over: 30, whatsapp: "", store_name: "نسمات" });
     assert.match(body, /<dialog id="cart-drawer"[^>]*aria-labelledby="cart-title"/);
     assert.match(body, /<template data-cart-line>/);
     assert.ok(body.includes("/assets/js/cart.js?v="));

@@ -2,8 +2,11 @@
 // Classic script (the product pages' inline scripts are classic too), but uses
 // dynamic import() to load the ES modules it depends on.
 // Usage: const pf = await window.productFields.ready; pf.fill(product); const extras = pf.read();
-const productFieldsReady = Promise.all([import("/assets/js/shared/vocab.js"), import("/admin/js/upload.js")])
-  .then(([vocab, upload]) => buildProductFields(vocab, upload));
+const productFieldsReady = Promise.all([
+  import("/assets/js/shared/vocab.js"),
+  import("/admin/js/upload.js"),
+  fetch("/api/categories").then((r) => r.json()).then((j) => (j.data ?? []).map((c) => ({ key: c.key, ar: c.name_ar }))),
+]).then(([vocab, upload, categories]) => buildProductFields({ ...vocab, CATEGORIES: categories }, upload));
 
 // Surface a load failure (e.g. a network hiccup on the dynamic import) in the page
 // itself instead of leaving #productExtras blank forever. This runs on a separate

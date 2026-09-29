@@ -1,12 +1,14 @@
 import mongoose from "mongoose";
-import { CATEGORY_KEYS, FAMILY_KEYS, normalizeSize } from "../../storefront/js/shared/vocab.js";
+import { FAMILY_KEYS, normalizeSize } from "../../storefront/js/shared/vocab.js";
+import { getCategories } from "../services/categories.service.js";
+import { IMAGE_URL } from "../store/imageUrl.js";
 
 const note = { type: String, trim: true, maxlength: 40 };
 const noteList = {
   type: [note],
   validate: { validator: (v) => v.length <= 10, message: "عشر نوتات كحد أقصى لكل طبقة" },
 };
-export const IMAGE_URL = /^(\/img\/[a-f0-9]{24}(-480)?\.(webp|jpg|png)|https:\/\/[^\s"'<>]+)$/;
+export { IMAGE_URL };
 
 const productSchema = new mongoose.Schema(
   {
@@ -14,7 +16,14 @@ const productSchema = new mongoose.Schema(
     // "." is the existing placeholder for "no image yet" (see toPublic()), kept valid
     // alongside real URLs so legacy/placeholder saves aren't broken by this check.
     p_image: { type: String, required: true, validate: { validator: (v) => v === "." || IMAGE_URL.test(v), message: "رابط صورة غير صالح" } },
-    p_category: { type: String, required: [true, "الفئة مطلوبة"], enum: { values: CATEGORY_KEYS, message: "فئة غير صالحة" } },
+    p_category: {
+      type: String,
+      required: [true, "الفئة مطلوبة"],
+      validate: {
+        validator: async (v) => (await getCategories()).some((c) => c.key === v),
+        message: "فئة غير صالحة",
+      },
+    },
     p_offer_percentage: { type: Number, default: 0, min: 0, max: 100 },
     offer_ends_at: { type: Date },
 

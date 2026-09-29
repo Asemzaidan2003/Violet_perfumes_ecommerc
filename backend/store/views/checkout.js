@@ -3,7 +3,6 @@
 import { html } from "../html.js";
 import { icon } from "./components.js";
 import { GOVERNORATES } from "../validate.js";
-import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 
 function field({ id, label, hint = "", input }) {
   return html`<div class="field">
@@ -51,7 +50,7 @@ function summary() {
 </aside>`;
 }
 
-export function checkout({ termsPublished = false } = {}) {
+export function checkout({ termsPublished = false, categories = [] } = {}) {
   return html`<div class="container checkout">
   <h1 class="checkout-title">إتمام الطلب</h1>
   <p class="muted checkout-sub">أربع خانات فقط، ونتصل بك لتأكيد الطلب. الدفع نقدًا عند الاستلام.</p>
@@ -59,7 +58,7 @@ export function checkout({ termsPublished = false } = {}) {
   <div class="empty" data-co-empty hidden>
     <p class="empty-title">سلتك فارغة</p>
     <p class="muted">أضف عطرًا إلى السلة ثم عُد إلى هنا لإتمام الطلب.</p>
-    <div class="empty-links">${CATEGORIES.slice(0, 3).map((c) => html`<a class="chip chip-link" href="/c/${c.slug}">${c.ar}</a>`)}</div>
+    <div class="empty-links">${categories.slice(0, 3).map((c) => html`<a class="chip chip-link" href="/c/${c.slug}">${c.name_ar}</a>`)}</div>
   </div>
   <div class="co-grid" data-co-main>
     ${summary()}

@@ -1,5 +1,5 @@
 // Logic for promotions.html: admin CRUD for placements (ads) and discount codes.
-import { CATEGORIES, FAMILIES } from "/assets/js/shared/vocab.js";
+import { FAMILIES } from "/assets/js/shared/vocab.js";
 import { uploadImage } from "/admin/js/upload.js";
 
 const el = (tag, props = {}, ...children) => {
@@ -96,7 +96,10 @@ const pfCategory = document.getElementById("pf-target-category");
 const pfFamily = document.getElementById("pf-target-family");
 SLOTS.forEach((s) => pfSlot.append(opt(s.key, s.label)));
 THEMES.forEach((t) => pfTheme.append(opt(t.key, t.label)));
-pfCategory.append(opt("", "— الكل —"), ...CATEGORIES.map((c) => opt(c.slug, c.ar)));
+pfCategory.append(opt("", "— الكل —"));
+fetch("/api/categories").then((r) => r.json()).then(({ data }) => {
+  pfCategory.append(...(data || []).map((c) => opt(c.slug, c.name_ar)));
+}).catch((err) => console.error(err));
 pfFamily.append(opt("", "— الكل —"), ...FAMILIES.map((f) => opt(f.key, f.ar)));
 
 function syncPlacementFormToSlot() {

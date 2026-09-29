@@ -23,6 +23,7 @@ import adminRouter from "./routes/admin.Routs.js";
 import promotionsRouter from "./routes/promotions.Routs.js";
 import brandsRouter from "./routes/brands.Routs.js";
 import pagesRouter from "./routes/pages.Routs.js";
+import categoriesRouter from "./routes/categories.Routs.js";
 import storefrontRouter from "./routes/storefront.Routs.js";
 import { requireAdmin } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/error.js";
@@ -84,6 +85,7 @@ export function createApp({ limits = {} } = {}) {
   app.use("/api", promotionsRouter); // defines /placements and /coupons
   app.use("/api", brandsRouter); // defines /brands
   app.use("/api", pagesRouter); // defines /pages
+  app.use("/api", categoriesRouter); // defines /categories
   app.use("/api", (req, res) => res.status(404).json({ success: false, message: "Not found" }));
 
   app.get("/admin", (req, res) => res.redirect("/admin/html/index.html"));

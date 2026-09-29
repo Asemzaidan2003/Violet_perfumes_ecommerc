@@ -5,7 +5,6 @@ import { html } from "../html.js";
 import { productCard, familyCounts, slot, icon } from "./components.js";
 import { gridTile } from "./promo.js";
 import { forSlot } from "../../services/placements.service.js";
-import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { perfumeCount, sizeLabel } from "../../../storefront/js/shared/format.js";
 import { normalize } from "../../../storefront/js/shared/search.js";
 
@@ -118,7 +117,7 @@ function filters({ path, q, filter, sort, sorts, defaultSort, families, sizes, b
 </form>`;
 }
 
-function emptyState({ path, q, hidden, filtered, suggest }) {
+function emptyState({ path, q, hidden, filtered, suggest, categories = [] }) {
   const clear = q ? `${path}?q=${encodeURIComponent(q)}` : path;
   const title = q ? html`لم نجد عطورًا تطابق «${q}»`
     : path === "/search" ? "اكتب اسم عطر أو نوتة أو عائلة للبحث" : "لا توجد عطور تطابق هذا الاختيار";
@@ -127,7 +126,7 @@ function emptyState({ path, q, hidden, filtered, suggest }) {
   <p class="muted">${filtered ? "جرّب إزالة بعض التصفية، أو تجوّل في هذه الاقتراحات." : "أو تجوّل في هذه الاقتراحات."}</p>
   <a class="btn btn-secondary" href="${clear}" data-clear${filtered ? "" : html` hidden`}>إزالة التصفية</a>
   <ul class="empty-links" role="list">
-    ${CATEGORIES.map((c) => html`<li><a class="chip chip-link" href="/c/${c.slug}">${c.ar}</a></li>`)}
+    ${categories.map((c) => html`<li><a class="chip chip-link" href="/c/${c.slug}">${c.name_ar}</a></li>`)}
     ${suggest.slice(0, 8).map((f) => html`<li><a class="chip chip-link" href="/family/${f.key}"><span class="swatch" style="--swatch: ${f.swatch}"></span>${f.ar}</a></li>`)}
   </ul>
 </div>`;
@@ -160,7 +159,7 @@ function gridWithTiles(items, filter, tiles) {
 
 // page: { path, eyebrow, title, intro, switcher, q, base, catalog, filter, sort, defaultSort, hideFamily, target, placements }
 export function collection(page) {
-  const { path, eyebrow, title, intro, switcher, q, base, catalog, defaultSort, hideFamily, target = {}, placements = [] } = page;
+  const { path, eyebrow, title, intro, switcher, q, base, catalog, defaultSort, hideFamily, target = {}, placements = [], categories = [] } = page;
   const { families, sizes, brands, notes } = options(base, hideFamily);
   const filter = {
     f: page.filter.f.filter((k) => families.some((f) => f.key === k)),
@@ -194,6 +193,6 @@ export function collection(page) {
 <div class="container aisle-body">
   ${base.length ? filters({ path, q, filter, sort, sorts, defaultSort, families, sizes, brands, notes }) : ""}
   <ul class="grid" role="list" data-grid>${gridWithTiles(items, filter, forSlot(placements, "grid_tile", target))}</ul>
-  ${emptyState({ path, q, hidden: shownCount > 0, filtered: Boolean(filter.f.length || filter.s.length || filter.b.length || filter.n.length || filter.stock), suggest: familyCounts(catalog) })}
+  ${emptyState({ path, q, hidden: shownCount > 0, filtered: Boolean(filter.f.length || filter.s.length || filter.b.length || filter.n.length || filter.stock), suggest: familyCounts(catalog), categories })}
 </div>`;
 }
