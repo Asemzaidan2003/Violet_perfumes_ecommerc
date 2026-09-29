@@ -1,14 +1,18 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { X } from "lucide-react";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { effectivePrice } from "@/lib/cart";
 import { money } from "@/lib/format";
 
 export function SizePicker({ product, onPick, onClose }) {
   return (
     <Dialog open={!!product} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{product?.p_name}</DialogTitle>
-          <DialogDescription>اختر الحجم</DialogDescription>
+      <DialogContent showCloseButton={false} className="sm:max-w-sm">
+        <DialogHeader className="flex-row items-start justify-between gap-2">
+          <div className="space-y-1.5 text-start">
+            <DialogTitle>{product?.p_name}</DialogTitle>
+            <DialogDescription>اختر الحجم</DialogDescription>
+          </div>
+          <DialogClose aria-label="إغلاق" className="-mt-2 -me-2 grid size-11 shrink-0 place-items-center rounded-lg hover:bg-accent focus-visible:outline-2"><X className="size-5" aria-hidden /></DialogClose>
         </DialogHeader>
         <div className="grid gap-2">
           {product?.size_list.map((s) => (

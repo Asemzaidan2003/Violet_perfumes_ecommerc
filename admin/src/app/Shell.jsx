@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { LogOut, Menu, Moon, Sun, Store } from "lucide-react";
+import { LogOut, Menu, Moon, Sun, Store, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/app/auth";
 import { useTheme } from "@/app/theme";
 import { MOBILE_TABS, NAV_GROUPS } from "@/app/nav";
@@ -105,8 +105,11 @@ export default function Shell() {
           <SheetTrigger asChild>
             <button type="button" className="flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground"><Menu className="size-6" aria-hidden /><span>المزيد</span></button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-2xl">
-            <SheetHeader><SheetTitle>كل الصفحات</SheetTitle></SheetHeader>
+          <SheetContent side="bottom" showCloseButton={false} className="max-h-[85dvh] overflow-y-auto rounded-t-2xl">
+            <SheetHeader className="flex-row items-center justify-between py-2 ps-4 pe-2">
+              <SheetTitle>كل الصفحات</SheetTitle>
+              <SheetClose aria-label="إغلاق" className="grid size-11 place-items-center rounded-lg hover:bg-accent focus-visible:outline-2"><X className="size-5" aria-hidden /></SheetClose>
+            </SheetHeader>
             <div className="space-y-4 p-4 pb-8"><NavList pending={pending} onNavigate={() => setMoreOpen(false)} /></div>
           </SheetContent>
         </Sheet>
