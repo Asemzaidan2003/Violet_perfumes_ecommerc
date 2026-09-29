@@ -13,9 +13,10 @@ const TONE = {
 };
 
 export function Pill({ tone = "default", className, children }) {
-  return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", TONE[tone] ?? TONE.default, className)}>{children}</span>;
+  return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap", (Object.hasOwn(TONE, tone) ? TONE[tone] : TONE.default), className)}>{children}</span>;
 }
 
 export function StatusBadge({ status }) {
+  if (status == null || status === "") return <Pill>-</Pill>;
   return <Pill tone={status}>{status === "unconfirmed" ? "بانتظار التأكيد" : arabicStatus(status)}</Pill>;
 }

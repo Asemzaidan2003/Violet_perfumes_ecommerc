@@ -62,12 +62,13 @@ export function ErrorState({ title = "تعذر تحميل البيانات", hin
   );
 }
 
+// Usage: <ChartCard title="..."><ChartContainer config={...}>...</ChartContainer></ChartCard>; the [&>*]:aspect-auto rule makes the chart fill the box.
 export function ChartCard({ title, description, children }) {
   return (
     <section className="rounded-xl border bg-card p-4 text-card-foreground">
       <h2 className="font-semibold">{title}</h2>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      <div className="mt-3 h-72 w-full" dir="ltr">{children}</div>
+      <div className="mt-3 h-72 w-full [&>*]:aspect-auto [&>*]:h-full [&>*]:w-full" dir="ltr">{children}</div>
     </section>
   );
 }

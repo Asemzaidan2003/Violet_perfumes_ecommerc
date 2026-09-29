@@ -12,7 +12,7 @@ test("shortId is the last six characters, uppercased", () => {
   expect(shortId("")).toBe("");
 });
 
-import { num, pct, trendClass, trendArrow, fmtDate, fmtDateShort, fmtDateTime, toDateInputValue, arabicStatus, paymentLabel, waLink, STATUSES, CHART_COLORS } from "./format.js";
+import { waNational, num, pct, trendClass, trendArrow, fmtDate, fmtDateShort, fmtDateTime, toDateInputValue, arabicStatus, paymentLabel, waLink, STATUSES, CHART_COLORS } from "./format.js";
 
 test("num groups thousands and never throws", () => {
   expect(num(1234.5)).toBe("1,234.5");
@@ -60,4 +60,24 @@ test("waLink strips non-digits and one leading zero", () => {
   expect(waLink("0791234567")).toBe("https://wa.me/962791234567");
   expect(waLink("07-9123 4567")).toBe("https://wa.me/962791234567");
   expect(waLink(undefined)).toBe("https://wa.me/962");
+});
+
+test("money uses en-US thousands separators", () => {
+  expect(money(1234.5)).toBe("1,234.50 JOD");
+  expect(money(50)).toBe("50.00 JOD");
+  for (const v of [null, undefined, "", "abc"]) expect(money(v)).toBe("0.00 JOD");
+});
+
+test("num never yields NaN", () => {
+  expect(num("abc")).toBe("0");
+});
+
+test("waLink normalises international prefixes", () => {
+  for (const p of ["0791234567", "+962 79 123 4567", "00962791234567", "791234567", "962791234567"]) expect(waLink(p)).toBe("https://wa.me/962791234567");
+  for (const p of ["junk", "", "-", null]) expect(waLink(p)).toBe("https://wa.me/962");
+});
+
+test("waNational is the 9-digit number or empty", () => {
+  expect(waNational("+962 79 123 4567")).toBe("791234567");
+  expect(waNational("12345")).toBe("12345");
 });
