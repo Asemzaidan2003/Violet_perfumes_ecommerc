@@ -47,6 +47,7 @@ const NAV_LINKS = [
   { href: "categories.html", label: "الأقسام" },
   { href: "brands.html", label: "المصممون" },
   { href: "pages.html", label: "الصفحات" },
+  { href: "storefront.html", label: "واجهة المتجر" },
   { href: "settings.html", label: "إعدادات المتجر" },
 ];
 
