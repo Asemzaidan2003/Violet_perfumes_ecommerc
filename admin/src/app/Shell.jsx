@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { LogOut, Menu, Moon, Sun, Store } from "lucide-react";
@@ -10,6 +10,7 @@ import { useAuth } from "@/app/auth";
 import { useTheme } from "@/app/theme";
 import { MOBILE_TABS, NAV_GROUPS } from "@/app/nav";
 
+const ORDERS_URL = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === "orders").legacy;
 const TITLE = "نسمات — لوحة الإدارة";
 
 function usePendingCount() {
@@ -17,6 +18,7 @@ function usePendingCount() {
     queryKey: ["pending-count"],
     queryFn: async () => (await api("/orders/pending-count")).data?.count ?? 0,
     refetchInterval: 60_000,
+    refetchIntervalInBackground: true,
     retry: false,
   });
   return q.data ?? 0;
@@ -40,7 +42,7 @@ const sideClass = ({ isActive }) => cn(
 
 function NavList({ pending, onNavigate }) {
   return NAV_GROUPS.map((g) => (
-    <div key={g.title} className="space-y-1">
+    <div key={g.title} className="space-y-2">
       <p className="px-3 text-xs font-semibold text-muted-foreground">{g.title}</p>
       {g.items.map((item) => <NavItem key={item.key} item={item} pending={pending} className={sideClass} onNavigate={onNavigate} />)}
     </div>
@@ -51,7 +53,7 @@ function UserActions() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
       <Button variant="ghost" size="icon" className="size-11" onClick={toggle} aria-label={theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}>
         {theme === "dark" ? <Sun aria-hidden /> : <Moon aria-hidden />}
       </Button>
@@ -65,6 +67,8 @@ function UserActions() {
 export default function Shell() {
   const pending = usePendingCount();
   const location = useLocation();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const pageTitle = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.to === location.pathname)?.label ?? "نسمات";
 
   useEffect(() => { document.title = pending > 0 ? `(${pending}) ${TITLE}` : TITLE; }, [pending]);
 
@@ -78,7 +82,12 @@ export default function Shell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-card/95 px-3 backdrop-blur lg:hidden">
-          <span className="text-base font-bold text-primary">نسمات</span>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-base font-bold text-primary">{pageTitle}</span>
+            {pending > 0 && (
+              <a href={ORDERS_URL} className="inline-flex min-h-11 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground">الطلبات ({pending})</a>
+            )}
+          </div>
           <UserActions />
         </header>
         <main className="flex-1 pb-20 lg:pb-0"><Outlet key={location.pathname} /></main>
@@ -92,13 +101,13 @@ export default function Shell() {
             <span>{item.label}</span>
           </NavItem>
         ))}
-        <Sheet>
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
           <SheetTrigger asChild>
             <button type="button" className="flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground"><Menu className="size-6" aria-hidden /><span>المزيد</span></button>
           </SheetTrigger>
           <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-2xl">
             <SheetHeader><SheetTitle>كل الصفحات</SheetTitle></SheetHeader>
-            <div className="space-y-4 p-4 pb-8"><NavList pending={pending} /></div>
+            <div className="space-y-4 p-4 pb-8"><NavList pending={pending} onNavigate={() => setMoreOpen(false)} /></div>
           </SheetContent>
         </Sheet>
       </nav>
