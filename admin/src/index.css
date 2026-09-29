@@ -1,0 +1,94 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource/ibm-plex-sans-arabic/400.css";
+@import "@fontsource/ibm-plex-sans-arabic/500.css";
+@import "@fontsource/ibm-plex-sans-arabic/600.css";
+@import "@fontsource/ibm-plex-sans-arabic/700.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+  --background: #f6f7f8;
+  --foreground: #14201f;
+  --card: #ffffff;
+  --card-foreground: #14201f;
+  --popover: #ffffff;
+  --popover-foreground: #14201f;
+  --primary: #0c6e63;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f1;
+  --secondary-foreground: #14201f;
+  --muted: #eef2f1;
+  --muted-foreground: #4f605e;
+  --accent: #e3f0ee;
+  --accent-foreground: #0a4f47;
+  --destructive: #c62828;
+  --border: #d9e0df;
+  --input: #c3cccb;
+  --ring: #0c6e63;
+}
+
+.dark {
+  --background: #0f1716;
+  --foreground: #eaf2f1;
+  --card: #172120;
+  --card-foreground: #eaf2f1;
+  --popover: #172120;
+  --popover-foreground: #eaf2f1;
+  --primary: #2bb5a4;
+  --primary-foreground: #06201c;
+  --secondary: #1f2c2b;
+  --secondary-foreground: #eaf2f1;
+  --muted: #1f2c2b;
+  --muted-foreground: #9db0ae;
+  --accent: #1c3a36;
+  --accent-foreground: #bfeee7;
+  --destructive: #ef5350;
+  --border: #2b3a38;
+  --input: #3a4b49;
+  --ring: #2bb5a4;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
+  button, [role="button"], a { cursor: pointer; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #receipt, #receipt * { visibility: visible; }
+  #receipt { position: absolute; inset-inline: 0; top: 0; width: 80mm; margin-inline: auto; }
+}

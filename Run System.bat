@@ -1,5 +1,6 @@
 @echo off
 cd /d "%~dp0"
+if not exist "admin\dist\index.html" call npm run build:admin
 start "Nsamat server" cmd /k "npm run dev"
 timeout /t 3 >nul
-start http://localhost:5000/admin/html/index.html
+start http://localhost:5000/admin/

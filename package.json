@@ -7,6 +7,9 @@
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
     "test": "node --test \"tests/**/*.test.js\"",
+    "dev:admin": "npm --prefix admin run dev",
+    "build:admin": "npm --prefix admin ci && npm --prefix admin run build",
+    "test:admin": "npm --prefix admin test",
     "test:e2e": "node tests/e2e/run.mjs",
     "migrate:catalog": "node scripts/migrate-catalog.js"
   },
