@@ -80,8 +80,8 @@ const aislePage = (resolve) => async (req, res, next) => {
   const asked = req.query.sort; // own keys only: "__proto__" or "constructor" must not index SORTS
   const sort = typeof asked === "string" && Object.hasOwn(SORTS, asked) && (asked !== "relevance" || q) ? asked : a.defaultSort;
   send(req, res, 200, {
-    title: `${a.title} | نسمات`,
-    description: a.description ?? `تسوّق ${a.title} من نسمات: عطور مختارة، توصيل لكل الأردن والدفع عند الاستلام.`,
+    title: `${a.title} | ${settings.store_name || "نسمات"}`,
+    description: a.description ?? `تسوّق ${a.title} من ${settings.store_name || "نسمات"}: عطور مختارة، توصيل لكل الأردن والدفع عند الاستلام.`,
     canonicalPath: a.path, // /search results: canonical without q, and not indexed
     noindex: a.path === "/search",
     settings,
@@ -118,7 +118,7 @@ router.get("/offers", aislePage((req, products) => ({
 })));
 
 router.get("/new", aislePage((req, products) => ({
-  path: "/new", title: "وصل حديثًا", intro: "أحدث ما وصل إلى رفوف نسمات.", defaultSort: "new",
+  path: "/new", title: "وصل حديثًا", intro: `أحدث ما وصل إلى رفوف ${getCachedSettings().store_name || "نسمات"}.`, defaultSort: "new",
   base: [...products].sort((a, b) => new Date(b.created) - new Date(a.created)).slice(0, AISLE_LIMIT),
 })));
 
@@ -146,7 +146,7 @@ router.get("/brands", async (req, res) => {
   for (const p of products) if (p.brand) counts.set(p.brand.slug, (counts.get(p.brand.slug) || 0) + 1);
   const rows = brands.filter((b) => counts.has(b.slug)).map((brand) => ({ brand, count: counts.get(brand.slug) }));
   send(req, res, 200, {
-    title: "المصممون | نسمات",
+    title: `المصممون | ${settings.store_name || "نسمات"}`,
     description: "تصفّح كل دور العطور المتوفرة في نسمات.",
     canonicalPath: "/brands",
     settings,
@@ -171,8 +171,8 @@ router.get("/brand/:slug", async (req, res, next) => {
   const asked = req.query.sort;
   const sort = typeof asked === "string" && Object.hasOwn(SORTS, asked) ? asked : "best";
   send(req, res, 200, {
-    title: `${brand.name_ar} | نسمات`,
-    description: `تسوّق عطور ${brand.name_ar} من نسمات: توصيل لكل الأردن والدفع عند الاستلام.`,
+    title: `${brand.name_ar} | ${settings.store_name || "نسمات"}`,
+    description: `تسوّق عطور ${brand.name_ar} من ${settings.store_name || "نسمات"}: توصيل لكل الأردن والدفع عند الاستلام.`,
     canonicalPath: `/brand/${slug}`,
     settings,
     placements,
@@ -198,8 +198,8 @@ router.get("/p/:id", async (req, res, next) => {
   const cat = CATEGORIES.find((c) => c.key === p.category);
   const relatedHref = byFamily.length ? `/family/${p.families.find((k) => byFamily[0].families.includes(k))}` : `/c/${cat?.slug ?? "men"}`;
   send(req, res, 200, {
-    title: `${p.name} | نسمات`,
-    description: (p.description || `${p.name} من نسمات${cat ? ` — ${cat.ar}` : ""}. توصيل لكل الأردن والدفع عند الاستلام.`).slice(0, 160),
+    title: `${p.name} | ${settings.store_name || "نسمات"}`,
+    description: (p.description || `${p.name} من ${settings.store_name || "نسمات"}${cat ? ` — ${cat.ar}` : ""}. توصيل لكل الأردن والدفع عند الاستلام.`).slice(0, 160),
     canonicalPath: `/p/${p.id}`,
     ogImage: p.image,
     hideBottomBar: true,
@@ -214,13 +214,13 @@ router.get("/p/:id", async (req, res, next) => {
 
 router.get("/cart", async (req, res) => {
   const [settings, placements] = await Promise.all([getSettings(), getLivePlacements()]);
-  send(req, res, 200, { title: "سلة التسوق | نسمات", canonicalPath: "/cart", noindex: true, settings, placements, body: cartPage() });
+  send(req, res, 200, { title: `سلة التسوق | ${settings.store_name || "نسمات"}`, canonicalPath: "/cart", noindex: true, settings, placements, body: cartPage() });
 });
 
 router.get("/checkout", async (req, res) => {
   const [settings, placements] = await Promise.all([getSettings(), getLivePlacements()]);
   send(req, res, 200, {
-    title: "إتمام الطلب | نسمات", canonicalPath: "/checkout", noindex: true, hideBottomBar: true, settings, placements,
+    title: `إتمام الطلب | ${settings.store_name || "نسمات"}`, canonicalPath: "/checkout", noindex: true, hideBottomBar: true, settings, placements,
     styles: ["pages.css"], scripts: ["checkout.js"], body: checkout(),
   });
 });
@@ -232,7 +232,7 @@ router.get("/order/:ref", async (req, res, next) => {
   if (!order) return next();
   res.set("Cache-Control", "no-store");
   send(req, res, 200, {
-    title: "شكرًا لطلبك | نسمات", noindex: true, hideBottomBar: true, settings, placements,
+    title: `شكرًا لطلبك | ${settings.store_name || "نسمات"}`, noindex: true, hideBottomBar: true, settings, placements,
     styles: ["pages.css"], body: orderConfirmation({ order: publicOrder(order), settings }),
   });
 });
@@ -242,7 +242,7 @@ router.get("/", async (req, res) => {
     getCatalog(), getSettings(), getLivePlacements(), Brand.find({ active: true }).lean(),
   ]);
   send(req, res, 200, {
-    title: "نسمات | عطور فاخرة في الأردن",
+    title: `${settings.store_name || "نسمات"} | عطور فاخرة في الأردن`,
     description: "بوتيك نسمات للعطور: عطور رجالية ونسائية وللجنسين ومعطرات، توصيل لكل الأردن والدفع عند الاستلام.",
     canonicalPath: "/",
     settings,
@@ -275,7 +275,7 @@ ${paths.map((p) => `<url><loc>${base}${p}</loc></url>`).join("\n")}
 
 // Catch-all (Express 5 rejects "*" paths). No DB work: bots probing random URLs stay cheap.
 router.use((req, res) => {
-  send(req, res, 404, { title: "الصفحة غير موجودة | نسمات", settings: getCachedSettings(), body: notFound() });
+  send(req, res, 404, { title: `الصفحة غير موجودة | ${getCachedSettings().store_name || "نسمات"}`, settings: getCachedSettings(), body: notFound() });
 });
 
 // Page errors render the styled 500 page (never JSON). Uses no DB, which may be what failed.
@@ -283,7 +283,7 @@ router.use((err, req, res, next) => {
   console.error(err);
   if (res.headersSent) return next(err);
   const settings = getCachedSettings();
-  send(req, res, 500, { title: "خلل مؤقت | نسمات", settings, body: serverError(settings) });
+  send(req, res, 500, { title: `خلل مؤقت | ${settings.store_name || "نسمات"}`, settings, body: serverError(settings) });
 });
 
 export default router;

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { contrast, deriveTheme, validateContrast, DEFAULT_THEME, HEX_RE, TOKEN_RE } from "../backend/store/theme.js";
+import { contrast, deriveTheme, validateContrast, applyOverrides, OVERRIDE_TOKENS, DEFAULT_THEME, HEX_RE, TOKEN_RE } from "../backend/store/theme.js";
 
 // The owner's saved light theme (bg #fff, surface #ebebeb, text #000, accent #a27b44).
 const LIGHT_THEME = { bg: "#ffffff", surface: "#ebebeb", text: "#000000", accent: "#a27b44" };
@@ -52,4 +52,18 @@ test("deriveTheme(light theme): every token present and passes TOKEN_RE, header 
   }
   // The header uses --bg-glass; with the light theme its background must be light, not the old hard-coded dark glass.
   assert.ok(rgbLuminance(tokens["bg-glass"]) > 0.8, "bg-glass should be light for a light theme");
+});
+
+test("applyOverrides: an override wins over the derived value", () => {
+  const tokens = deriveTheme(DEFAULT_THEME);
+  const out = applyOverrides(tokens, { "surface-2": "#123456" });
+  assert.equal(out["surface-2"], "#123456");
+  assert.equal(out.bg, tokens.bg);
+});
+
+test("applyOverrides: only whitelisted tokens are ever considered", () => {
+  const tokens = deriveTheme(DEFAULT_THEME);
+  const out = applyOverrides(tokens, { evil: "#123456" });
+  assert.equal(out.evil, undefined);
+  assert.deepEqual(new Set(OVERRIDE_TOKENS).has("evil"), false);
 });

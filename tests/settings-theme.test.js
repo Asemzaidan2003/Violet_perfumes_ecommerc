@@ -55,3 +55,39 @@ test("a valid theme returns 200, and GET / then contains the theme style with th
   // Restore defaults so later suites/tests see the plain theme again.
   await putTheme(DEFAULT_THEME);
 });
+
+test("an unknown override token is rejected with 400", async () => {
+  const res = await fetch(`${t.url}/api/settings`, {
+    method: "PUT", headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ theme: { ...DEFAULT_THEME, overrides: { evil: "#123456" } } }),
+  });
+  assert.equal(res.status, 400);
+});
+
+test("a CSS-injection attempt in an override value is rejected with 400", async () => {
+  const res = await fetch(`${t.url}/api/settings`, {
+    method: "PUT", headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ theme: { ...DEFAULT_THEME, overrides: { "surface-2": "#000;}body{display:none" } } }),
+  });
+  assert.equal(res.status, 400);
+});
+
+test("a whitelisted override saves and appears in the theme style tag", async () => {
+  const res = await fetch(`${t.url}/api/settings`, {
+    method: "PUT", headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ theme: { ...DEFAULT_THEME, overrides: { "surface-2": "#123456" } } }),
+  });
+  assert.equal(res.status, 200);
+  const { data } = await res.json();
+  assert.equal(data.theme.overrides["surface-2"], "#123456");
+
+  const page = await fetch(`${t.url}/`);
+  const body = await page.text();
+  assert.match(body, /--surface-2:#123456/i);
+
+  // Clear the override explicitly (an empty overrides object is a no-op merge, not a reset).
+  await fetch(`${t.url}/api/settings`, {
+    method: "PUT", headers: { cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ theme: { ...DEFAULT_THEME, overrides: { "surface-2": "" } } }),
+  });
+});

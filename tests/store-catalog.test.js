@@ -176,8 +176,10 @@ test("PUT /api/settings then GET round-trips valid values", async () => {
   assert.equal(get.status, 200);
   const getBody = await get.json();
   assert.deepEqual(getBody.data, {
+    store_name: "نسمات", tagline: "بوتيك العطور في الأردن",
+    logo_light: "", logo_dark: "", favicon: "", share_image: "",
     whatsapp: "962791234567", instagram: "https://instagram.com/nsamat",
     delivery_fee: 2, free_delivery_over: 50,
-    theme: { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37" },
+    theme: { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37", overrides: {} },
   });
 });

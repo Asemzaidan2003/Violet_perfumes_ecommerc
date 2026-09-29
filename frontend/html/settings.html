@@ -19,6 +19,48 @@
     </div>
 
     <form id="settingsForm" class="form-card">
+      <h3>الهوية</h3>
+      <div class="field">
+        <label for="store_name">اسم المتجر</label>
+        <input type="text" id="store_name" name="store_name" maxlength="40" required />
+      </div>
+      <div class="field">
+        <label for="tagline">الشعار الفرعي</label>
+        <input type="text" id="tagline" name="tagline" maxlength="80" />
+      </div>
+
+      <div class="field-row" id="logoFields">
+        <div class="field">
+          <label for="logo_light">الشعار (خلفية داكنة)</label>
+          <input type="hidden" id="logo_light" name="logo_light" />
+          <img id="logo_light_preview" alt="" style="max-height:48px;display:none" />
+          <input type="file" id="logo_light_file" accept="image/jpeg,image/png,image/webp" />
+          <button type="button" class="btn" id="logo_light_remove" hidden>إزالة</button>
+        </div>
+        <div class="field">
+          <label for="logo_dark">الشعار (خلفية فاتحة)</label>
+          <input type="hidden" id="logo_dark" name="logo_dark" />
+          <img id="logo_dark_preview" alt="" style="max-height:48px;display:none" />
+          <input type="file" id="logo_dark_file" accept="image/jpeg,image/png,image/webp" />
+          <button type="button" class="btn" id="logo_dark_remove" hidden>إزالة</button>
+        </div>
+        <div class="field">
+          <label for="favicon">أيقونة المتصفح (favicon)</label>
+          <input type="hidden" id="favicon" name="favicon" />
+          <img id="favicon_preview" alt="" style="max-height:32px;display:none" />
+          <input type="file" id="favicon_file" accept="image/jpeg,image/png,image/webp" />
+          <button type="button" class="btn" id="favicon_remove" hidden>إزالة</button>
+        </div>
+        <div class="field">
+          <label for="share_image">صورة المشاركة (og:image)</label>
+          <input type="hidden" id="share_image" name="share_image" />
+          <img id="share_image_preview" alt="" style="max-height:48px;display:none" />
+          <input type="file" id="share_image_file" accept="image/jpeg,image/png,image/webp" />
+          <button type="button" class="btn" id="share_image_remove" hidden>إزالة</button>
+        </div>
+      </div>
+      <p class="upload-status" role="status" id="identity-upload-status"></p>
+
       <div class="field">
         <label for="whatsapp">رقم واتساب (أرقام فقط، مثال: 962791234567)</label>
         <input type="text" id="whatsapp" name="whatsapp" placeholder="962791234567" />
@@ -66,11 +108,17 @@
           <span id="previewSurfaceText">نص على السطح <span id="ratioSurface"></span></span>
         </div>
         <button type="button" id="previewAccentBtn" style="border:0;padding:8px 16px;border-radius:6px">زر بلون التمييز <span id="ratioAccent"></span></button>
+        <p class="muted" style="margin:8px 0 0">نسب التباين إعلامية فقط، ولا تمنع الحفظ.</p>
       </div>
 
       <div class="form-actions">
         <button type="button" class="btn" id="resetThemeBtn">استعادة الألوان الافتراضية</button>
       </div>
+
+      <details id="advancedColors">
+        <summary>خيارات متقدمة</summary>
+        <div class="field-row" id="advancedColorFields"></div>
+      </details>
 
       <p id="error" role="alert" hidden></p>
       <p id="success" role="status" hidden></p>
@@ -81,126 +129,6 @@
     </form>
   </div>
 
-  <script>
-    const form = document.getElementById("settingsForm");
-    const errorEl = document.getElementById("error");
-    const successEl = document.getElementById("success");
-    const saveBtn = document.getElementById("saveBtn");
-
-    const DEFAULT_THEME = { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37" };
-    const themeInputs = { bg: form.theme_bg, surface: form.theme_surface, text: form.theme_text, accent: form.theme_accent };
-
-    // Same WCAG relative-luminance/contrast math as backend/store/theme.js, duplicated here so the
-    // preview and the save-blocking check work without shipping a bundler for one small function.
-    function contrast(hexA, hexB) {
-      const lum = (hex) => {
-        const n = parseInt(hex.slice(1), 16);
-        const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
-          const v = c / 255;
-          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-        });
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      };
-      const [L1, L2] = [lum(hexA), lum(hexB)].sort((a, b) => b - a);
-      return (L1 + 0.05) / (L2 + 0.05);
-    }
-
-    function currentTheme() {
-      return { bg: themeInputs.bg.value, surface: themeInputs.surface.value, text: themeInputs.text.value, accent: themeInputs.accent.value };
-    }
-
-    function updatePreview() {
-      const t = currentTheme();
-      const r = { text_bg: contrast(t.text, t.bg), text_surface: contrast(t.text, t.surface), accent_bg: contrast(t.accent, t.bg) };
-      document.getElementById("themePreview").style.background = t.bg;
-      document.getElementById("themePreview").style.color = t.text;
-      document.getElementById("previewSurface").style.background = t.surface;
-      document.getElementById("previewAccentBtn").style.background = t.accent;
-      document.getElementById("previewAccentBtn").style.color = t.text;
-      document.getElementById("ratioBg").textContent = `(${r.text_bg.toFixed(1)}:1)`;
-      document.getElementById("ratioSurface").textContent = `(${r.text_surface.toFixed(1)}:1)`;
-      document.getElementById("ratioAccent").textContent = `(${r.accent_bg.toFixed(1)}:1)`;
-
-    }
-
-    Object.values(themeInputs).forEach((input) => input.addEventListener("input", updatePreview));
-
-    document.getElementById("resetThemeBtn").addEventListener("click", async () => {
-      for (const k of Object.keys(DEFAULT_THEME)) themeInputs[k].value = DEFAULT_THEME[k];
-      updatePreview();
-      await saveTheme();
-    });
-
-    // The form stays disabled until the current settings actually load — saving before that
-    // would silently overwrite fields the admin never saw with client-side defaults (0/"").
-    async function loadSettings() {
-      try {
-        const res = await fetch("/api/settings");
-        if (!res.ok) throw new Error("تعذر تحميل الإعدادات");
-        const { data } = await res.json();
-        form.whatsapp.value = data.whatsapp || "";
-        form.instagram.value = data.instagram || "";
-        form.delivery_fee.value = data.delivery_fee ?? 0;
-        form.free_delivery_over.value = data.free_delivery_over ?? 0;
-        const theme = { ...DEFAULT_THEME, ...(data.theme || {}) };
-        for (const k of Object.keys(DEFAULT_THEME)) themeInputs[k].value = theme[k];
-        updatePreview();
-        saveBtn.disabled = false;
-      } catch (err) {
-        console.error("Error loading settings:", err);
-        errorEl.textContent = "تعذر تحميل الإعدادات — أعد تحميل الصفحة";
-        errorEl.hidden = false;
-      }
-    }
-
-    async function saveTheme() {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: currentTheme() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      errorEl.hidden = true;
-      successEl.hidden = true;
-      if (!res.ok) {
-        errorEl.textContent = data.message || "تعذر حفظ الإعدادات";
-        errorEl.hidden = false;
-        return false;
-      }
-      successEl.textContent = "تم حفظ الإعدادات ✓";
-      successEl.hidden = false;
-      return true;
-    }
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      errorEl.hidden = true;
-      successEl.hidden = true;
-
-      const body = {
-        whatsapp: form.whatsapp.value.trim(),
-        instagram: form.instagram.value.trim(),
-        delivery_fee: Number(form.delivery_fee.value),
-        free_delivery_over: Number(form.free_delivery_over.value),
-        theme: currentTheme(),
-      };
-
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        errorEl.textContent = data.message || "تعذر حفظ الإعدادات";
-        errorEl.hidden = false;
-        return;
-      }
-      successEl.textContent = "تم حفظ الإعدادات ✓";
-      successEl.hidden = false;
-    });
-
-    loadSettings();
-  </script>
+  <script type="module" src="../js/settings.js"></script>
 </body>
 </html>

@@ -5,13 +5,14 @@ import { CATEGORIES } from "../../../storefront/js/shared/vocab.js";
 import { num } from "../../../storefront/js/shared/format.js";
 import { asset } from "../assets.js";
 import { IMPORT_MAP_JSON } from "../importmap.js";
-import { deriveTheme, DEFAULT_THEME, TOKEN_RE } from "../theme.js";
+import { deriveTheme, applyOverrides, DEFAULT_THEME, TOKEN_RE, HEX_RE } from "../theme.js";
 
 // Only fixed token names and pre-validated hex values ever reach this string — never user text.
 function themeStyle(theme = {}) {
   const picked = { ...DEFAULT_THEME, ...theme };
-  if (Object.entries(DEFAULT_THEME).every(([k, v]) => picked[k] === v)) return "";
-  const tokens = deriveTheme(picked);
+  const hasOverrides = theme.overrides && Object.keys(theme.overrides).length > 0;
+  if (!hasOverrides && Object.entries(DEFAULT_THEME).every(([k, v]) => picked[k] === v)) return "";
+  const tokens = applyOverrides(deriveTheme(picked), theme.overrides);
   const css = Object.entries(tokens)
     .filter(([, v]) => TOKEN_RE.test(v))
     .map(([name, v]) => `--${name}:${v}`)
@@ -20,6 +21,27 @@ function themeStyle(theme = {}) {
 }
 
 const LOGO = asset("img/logo.svg");
+
+// Luminance-based light/dark pick, falling back to the other logo (or none) when only one is set.
+function pickLogo(settings) {
+  const { logo_light = "", logo_dark = "" } = settings;
+  if (!logo_light && !logo_dark) return "";
+  const bg = settings.theme?.bg || DEFAULT_THEME.bg;
+  const dark = !HEX_RE.test(bg) || (() => {
+    const n = parseInt(bg.slice(1), 16);
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.5;
+  })();
+  // Dark background -> light logo reads best, and vice versa.
+  return (dark ? logo_light : logo_dark) || logo_light || logo_dark;
+}
+
+function brandMark(settings) {
+  const logo = pickLogo(settings);
+  const name = settings.store_name || "نسمات";
+  if (logo) return html`<img class="brand-mark" src="${logo}" alt="">`;
+  return html`<img class="brand-mark" src="${LOGO}" width="24" height="36" alt="">`;
+}
 
 const NAV = [
   { href: "/c/men", label: "رجالي" },
@@ -49,13 +71,14 @@ function familiesMenu(families) {
 </details></li>`;
 }
 
-function header(path, families) {
+function header(path, families, settings = {}) {
+  const name = settings.store_name || "نسمات";
   return html`<header class="site-header" data-header>
   <div class="container header-row">
     <button class="btn-icon nav-menu-btn" type="button" data-open-nav aria-label="القائمة" aria-controls="nav-drawer">${icon("menu")}</button>
-    <a class="brand" href="/" aria-label="نسمات، الصفحة الرئيسية">
-      <img class="brand-mark" src="${LOGO}" width="24" height="36" alt="">
-      <span class="wordmark">نسمات</span>
+    <a class="brand" href="/" aria-label="${name}، الصفحة الرئيسية">
+      ${brandMark(settings)}
+      <span class="wordmark">${name}</span>
     </a>
     ${searchForm("q")}
     <div class="header-actions">
@@ -147,10 +170,11 @@ function bottomBar(path, wa) {
 }
 
 function footer(settings, wa) {
+  const name = settings.store_name || "نسمات";
   return html`<footer class="site-footer">
   <div class="container footer-grid">
     <div class="footer-brand">
-      <a class="brand" href="/"><img class="brand-mark" src="${LOGO}" width="24" height="36" alt=""><span class="wordmark">نسمات</span></a>
+      <a class="brand" href="/">${brandMark(settings)}<span class="wordmark">${name}</span></a>
       <p>عطور مختارة بعناية، تُحضَّر لك في عمّان وتصلك إلى أي مكان في الأردن.</p>
     </div>
     <nav aria-labelledby="footer-aisles">
@@ -170,7 +194,7 @@ function footer(settings, wa) {
       </ul>
     </div>
   </div>
-  <p class="container copyright">© <bdi>${new Date().getFullYear()}</bdi> نسمات. جميع الحقوق محفوظة.</p>
+  <p class="container copyright">© <bdi>${new Date().getFullYear()}</bdi> ${name}. جميع الحقوق محفوظة.</p>
 </footer>`;
 }
 
@@ -238,6 +262,9 @@ export function layout({
   const abs = (p) => (/^https?:/.test(p) ? p : base + p);
   const wa = settings.whatsapp ? `https://wa.me/${settings.whatsapp}` : "";
   const path = canonicalPath ?? "";
+  const name = settings.store_name || "نسمات";
+  const shareImage = ogImage || settings.share_image;
+  const favicon = settings.favicon || LOGO;
   return html`<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -251,12 +278,12 @@ ${description ? html`<meta name="description" content="${description}">
 ${canonicalPath != null ? html`<link rel="canonical" href="${abs(canonicalPath)}">
 <meta property="og:url" content="${abs(canonicalPath)}">` : ""}
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="نسمات">
+<meta property="og:site_name" content="${name}">
 <meta property="og:locale" content="ar_JO">
 <meta property="og:title" content="${title}">
-${ogImage ? html`<meta property="og:image" content="${abs(ogImage)}">` : ""}
+${shareImage ? html`<meta property="og:image" content="${abs(shareImage)}">` : ""}
 <meta name="theme-color" content="${settings.theme?.bg || DEFAULT_THEME.bg}">
-<link rel="icon" href="${LOGO}" type="image/svg+xml">
+<link rel="icon" href="${favicon}"${/\.svg$/.test(favicon) ? html` type="image/svg+xml"` : ""}>
 <link rel="preload" href="/vendor/fonts/plex-arabic/ibm-plex-sans-arabic-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/store.css?v=${assetV}">
 <link rel="stylesheet" href="/assets/css/fx.css?v=${assetV}">
@@ -271,7 +298,7 @@ ${scripts.map((f) => html`<script type="module" src="/assets/js/${f}?v=${assetV}
 <body class="${[bodyClass, hideBottomBar ? "no-bottom-bar" : ""].filter(Boolean).join(" ")}">
 <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
 ${slot("announcement", placements)}
-${header(path, families)}
+${header(path, families, settings)}
 <main id="main" tabindex="-1">
 ${body}
 </main>
@@ -280,7 +307,7 @@ ${hideBottomBar ? "" : bottomBar(path, wa)}
 ${searchOverlay(families)}
 ${cartDrawer(placements)}
 ${navDrawer(path, families)}
-<script type="application/json" id="shop-settings">${json({ delivery_fee: settings.delivery_fee ?? 0, free_delivery_over: settings.free_delivery_over ?? 0, whatsapp: settings.whatsapp ?? "" })}</script>
+<script type="application/json" id="shop-settings">${json({ delivery_fee: settings.delivery_fee ?? 0, free_delivery_over: settings.free_delivery_over ?? 0, whatsapp: settings.whatsapp ?? "", store_name: name })}</script>
 <div id="live-region" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>`;

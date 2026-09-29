@@ -6,8 +6,9 @@ import { money, num, sizeLabel } from "../../../storefront/js/shared/format.js";
 
 export function orderConfirmation({ order, settings }) {
   const ref = `NS-${order.ref}`;
+  const name = settings.store_name || "نسمات";
   const wa = settings.whatsapp
-    ? `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(`مرحبًا نسمات، أرسلت طلبًا من الموقع رقمه ${ref}`)}`
+    ? `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(`مرحبًا ${name}، أرسلت طلبًا من الموقع رقمه ${ref}`)}`
     : "";
   return html`<div class="container order-page">
   <section class="order-hero">

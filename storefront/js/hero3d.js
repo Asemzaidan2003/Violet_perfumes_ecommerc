@@ -11,8 +11,11 @@ export async function startHero3d(slotEl) {
   const canvas = slotEl.querySelector(".hero3d-canvas");
   if (!canvas) return;
 
+  const label = (() => {
+    try { return JSON.parse(document.getElementById("shop-settings").textContent).store_name; } catch { return undefined; }
+  })();
   const stage = createStage(THREE, canvas);
-  const bottle = await createBottle(THREE);
+  const bottle = await createBottle(THREE, label ? { label } : {});
   stage.scene.add(bottle);
   const key = new THREE.DirectionalLight(0xfff4e0, 1.2);
   key.position.set(2, 4, 3);

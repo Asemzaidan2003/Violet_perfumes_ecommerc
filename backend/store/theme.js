@@ -9,6 +9,14 @@ export const TOKEN_RE = new RegExp(`(?:${HEX_RE.source})|(?:${RGBA_RE.source})`)
 
 export const DEFAULT_THEME = { bg: "#0E0C0A", surface: "#17130F", text: "#F4EDE3", accent: "#D4AF37" };
 
+// Advanced-mode token whitelist: any other key in theme.overrides is rejected with 400.
+// header/footer/bottom-bar use --surface and --bg directly (store.css) — no separate tokens exist,
+// so there's nothing extra to whitelist for them.
+export const OVERRIDE_TOKENS = [
+  "surface-2", "line", "text-muted", "gold-strong", "gold-ink", "cream", "ink", "ink-muted",
+  "danger", "success", "focus",
+];
+
 const hexToRgb = (hex) => {
   const n = parseInt(hex.slice(1), 16);
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
@@ -52,6 +60,14 @@ export function deriveTheme({ bg, surface, text, accent }) {
     gold: accent, "gold-strong": goldStrong, "gold-ink": goldInk, focus,
     "bg-glass": bgGlass, "glow-gold": glowGold,
   };
+}
+
+// Advanced-mode overrides win over the derived tokens. Unknown keys must never reach here —
+// callers (settings.service.js) whitelist against OVERRIDE_TOKENS before saving.
+export function applyOverrides(tokens, overrides = {}) {
+  const out = { ...tokens };
+  for (const k of OVERRIDE_TOKENS) if (overrides[k]) out[k] = overrides[k];
+  return out;
 }
 
 // Server-side save gate: pairs that must stay legible.

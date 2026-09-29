@@ -257,7 +257,7 @@ function showServerError(message, whatsapp = false) {
   if (waLink.hidden) return;
   const el = form.elements;
   const lines = priced.rows.filter((r) => r.product).map((r) => `- ${r.product.name} ${sizeLabel(r.line.size)} × ${r.qty}`);
-  const text = ["مرحبًا نسمات، أودّ طلب:", ...lines, `الاسم: ${clean(el.name.value)}`, `المحافظة: ${el.city.value}`, `العنوان: ${clean(el.address.value)}`].join("\n");
+  const text = [`مرحبًا ${settings.store_name || "نسمات"}، أودّ طلب:`, ...lines, `الاسم: ${clean(el.name.value)}`, `المحافظة: ${el.city.value}`, `العنوان: ${clean(el.address.value)}`].join("\n");
   waLink.href = `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(text)}`;
 }
 
