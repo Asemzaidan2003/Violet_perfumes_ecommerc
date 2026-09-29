@@ -1,6 +1,7 @@
-import { normalizeNumberInput } from "@/lib/cart";
 
 const DASH = "-";
+// Arabic-Indic / Persian digits -> ASCII; punctuation is left alone (names may contain commas).
+const asciiDigits = (s) => s.replace(/[٠-٩]/g, (d) => d.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, (d) => d.charCodeAt(0) - 0x6f0);
 const day = (d) => { const t = d ? new Date(d) : null; return t && !Number.isNaN(t.getTime()) ? t : null; };
 const startOfDay = (t) => new Date(t.getFullYear(), t.getMonth(), t.getDate());
 // "YYYY-MM-DD" (date input) -> local midnight; null when blank or malformed.
@@ -26,7 +27,7 @@ export function filterOrders(orders, { status, payment, from, to, query, today }
   const lo = dateInput(from);
   const hi = dateInput(to);
   const hiEnd = hi && new Date(hi.getFullYear(), hi.getMonth(), hi.getDate() + 1); // exclusive: whole `to` day
-  const q = normalizeNumberInput(String(query ?? "")).trim().toLowerCase();
+  const q = asciiDigits(String(query ?? "")).trim().toLowerCase();
   return (orders ?? []).filter((o) => {
     if (today && !isToday(o, now)) return false;
     if (status === "unconfirmed" ? !isUnconfirmed(o) : status && o.status !== status) return false;

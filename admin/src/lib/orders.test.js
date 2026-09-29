@@ -82,3 +82,12 @@ test("orderTotals: sales include canceled, profit only completed, missing fields
   expect(orderTotals([{ status: "completed" }, {}])).toEqual({ sales: 0, profit: 0 });
   expect(orderTotals([])).toEqual({ sales: 0, profit: 0 });
 });
+
+test("filterOrders: search only rewrites digits, so punctuation in names still matches", () => {
+  const list = [{ _id: "9", source: "online", delivery: { name: "Ali, Zed", phone: "0781234567" } }, { _id: "8", source: "online", delivery: { name: "Ali. Zed", phone: "0780000000" } }];
+  const f = (query) => filterOrders(list, { query }, {}, NOW).map((o) => o._id);
+  expect(f("Ali, Zed")).toEqual(["9"]);
+  expect(f("Ali. Zed")).toEqual(["8"]);
+  expect(f("۰۷۸۱۲")).toEqual(["9"]);
+  expect(f("٠٧٨٠٠٠٠")).toEqual(["8"]);
+});

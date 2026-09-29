@@ -64,7 +64,7 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       await page.selectOption("#f-status", "unconfirmed");
       await page.getByRole("button", { name: "فلترة" }).click();
       await onlineRow.waitFor();
-      assert.equal(await posRow.count(), 0, "unconfirmed filter hides the completed POS order");
+      await posRow.waitFor({ state: "detached" }); // unconfirmed filter hides the completed POS order
       await page.getByRole("button", { name: "إعادة تعيين" }).click();
       await posRow.waitFor();
       await onlineRow.waitFor();
@@ -97,7 +97,7 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       await onlineSelect.selectOption("canceled");
       await dialog.getByRole("button", { name: "إلغاء الطلب" }).click();
       await page.waitForFunction(async (ref) => (await (await fetch("/api/orders")).json()).data.find((o) => o.public_ref === ref)?.status === "canceled", online.ref);
-      assert.equal(await onlineRow.getByText("بانتظار التأكيد", { exact: true }).count(), 0, "a canceled order is no longer unconfirmed");
+      await onlineRow.getByText("بانتظار التأكيد", { exact: true }).waitFor({ state: "detached" }); // a canceled order is no longer unconfirmed
       assert.equal(await noSideScroll(page), true);
       // The browser logs the deliberate 409 above; anything else is noise.
       assert.deepEqual(page.errors.filter((e) => !/status of 409/.test(e)), []);
