@@ -47,46 +47,49 @@ export async function registerAdminPosScenarios({ scenario, openPage, check, bas
       size_list: [{ size: "30", price: 25 }],
     });
     invalidateCatalog();
-    const before = await Order.countDocuments({ source: "pos" });
+    try {
+      const before = await Order.countDocuments({ source: "pos" });
 
-    const page = await openPage();
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await openPos(page, baseUrl, admin);
-    await page.getByRole("button", { name: `أضف ${NAME}` }).click();
+      const page = await openPage();
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await openPos(page, baseUrl, admin);
+      await page.getByRole("button", { name: `أضف ${NAME}` }).click();
 
-    const cart = page.getByRole("list", { name: "عناصر السلة" });
-    await cart.waitFor();
-    assert.equal(await page.getByLabel(`زجاجة ${NAME} 30 مل`).inputValue() !== "", true, "the only fitting bottle is preselected");
-    await page.getByRole("button", { name: "زيادة الكمية" }).click();
-    assert.equal(await page.getByLabel("الإجمالي").textContent(), "50.00 JOD");
+      const cart = page.getByRole("list", { name: "عناصر السلة" });
+      await cart.waitFor();
+      assert.equal(await page.getByLabel(`زجاجة ${NAME} 30 مل`).inputValue() !== "", true, "the only fitting bottle is preselected");
+      await page.getByRole("button", { name: "زيادة الكمية" }).click();
+      assert.equal(await page.getByLabel("الإجمالي").textContent(), "50.00 JOD");
 
-    await page.getByRole("button", { name: "زبون جديد" }).click();
-    await page.fill("#new-customer-name", "زبون كاشير");
-    await page.fill("#new-customer-phone", "٠٧٩٩٠٠١١٢٢");
+      await page.getByRole("button", { name: "زبون جديد" }).click();
+      await page.fill("#new-customer-name", "زبون كاشير");
+      await page.fill("#new-customer-phone", "٠٧٩٩٠٠١١٢٢");
 
-    const done = page.getByRole("button", { name: "إتمام البيع" });
-    let posts = 0;
-    page.on("request", (r) => { if (r.url().endsWith("/api/orders") && r.method() === "POST") posts += 1; });
-    await Promise.all([
-      page.waitForResponse((r) => r.url().endsWith("/api/orders") && r.request().method() === "POST" && r.status() === 201),
-      done.dblclick(),
-    ]);
-    await page.getByText("تم إنشاء الطلب").waitFor();
-    await page.waitForTimeout(500); // let a second, racing POST (a double-submit regression) land before counting
-    assert.equal(posts, 1, "double-submit: a double tap must send exactly one POST /api/orders");
-    assert.equal(await Order.countDocuments({ source: "pos" }), before + 1, "double-submit: a double tap must create exactly one order");
-    const customer = await Customer.findOne({ phone: "0799001122" });
-    assert.ok(customer, "phone typed in Arabic digits is stored normalised");
-    const order = await Order.findOne({ source: "pos" }).sort({ createdAt: -1 });
-    assert.equal(order.final_total, 50);
-    assert.equal(String(order.customer_id), String(customer._id));
+      const done = page.getByRole("button", { name: "إتمام البيع" });
+      let posts = 0;
+      page.on("request", (r) => { if (r.url().endsWith("/api/orders") && r.method() === "POST") posts += 1; });
+      await Promise.all([
+        page.waitForResponse((r) => r.url().endsWith("/api/orders") && r.request().method() === "POST" && r.status() === 201),
+        done.dblclick(),
+      ]);
+      await page.getByText("تم إنشاء الطلب").waitFor();
+      await page.waitForTimeout(500); // let a second, racing POST (a double-submit regression) land before counting
+      assert.equal(posts, 1, "double-submit: a double tap must send exactly one POST /api/orders");
+      assert.equal(await Order.countDocuments({ source: "pos" }), before + 1, "double-submit: a double tap must create exactly one order");
+      const customer = await Customer.findOne({ phone: "0799001122" });
+      assert.ok(customer, "phone typed in Arabic digits is stored normalised");
+      const order = await Order.findOne({ source: "pos" }).sort({ createdAt: -1 });
+      assert.equal(order.final_total, 50);
+      assert.equal(String(order.customer_id), String(customer._id));
 
-    await page.getByRole("button", { name: "بيع جديد" }).click();
-    await page.getByText("السلة فارغة — اضغط على منتج لإضافته").waitFor();
-    assert.equal(await noSideScroll(page), true);
-    check(page);
-    await Product.deleteOne({ _id: product._id });
-    invalidateCatalog();
+      await page.getByRole("button", { name: "بيع جديد" }).click();
+      await page.getByText("السلة فارغة — اضغط على منتج لإضافته").waitFor();
+      assert.equal(await noSideScroll(page), true);
+      check(page);
+    } finally {
+      await Product.deleteOne({ _id: product._id });
+      invalidateCatalog();
+    }
   });
 
   await scenario("New admin POS at 375px: cart bar and sheet, no sideways scroll, names render as text", async () => {
@@ -96,26 +99,66 @@ export async function registerAdminPosScenarios({ scenario, openPage, check, bas
       size_list: [{ size: "30", price: 25 }],
     });
     invalidateCatalog();
+    try {
+      const page = await openPage({ mobile: true });
+      await openPos(page, baseUrl, admin);
+      assert.equal(await noSideScroll(page), true, "no sideways scroll on the catalogue");
+      await page.getByRole("button", { name: `أضف ${XSS_NAME}` }).click();
+      assert.equal(await page.evaluate(() => window.__xss), undefined, "product names are text, never HTML");
 
-    const page = await openPage({ mobile: true });
-    await openPos(page, baseUrl, admin);
-    assert.equal(await noSideScroll(page), true, "no sideways scroll on the catalogue");
-    await page.getByRole("button", { name: `أضف ${XSS_NAME}` }).click();
-    assert.equal(await page.evaluate(() => window.__xss), undefined, "product names are text, never HTML");
-
-    const bar = page.getByRole("button", { name: /فتح السلة/ });
-    await bar.waitFor();
-    const box = await bar.boundingBox();
-    assert.ok(box.height >= 44, "cart bar is a comfortable touch target");
-    await bar.click();
-    await page.getByRole("list", { name: "عناصر السلة" }).waitFor();
-    assert.equal(await noSideScroll(page), true, "no sideways scroll with the cart open");
-    for (const name of [/زيادة الكمية/, /حذف/]) {
-      const b = await page.getByRole("button", { name }).first().boundingBox();
-      assert.ok(b.width >= 44 && b.height >= 44, `${name} is at least 44px`);
+      const bar = page.getByRole("button", { name: /فتح السلة/ });
+      await bar.waitFor();
+      const box = await bar.boundingBox();
+      assert.ok(box.height >= 44, "cart bar is a comfortable touch target");
+      await bar.click();
+      await page.getByRole("list", { name: "عناصر السلة" }).waitFor();
+      assert.equal(await noSideScroll(page), true, "no sideways scroll with the cart open");
+      for (const name of [/زيادة الكمية/, /حذف/]) {
+        const b = await page.getByRole("button", { name }).first().boundingBox();
+        assert.ok(b.width >= 44 && b.height >= 44, `${name} is at least 44px`);
+      }
+      check(page);
+    } finally {
+      await Product.deleteOne({ _id: product._id });
+      invalidateCatalog();
     }
-    check(page);
-    await Product.deleteOne({ _id: product._id });
+  });
+
+  await scenario("POS: Ctrl+Enter while an Arabic-digit price is still focused sells at the typed price, once", async () => {
+    await Bottle.updateOne({ capacity: 30 }, { $setOnInsert: { name: "زجاجة كاشير 30", cost: 0.2, quantity: 50 } }, { upsert: true });
+    const name = "عطر اختبار السعر العربي";
+    const product = await Product.create({
+      p_name: name, p_image: ".", p_category: "Men", oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80,
+      size_list: [{ size: "30", price: 25 }],
+    });
     invalidateCatalog();
+    try {
+      const page = await openPage();
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await openPos(page, baseUrl, admin);
+      await page.getByRole("button", { name: `أضف ${name}` }).click();
+      await page.getByRole("list", { name: "عناصر السلة" }).waitFor();
+      await page.getByRole("button", { name: "زبون جديد" }).click();
+      await page.fill("#new-customer-name", "زبون السعر العربي");
+
+      let posts = 0;
+      page.on("request", (r) => { if (r.url().endsWith("/api/orders") && r.method() === "POST") posts += 1; });
+      const price = page.getByLabel(`سعر ${name} 30 مل`);
+      await price.fill("٢٠");
+      await Promise.all([
+        page.waitForResponse((r) => r.url().endsWith("/api/orders") && r.request().method() === "POST" && r.status() === 201),
+        price.press("Control+Enter"),
+      ]);
+      await page.getByText("تم إنشاء الطلب").waitFor();
+      await page.waitForTimeout(500); // let a second, racing POST land before counting
+      assert.equal(posts, 1, "Ctrl+Enter must send exactly one POST /api/orders");
+      const order = await Order.findOne({ "products.p_name": name }).sort({ createdAt: -1 });
+      assert.equal(order.products[0].selling_price, 20, "the typed Arabic-digit price is charged, not the list price");
+      assert.equal(order.final_total, 20);
+      check(page);
+    } finally {
+      await Product.deleteOne({ _id: product._id });
+      invalidateCatalog();
+    }
   });
 }
