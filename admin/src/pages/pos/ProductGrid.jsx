@@ -18,13 +18,13 @@ function Card({ product, onOpen }) {
   const out = product.status !== "available";
   return (
     <button type="button" onClick={() => onOpen(product)} aria-label={`أضف ${product.p_name}`}
-      className={cn("flex flex-col overflow-hidden rounded-xl border bg-card text-start transition-shadow hover:shadow-md focus-visible:outline-2", out && "opacity-70")}>
+      className={cn("flex flex-col overflow-hidden rounded-xl border bg-card text-start transition-shadow hover:shadow-md focus-visible:outline-2")}>
       <div className="relative aspect-square w-full bg-muted">
         {hasImage(product)
-          ? <img src={product.p_image} alt="" loading="lazy" className="size-full object-cover" />
-          : <ImageOff className="absolute inset-0 m-auto size-8 text-muted-foreground" aria-hidden />}
+          ? <img src={product.p_image} alt="" loading="lazy" className={cn("size-full object-cover", out && "opacity-60")} />
+          : <ImageOff className={cn("absolute inset-0 m-auto size-8 text-muted-foreground", out && "opacity-60")} aria-hidden />}
         <div className="absolute start-2 top-2 flex flex-col gap-1">
-          {product.status === "out of stock" && <span className="rounded bg-destructive px-1.5 py-0.5 text-xs font-semibold text-white">نفد</span>}
+          {product.status === "out of stock" && <span className="rounded bg-destructive px-1.5 py-0.5 text-xs font-semibold text-white dark:text-background">نفد</span>}
           {product.status === "discontinued" && <span className="rounded bg-foreground px-1.5 py-0.5 text-xs font-semibold text-background">متوقف</span>}
           {product.visible === false && <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-semibold text-secondary-foreground">مخفي عن المتجر</span>}
         </div>

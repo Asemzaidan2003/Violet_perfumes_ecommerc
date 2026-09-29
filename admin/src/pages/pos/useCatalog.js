@@ -10,7 +10,7 @@ export function useCatalog() {
     bottles: bottles.data ?? [],
     customers: customers.data ?? [],
     loading: products.isPending || bottles.isPending,
-    error: products.error || bottles.error || null,
+    error: (!products.data && products.error) || (!bottles.data && bottles.error) || null,
     refetch: () => { products.refetch(); bottles.refetch(); },
     refetchBottles: bottles.refetch,
     refetchCustomers: customers.refetch,
