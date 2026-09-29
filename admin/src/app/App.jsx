@@ -5,8 +5,7 @@ import { AuthProvider, RequireAuth } from "@/app/auth";
 import LoginPage from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 import Shell from "@/app/Shell";
-
-const PosPage = () => <div className="p-6">نقطة البيع</div>; // replaced in Task 8
+import PosPage from "@/pages/pos/PosPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
 
