@@ -43,10 +43,12 @@ const uri = `mongodb://127.0.0.1:27017/${dbName}?replicaSet=rs0`;
 const pngPath = path.join(os.tmpdir(), `nsamat-e2e-${process.pid}.png`);
 
 let server, browser, browser3d, context, mobileContext;
+// Never touch the internet: outside image hosts answer with the test PNG (page-level routes still win).
+const offline = async (ctx) => { await ctx.route((url) => url.hostname !== "127.0.0.1", (rt) => rt.fulfill({ status: 200, contentType: "image/png", body: Buffer.from(PNG_BASE64, "base64") })); return ctx; };
 const MOBILE = { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true };
 async function use3d() {
   browser3d = await chromium.launch({ channel: "msedge", headless: true, args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
-  [context, mobileContext] = [await browser3d.newContext(), await browser3d.newContext(MOBILE)];
+  [context, mobileContext] = [await offline(await browser3d.newContext()), await offline(await browser3d.newContext(MOBILE))];
 }
 const results = [];
 let openPages = [];
@@ -149,8 +151,8 @@ async function run() {
 
   // No WebGL2 here; 3D scenarios switch via use3d() (SwiftShader would starve unrelated pages).
   browser = await chromium.launch({ channel: "msedge", headless: true });
-  context = await browser.newContext();
-  mobileContext = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+  context = await offline(await browser.newContext());
+  mobileContext = await offline(await browser.newContext(MOBILE));
   await installFetchCapture(context);
 
   let addedProductId;

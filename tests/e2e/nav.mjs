@@ -66,12 +66,15 @@ export async function registerNavScenarios({ scenario, openPage, check, baseUrl,
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto(`${baseUrl}/`);
     await page.waitForSelector(".shelf-track");
-    await page.evaluate(() => scrollTo(0, 600));
+    // Scroll to the bottom (not a fixed pixel count — the seeded page may be shorter than 600px)
+    // so the header is unambiguously past the threshold and scrolling down.
+    await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
     await page.waitForFunction(() => document.querySelector("[data-header]")?.classList.contains("is-hidden"));
     const hiddenTop = await page.locator("[data-header]").evaluate((el) => el.getBoundingClientRect().top);
     assert.ok(hiddenTop < 0, `hidden header should be scrolled out of view, top=${hiddenTop}`);
 
-    await page.evaluate(() => scrollTo(0, 400)); // scroll UP from 600
+    // Scroll all the way back to the top: unambiguously "up", and near-top always forces visible.
+    await page.evaluate(() => scrollTo(0, 0));
     await page.waitForFunction(() => !document.querySelector("[data-header]")?.classList.contains("is-hidden"));
     const visibleTop = await page.locator("[data-header]").evaluate((el) => el.getBoundingClientRect().top);
     assert.ok(visibleTop >= 0, `visible header should be at/above top, top=${visibleTop}`);
