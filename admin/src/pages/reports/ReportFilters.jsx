@@ -25,7 +25,7 @@ export function ReportFilters({ applied, preset, onApply, onPreset }) {
   const [draft, setDraft] = useState(applied);
   const set = (k) => (e) => setDraft((d) => ({ ...d, [k]: e.target.value }));
   const pick = (key) => {
-    const r = presetRange(key);
+    const r = { ...presetRange(key), status: draft.status }; // presets apply the current status too
     setDraft((d) => ({ ...d, ...r }));
     onPreset(key, r);
   };

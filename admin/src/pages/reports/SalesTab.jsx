@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Download } from "lucide-react";
-import { Bar, CartesianGrid, ComposedChart, Legend, Line, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
 import { reportQuery } from "@/lib/dates";
@@ -58,7 +58,8 @@ function Trend({ series }) {
       <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="period" tickLine={false} axisLine={false} tickMargin={8} minTickGap={12} />
-        <YAxis width={56} tickLine={false} axisLine={false} domain={[0, "auto"]} />
+        <YAxis width={56} tickLine={false} axisLine={false} domain={[(min) => Math.min(0, min), "auto"]} />
+        <ReferenceLine y={0} stroke="var(--border)" />
         <Tooltip content={<ChartTooltipContent formatter={tip} />} />
         <Legend verticalAlign="bottom" content={<ChartLegendContent />} />
         <Bar dataKey="revenue" name="المبيعات" fill="var(--color-revenue)" radius={[3, 3, 0, 0]} />

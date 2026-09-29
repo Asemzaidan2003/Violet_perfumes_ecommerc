@@ -174,16 +174,19 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
     });
     return (await Promise.all([mk("2020-03-02", 100, 40, 60), mk("2020-03-04", 50, 20, 30), mk("2020-03-10", 10, 15, -5)])).map((o) => o._id);
   }
-  const salesApi = (page, qs) => page.evaluate(async (q) => (await (await fetch(`/api/reports/sales?${q}`)).json()).data, qs);
+  // Re-fetches the exact URL the page requested, through the page's own session.
+  const apiAt = (page, url) => page.evaluate(async (u) => (await (await fetch(u)).json()).data, url);
+  const salesResp = (page, needle) => page.waitForResponse((r) => r.url().includes("/api/reports/sales") && r.url().includes(needle));
+  const params = (resp) => new URL(resp.url()).searchParams;
   const tab = (page, name) => page.locator(`[role="tab"][data-tab="${name}"]`);
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return ymd(d); };
   const applyRange = async (page, from, to) => {
     await page.getByLabel("من تاريخ").fill(from);
     await page.getByLabel("إلى تاريخ").fill(to);
-    const resp = page.waitForResponse((r) => r.url().includes("/api/reports/sales") && r.url().includes(`from=${from}`));
+    const resp = salesResp(page, `from=${from}`);
     await page.getByRole("button", { name: "تطبيق", exact: true }).click();
-    await resp;
+    return resp;
   };
 
   await scenario("Reports (new admin): Sales tab stats, presets, group-by, CSV, empty state, tab deep link", async () => {
@@ -212,10 +215,20 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
       await page.getByRole("button", { name: "اليوم", exact: true }).click();
       await req;
 
-      // Exact range: totals equal the seeded orders and the API.
-      await applyRange(page, RANGE.from, RANGE.to);
+      // A preset applies the current (unapplied) status select value too.
+      await page.getByLabel("حالة الطلبات").selectOption("all");
+      req = page.waitForRequest((r) => r.url().includes("/api/reports/sales") && r.url().includes(`from=${daysAgo(new Date().getDate() - 1)}`));
+      await page.getByRole("button", { name: "هذا الشهر" }).click();
+      assert.equal(new URL((await req).url()).searchParams.get("status"), "all");
+      assert.equal(await page.getByLabel("حالة الطلبات").inputValue(), "all");
+      await page.getByLabel("حالة الطلبات").selectOption("completed");
+
+      // Exact range: totals equal the seeded orders and the response for the URL the page really requested.
+      const applied = await applyRange(page, RANGE.from, RANGE.to);
+      const p1 = params(applied);
+      assert.deepEqual([p1.get("from"), p1.get("to"), p1.get("status"), p1.get("groupBy")], [RANGE.from, RANGE.to, "completed", "day"], "page sent from/to/status/groupBy");
       assert.equal(await page.getByRole("button", { name: "آخر 90 يوم" }).getAttribute("aria-pressed"), "false", "applying dates clears the preset highlight");
-      const api = await salesApi(page, `from=${RANGE.from}&to=${RANGE.to}&status=completed&groupBy=day`);
+      const api = await apiAt(page, applied.url());
       assert.equal(api.totals.revenue, 160);
       await page.getByText(money(160), { exact: false }).first().waitFor();
       const stat = (label) => card(page, label).innerText();
@@ -227,11 +240,16 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
       assert.match(await stat("متوسط قيمة الطلب"), new RegExp(esc(money(api.totals.avg_order_value))));
       assert.equal(await page.locator("main svg.recharts-surface").first().isVisible(), true, "chart renders");
       assert.equal(await page.locator("tbody tr").count(), 3, "one row per day");
+      // Losses stay visible: the zero baseline sits above the plot bottom.
+      const zeroY = await page.locator("main .recharts-reference-line line").first().evaluate((l) => Number(l.getAttribute("y1")));
+      const axisY = await page.locator("main .recharts-cartesian-grid-horizontal line").evaluateAll((ls) => Math.max(...ls.map((l) => Number(l.getAttribute("y1")))));
+      assert.ok(zeroY < axisY - 1, `zero line (${zeroY}) must be above the plot bottom (${axisY}) so -5 profit shows`);
 
       // Group by week changes the table and the request.
-      req = page.waitForRequest((r) => r.url().includes("/api/reports/sales") && r.url().includes("groupBy=week"));
+      const wk = salesResp(page, "groupBy=week");
       await page.getByLabel("تجميع حسب").selectOption("week");
-      await req;
+      const p2 = params(await wk);
+      assert.deepEqual([p2.get("from"), p2.get("to"), p2.get("status")], [RANGE.from, RANGE.to, "completed"], "group-by keeps the filters");
       await page.locator("tbody").getByText("2020-W11", { exact: true }).waitFor();
       assert.equal(await page.locator("tbody tr").count(), 2, "two ISO weeks");
       assert.match(await page.locator("tr", { hasText: "2020-W10" }).innerText(), /150\.00 JOD/);
@@ -289,6 +307,21 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
       assert.equal(await page.locator("table").count(), 0, "cards, not a table, on a phone");
       assert.equal(await noSideScroll(page), true, "no sideways scroll");
       assert.deepEqual(await small(page), [], "every control is at least 44px tall");
+      // Preset row and tab list scroll sideways instead of overflowing the page; the last item is reachable and clickable.
+      const chips = page.getByRole("group", { name: "فترات جاهزة" });
+      assert.ok(await chips.evaluate((e) => e.scrollWidth > e.clientWidth), "preset row overflows and scrolls");
+      await page.getByRole("button", { name: "اليوم", exact: true }).click();
+      const last = page.getByRole("button", { name: "آخر 90 يوم" });
+      await last.scrollIntoViewIfNeeded();
+      await last.click();
+      assert.equal(await last.getAttribute("aria-pressed"), "true");
+      const tabs = page.getByRole("tablist");
+      assert.ok(await tabs.evaluate((e) => e.scrollWidth >= e.clientWidth), "tab list fits or scrolls");
+      const lastTab = tab(page, "customers");
+      await lastTab.scrollIntoViewIfNeeded();
+      await lastTab.click();
+      assert.equal(await lastTab.getAttribute("aria-selected"), "true");
+      assert.equal(await tabs.evaluate((e) => e.scrollWidth - e.clientWidth <= 1 || getComputedStyle(e).overflowX !== "visible"), true, "tab list scrollable when it overflows");
       check(page);
     } finally { await Order.deleteMany({ _id: { $in: ids } }); }
   });
