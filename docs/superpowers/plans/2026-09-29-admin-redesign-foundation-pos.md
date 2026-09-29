@@ -148,12 +148,14 @@ export function createApp({ limits = {}, adminDist = defaultAdminDist } = {}) {
   // New React admin (built by `npm run build:admin`). The legacy pages under /admin/html|css|js
   // are still served below until every page has been rebuilt.
   const adminIndex = path.join(adminDist, "index.html");
+  // redirect:false — otherwise express.static 301s "/admin" to "/admin/" and breaks the legacy 302 below.
   app.use("/admin", express.static(adminDist, {
     index: false,
+    redirect: false,
     cacheControl: false,
     setHeaders: (res, file) => res.set("Cache-Control", file.endsWith(".html") ? "no-cache" : "public, max-age=31536000, immutable"),
   }));
-  app.use("/admin", express.static(frontendDir));
+  app.use("/admin", express.static(frontendDir, { redirect: false }));
   app.get(["/admin", "/admin/*splat"], (req, res, next) => {
     if (!fs.existsSync(adminIndex)) return req.path === "/admin" || req.path === "/admin/" ? res.redirect("/admin/html/index.html") : next();
     if (path.extname(req.path)) return next();
@@ -1169,7 +1171,7 @@ test("a price override that equals the normal price or is blank is dropped; nega
 test("totals use the override price and round to two decimals", () => {
   let cart = addToCart([], product, product.size_list[0], bottles, NOW);
   cart = setQuantity(cart, "p1:30", 3);
-  cart = setPrice(cart, "p1:30", "7.335");
+  cart = setPrice(cart, "p1:30", "7.35");
   expect(lineTotal(cart[0])).toBe(22.05);
   cart = addToCart(cart, product, product.size_list[1], bottles, NOW);
   expect(totals(cart)).toEqual({ items: 4, amount: 62.05 });
@@ -1824,7 +1826,7 @@ export function CustomerPicker({ customers, value, onChange }) {
 - [ ] **Step 2: Checkout hook** — `admin/src/pages/pos/useCheckout.js`:
 
 ```js
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { normalizePhone } from "@store-shared/phone.js";
@@ -1834,6 +1836,8 @@ import { buildOrderBody, cartProblems } from "@/lib/cart";
 export function useCheckout({ cart, bottles, customer, payment, onCustomerCreated, onDone }) {
   const qc = useQueryClient();
   const [attempted, setAttempted] = useState(false);
+  // A ref, not mutation.isPending: a fast double tap fires before React re-renders with the pending state.
+  const inFlight = useRef(false);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -1862,16 +1866,18 @@ export function useCheckout({ cart, bottles, customer, payment, onCustomerCreate
       onDone(result);
     },
     onError: (err) => toast.error(err.message),
+    onSettled: () => { inFlight.current = false; },
   });
 
   function submit() {
-    if (mutation.isPending) return;
+    if (inFlight.current) return;
     setAttempted(true);
     if (cart.length === 0) return toast.error("السلة فارغة");
     const problems = cartProblems(cart, bottles);
     if (problems.length) return toast.error(problems[0].message);
     if (customer.mode === "none") return toast.error("اختر زبونًا أو أضف زبونًا جديدًا");
     if (customer.mode === "new" && !customer.name.trim()) return toast.error("أدخل اسم الزبون الجديد");
+    inFlight.current = true;
     mutation.mutate();
   }
 
@@ -2006,12 +2012,13 @@ import { invalidateCatalog } from "../../backend/store/catalog.js";
 const NAME = "عطر اختبار الكاشير";
 const XSS_NAME = "<img src=x onerror=window.__xss=1>";
 
-async function login(page, baseUrl, admin) {
+// Logs in through the API (the cookie lands in the page's browser context) and opens the POS. Going
+// through the login form instead would log a 401 from the first /api/auth/me probe, which the
+// harness's check() counts as console noise.
+async function openPos(page, baseUrl, admin) {
+  const res = await page.request.post(`${baseUrl}/api/auth/login`, { data: { username: admin.username, password: admin.password } });
+  assert.equal(res.status(), 200);
   await page.goto(`${baseUrl}/admin/`);
-  await page.waitForURL(/\/admin\/login$/);
-  await page.fill("#username", admin.username);
-  await page.fill("#password", admin.password);
-  await page.click("button[type=submit]");
   await page.waitForURL(/\/admin\/pos$/);
 }
 
@@ -2027,8 +2034,11 @@ export async function registerAdminPosScenarios({ scenario, openPage, check, bas
     await page.click("button[type=submit]");
     await page.getByRole("alert").waitFor();
     assert.match(page.url(), /\/admin\/login$/);
-    await login(page, baseUrl, admin);
-    check(page);
+    await page.fill("#password", admin.password);
+    await page.click("button[type=submit]");
+    await page.waitForURL(/\/admin\/pos$/);
+    // The two 401s above (auth probe, wrong password) are expected; anything else is not.
+    assert.deepEqual(page.errors.filter((e) => !/status of 401/.test(e)), []);
   });
 
   await scenario("New admin POS on desktop: sell a product to a new customer, shortage-free, one order only", async () => {
@@ -2042,7 +2052,7 @@ export async function registerAdminPosScenarios({ scenario, openPage, check, bas
 
     const page = await openPage();
     await page.setViewportSize({ width: 1440, height: 900 });
-    await login(page, baseUrl, admin);
+    await openPos(page, baseUrl, admin);
     await page.getByRole("button", { name: `أضف ${NAME}` }).click();
 
     const cart = page.getByRole("list", { name: "عناصر السلة" });
@@ -2085,7 +2095,7 @@ export async function registerAdminPosScenarios({ scenario, openPage, check, bas
     invalidateCatalog();
 
     const page = await openPage({ mobile: true });
-    await login(page, baseUrl, admin);
+    await openPos(page, baseUrl, admin);
     assert.equal(await noSideScroll(page), true, "no sideways scroll on the catalogue");
     await page.getByRole("button", { name: `أضف ${XSS_NAME}` }).click();
     assert.equal(await page.evaluate(() => window.__xss), undefined, "product names are text, never HTML");
