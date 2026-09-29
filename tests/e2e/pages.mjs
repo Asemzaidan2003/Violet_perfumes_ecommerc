@@ -21,7 +21,7 @@ export async function registerPageScenarios({ scenario, openPage, check, baseUrl
     await admin1.fill("#pf-title", "سياسة الشحن");
     await admin1.fill("#pf-slug", "e2e-shipping");
     await admin1.fill("#pf-body", "# سياسة الشحن\n\n- نوصل لكل الأردن\n- الدفع عند الاستلام");
-    await admin1.locator("#pf-preview h1").waitFor();
+    await admin1.locator("#pf-preview h2").waitFor();
     await Promise.all([
       admin1.waitForResponse((r) => r.url().endsWith("/api/pages") && r.request().method() === "POST"),
       admin1.click("#pageSave"),

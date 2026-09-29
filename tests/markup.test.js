@@ -4,7 +4,7 @@ import { renderMarkup } from "../backend/store/markup.js";
 
 test("headings and paragraphs", () => {
   const out = renderMarkup("# عنوان\n\nنص عادي\n\n## عنوان فرعي");
-  assert.equal(out, "<h1>عنوان</h1>\n<p>نص عادي</p>\n<h2>عنوان فرعي</h2>");
+  assert.equal(out, "<h2>عنوان</h2>\n<p>نص عادي</p>\n<h3>عنوان فرعي</h3>");
 });
 
 test("bullet list", () => {

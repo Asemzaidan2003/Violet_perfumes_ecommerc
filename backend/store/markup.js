@@ -36,8 +36,8 @@ function renderInline(text) {
 function renderBlock(block) {
   const lines = block.split("\n").filter((l) => l.trim() !== "");
   if (!lines.length) return "";
-  if (lines.length === 1 && lines[0].startsWith("## ")) return `<h2>${renderInline(lines[0].slice(3))}</h2>`;
-  if (lines.length === 1 && lines[0].startsWith("# ")) return `<h1>${renderInline(lines[0].slice(2))}</h1>`;
+  if (lines.length === 1 && lines[0].startsWith("## ")) return `<h3>${renderInline(lines[0].slice(3))}</h3>`;
+  if (lines.length === 1 && lines[0].startsWith("# ")) return `<h2>${renderInline(lines[0].slice(2))}</h2>`;
   if (lines.every((l) => l.startsWith("- "))) {
     return `<ul>${lines.map((l) => `<li>${renderInline(l.slice(2))}</li>`).join("")}</ul>`;
   }

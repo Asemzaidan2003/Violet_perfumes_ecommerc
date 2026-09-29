@@ -68,7 +68,8 @@ test("public: a published page renders with a heading; an unpublished page 404s"
   const pub = await fetch(`${t.url}/page/terms-pub`);
   assert.equal(pub.status, 200);
   const html = await pub.text();
-  assert.match(html, /<h1[^>]*>عنوان<\/h1>/);
+  assert.match(html, /<h2[^>]*>عنوان<\/h2>/); // body "#" is h2: the page title is the only h1
+  assert.equal(html.match(/<h1[\s>]/g)?.length, 1);
   assert.ok(html.includes("<ul>"));
   assert.match(html, /name="description" content="وصف الصفحة"/);
 

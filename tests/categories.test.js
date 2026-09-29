@@ -151,3 +151,10 @@ test("sitemap lists visible categories, not hidden ones", async () => {
   assert.ok(body.includes("/c/oud-perfumes"));
   assert.ok(!body.includes("/c/ghost-cat"));
 });
+
+test("admin product PUT with an unknown category is rejected (validators run on updates)", async () => {
+  const p = await Product.create({ ...base, p_name: "عطر للتحديث", p_category: "Men", size_list: [{ size: "30", price: 5 }] });
+  const res = await api(`/products/${p._id}`, "PUT", { p_category: "Ghost" });
+  assert.equal(res.status, 400);
+  assert.equal((await Product.findById(p._id)).p_category, "Men");
+});

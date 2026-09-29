@@ -51,7 +51,7 @@ const announceDismissed = (req) => /(?:^|;\s*)nsamat_announce_dismissed=1(?:;|$)
 async function send(req, res, status, page) {
   const placements = page.placements && announceDismissed(req)
     ? page.placements.filter((p) => p.slot !== "announcement") : page.placements;
-  const [pages, categories] = await Promise.all([getPublishedPages(), getVisibleCategories()]);
+  const [pages, categories] = await Promise.all([getPublishedPages().catch(() => []), getVisibleCategories().catch(() => [])]);
   res.status(status).type("html").send(String(layout({
     ...page,
     placements,
@@ -138,7 +138,7 @@ router.get("/search", aislePage((req, products) => {
   const q = String([].concat(req.query.q ?? "")[0]).trim().slice(0, 100);
   return {
     path: "/search", q, title: q ? `نتائج البحث عن «${q}»` : "ابحث في المتجر", defaultSort: q ? "relevance" : "best",
-    description: "ابحث في عطور نسمات بالاسم أو النوتة أو العائلة العطرية.",
+    description: `ابحث في عطور ${getCachedSettings().store_name || "نسمات"} بالاسم أو النوتة أو العائلة العطرية.`,
     base: q ? searchProducts(products, q) : [],
   };
 }));
@@ -153,7 +153,7 @@ router.get("/brands", async (req, res) => {
   const rows = brands.filter((b) => counts.has(b.slug)).map((brand) => ({ brand, count: counts.get(brand.slug) }));
   await send(req, res, 200, {
     title: `المصممون | ${settings.store_name || "نسمات"}`,
-    description: "تصفّح كل دور العطور المتوفرة في نسمات.",
+    description: `تصفّح كل دور العطور المتوفرة في ${settings.store_name || "نسمات"}.`,
     canonicalPath: "/brands",
     settings,
     placements,
@@ -303,13 +303,13 @@ ${paths.map((p) => `<url><loc>${base}${p}</loc></url>`).join("\n")}
 `);
 });
 
-// Catch-all (Express 5 rejects "*" paths). No DB work: bots probing random URLs stay cheap.
+// Catch-all (Express 5 rejects "*" paths). Only TTL-cached reads (categories, pages), so bots stay cheap.
 router.use(async (req, res) => {
   const categories = await getVisibleCategories();
   await send(req, res, 404, { title: `الصفحة غير موجودة | ${getCachedSettings().store_name || "نسمات"}`, settings: getCachedSettings(), body: notFound(categories) });
 });
 
-// Page errors render the styled 500 page (never JSON). Uses no DB, which may be what failed.
+// Page errors render the styled 500 page (never JSON). Cached reads only, each falling back if the DB is what failed.
 router.use(async (err, req, res, next) => {
   console.error(err);
   if (res.headersSent) return next(err);

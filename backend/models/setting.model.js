@@ -78,7 +78,7 @@ const settingSchema = new mongoose.Schema(
     contact: {
       type: new mongoose.Schema(
         {
-          phone: { type: String, trim: true, maxlength: [20, "رقم الهاتف طويل جدًا"], default: "" },
+          phone: { type: String, trim: true, maxlength: [20, "رقم الهاتف طويل جدًا"], match: [/^(\+?[\d\s-]{6,20})?$/,"رقم هاتف غير صالح"], default: "" },
           email: { type: String, trim: true, match: [/^([^\s@]+@[^\s@]+\.[^\s@]+)?$/, "بريد إلكتروني غير صالح"], default: "" },
           address: { type: String, trim: true, maxlength: [200, "العنوان طويل جدًا"], default: "" },
           map_url: HTTPS_URL,
