@@ -65,12 +65,16 @@ export async function registerAdminPosScenarios({ scenario, openPage, check, bas
     await page.fill("#new-customer-phone", "٠٧٩٩٠٠١١٢٢");
 
     const done = page.getByRole("button", { name: "إتمام البيع" });
+    let posts = 0;
+    page.on("request", (r) => { if (r.url().endsWith("/api/orders") && r.method() === "POST") posts += 1; });
     await Promise.all([
       page.waitForResponse((r) => r.url().endsWith("/api/orders") && r.request().method() === "POST" && r.status() === 201),
       done.dblclick(),
     ]);
     await page.getByText("تم إنشاء الطلب").waitFor();
-    assert.equal(await Order.countDocuments({ source: "pos" }), before + 1, "double tap must create exactly one order");
+    await page.waitForTimeout(500); // let a second, racing POST (a double-submit regression) land before counting
+    assert.equal(posts, 1, "double-submit: a double tap must send exactly one POST /api/orders");
+    assert.equal(await Order.countDocuments({ source: "pos" }), before + 1, "double-submit: a double tap must create exactly one order");
     const customer = await Customer.findOne({ phone: "0799001122" });
     assert.ok(customer, "phone typed in Arabic digits is stored normalised");
     const order = await Order.findOne({ source: "pos" }).sort({ createdAt: -1 });
