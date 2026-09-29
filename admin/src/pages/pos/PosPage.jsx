@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { ShoppingCart, X } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -6,23 +7,47 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { addToCart, removeLine, restoreLine, setBottle, setPrice, setQuantity, totals } from "@/lib/cart";
 import { money } from "@/lib/format";
 import { CartPanel } from "@/pages/pos/CartPanel";
+import { CustomerPicker } from "@/pages/pos/CustomerPicker";
 import { ProductGrid } from "@/pages/pos/ProductGrid";
+import { ReceiptDialog } from "@/pages/pos/ReceiptDialog";
+import { useCheckout } from "@/pages/pos/useCheckout";
 import { useCatalog } from "@/pages/pos/useCatalog";
 
 export default function PosPage() {
   const catalog = useCatalog();
   const [cart, setCart] = useState([]);
-  const [attempted, setAttempted] = useState(false);
+  const [customer, setCustomer] = useState({ mode: "none" });
+  const [receipt, setReceipt] = useState(null);
   const [payment, setPayment] = useState("Cash");
   const [sheetOpen, setSheetOpen] = useState(false);
   const desktop = useMediaQuery("(min-width: 1024px)");
   const searchRef = useRef(null);
   const { items, amount } = totals(cart);
 
+  const checkout = useCheckout({
+    cart, bottles: catalog.bottles, customer, payment,
+    onCustomerCreated: (created) => setCustomer({ mode: "existing", customer: created }),
+    onDone: (result) => { setReceipt(result); setSheetOpen(false); },
+  });
+  const newSale = () => { setReceipt(null); setCart([]); setCustomer({ mode: "none" }); setPayment("Cash"); checkout.reset(); };
+
+  // Refreshed on every render. runCheckout reads checkoutRef only AFTER flushSync has re-rendered, so it always submits the freshest cart.
+  const checkoutRef = useRef(checkout.submit);
+  checkoutRef.current = checkout.submit;
+  // Safari does not focus a tapped button, so a price input can still be focused (uncommitted) at checkout: blur it first and flush its setCart.
+  const runCheckout = () => {
+    if (receipt) return;
+    flushSync(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
+    checkoutRef.current();
+  };
+  const runCheckoutRef = useRef(runCheckout);
+  runCheckoutRef.current = runCheckout;
+
   useEffect(() => {
     const onKey = (e) => {
       const t = e.target;
       const typing = t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runCheckoutRef.current(); return; }
       if (e.key === "/" && !typing) { e.preventDefault(); searchRef.current?.focus(); }
     };
     window.addEventListener("keydown", onKey);
@@ -39,10 +64,11 @@ export default function PosPage() {
   };
 
   const panel = (
-    <CartPanel cart={cart} bottles={catalog.bottles} attempted={attempted} payment={payment} onPayment={setPayment}
+    <CartPanel cart={cart} bottles={catalog.bottles} attempted={checkout.attempted} payment={payment} onPayment={setPayment}
       onQty={(k, q) => setCart((c) => setQuantity(c, k, q))} onPrice={(k, v) => setCart((c) => setPrice(c, k, v))}
       onBottle={(k, id) => setCart((c) => setBottle(c, k, id))} onRemove={onRemove}
-      customerSlot={null} onCheckout={() => setAttempted(true)} pending={false} />
+      customerSlot={<CustomerPicker customers={catalog.customers} value={customer} onChange={setCustomer} />}
+      onCheckout={runCheckout} pending={checkout.pending} />
   );
 
   // Below lg the fixed cart bar floats above the 64px tab bar, so the page reserves 3.5rem (+safe area) extra bottom padding on top of the shell's own pb-20.
@@ -70,6 +96,7 @@ export default function PosPage() {
           </Sheet>
         </>
       )}
+      <ReceiptDialog result={receipt} onNewSale={newSale} />
     </div>
   );
 }
