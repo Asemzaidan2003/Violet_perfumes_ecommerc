@@ -25,6 +25,7 @@ import { registerAdminOnlineScenarios } from "./admin-online.mjs";
 import { registerAdminPosScenarios } from "./admin-pos.mjs";
 import { registerAdminOrdersScenarios } from "./admin-orders.mjs";
 import { registerAdminInsightsScenarios } from "./admin-insights.mjs";
+import { registerAdminInventoryScenarios } from "./admin-inventory.mjs";
 import { registerCheckoutScenarios } from "./checkout.mjs";
 import { registerPromotionScenarios } from "./promotions.mjs";
 import { registerFxScenarios } from "./fx.mjs";
@@ -497,6 +498,7 @@ async function run() {
   await registerAdminPosScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
   await registerAdminOrdersScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
   await registerAdminInsightsScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
+  await registerAdminInventoryScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
   await registerPromotionScenarios({
     scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(),
     admin: { username: ADMIN_USER, password: ADMIN_PASS },

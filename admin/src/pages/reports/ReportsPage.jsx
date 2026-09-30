@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Hourglass } from "lucide-react";
 import { presetRange } from "@/lib/dates";
-import { EmptyState, PageHeader } from "@/components/page";
+import { PageHeader } from "@/components/page";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportFilters } from "./ReportFilters";
 import SalesTab from "./SalesTab";
 import ProductsTab from "./ProductsTab";
 import CustomersTab from "./CustomersTab";
+import InventoryTab from "./InventoryTab";
 
 const TABS = [
   { value: "sales", label: "المبيعات" },
@@ -38,7 +38,7 @@ export default function ReportsPage() {
         <TabsContent value="sales"><SalesTab filters={filters} /></TabsContent>
         <TabsContent value="products"><ProductsTab filters={filters} /></TabsContent>
         <TabsContent value="customers"><CustomersTab filters={filters} /></TabsContent>
-        <TabsContent value="inventory"><EmptyState icon={Hourglass} title="قريبًا" /></TabsContent>
+        <TabsContent value="inventory"><InventoryTab /></TabsContent>
       </Tabs>
     </div>
   );

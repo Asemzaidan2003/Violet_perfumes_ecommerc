@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const MQ = "(min-width: 768px)";
 const subscribe = (cb) => { const m = window.matchMedia(MQ); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); };
-const useWide = () => useSyncExternalStore(subscribe, () => window.matchMedia(MQ).matches, () => true);
+export const useWide = () => useSyncExternalStore(subscribe, () => window.matchMedia(MQ).matches, () => true);
 
 const ALIGN = { start: "text-start", center: "text-center", end: "text-end" };
 const cellOf = (c, row, i) => (c.cell ? c.cell(row, i) : row[c.key]);
