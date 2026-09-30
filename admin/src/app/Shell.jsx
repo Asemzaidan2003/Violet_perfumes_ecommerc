@@ -96,7 +96,7 @@ export default function Shell() {
         {MOBILE_TABS.map((tab) => { const item = tab.badge && pending > 0 ? { ...tab, to: "/orders?filter=unconfirmed" } : tab; return (
           <NavItem key={item.key} item={item} pending={pending}
             className={({ isActive }) => cn("relative flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
-            <span className="relative"><item.icon className="size-6" aria-hidden />{item.badge && pending > 0 && <span className="absolute -top-1 -end-2 size-2.5 rounded-full bg-destructive" aria-label={`${pending} بانتظار التأكيد`} />}</span>
+            <span className="relative"><item.icon className="size-6" aria-hidden />{item.badge && pending > 0 && <span role="img" className="absolute -top-1 -end-2 size-2.5 rounded-full bg-destructive" aria-label={`${pending} بانتظار التأكيد`} />}</span>
             <span>{item.label}</span>
           </NavItem>
         ); })}

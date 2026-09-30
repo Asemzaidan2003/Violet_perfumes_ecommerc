@@ -193,6 +193,7 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
   await scenario("Shell (mobile): pending chip deep-links to unconfirmed orders", async () => {
     const product = await seedProductSized("عطر شارة الانتظار", "37");
     const order = await dbOnline(product, "37");
+    const done = await dbOnline(product, "37", { status: "completed", stock_deducted: true, delivery: { name: "زبون مؤكد سابق", phone: "0781234568", city: "إربد", address: "x", notes: "" } });
     try {
       const page = await openPage();
       await page.setViewportSize({ width: 375, height: 800 });
@@ -200,10 +201,21 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       await page.getByRole("link", { name: /^الطلبات \(\d+\)$/ }).first().click();
       await page.waitForURL(/\/orders\?filter=unconfirmed$/);
       await page.getByText("زبون تفاصيل").first().waitFor();
+      assert.equal(await page.inputValue("#f-status"), "unconfirmed", "filter control shows the unconfirmed status");
+      assert.equal(await page.getByText("زبون مؤكد سابق").count(), 0, "confirmed order is filtered out");
       assert.equal(await page.locator('nav[aria-label="التنقل السريع"] a[aria-current="page"]').count(), 1, "orders tab highlighted");
+      // Same-route click: from unfiltered /orders the chip must re-apply the filter.
+      await openAdmin(page, baseUrl, admin, "/orders");
+      await page.getByText("زبون مؤكد سابق").first().waitFor();
+      assert.equal(await page.inputValue("#f-status"), "");
+      await page.getByRole("link", { name: /^الطلبات \(\d+\)$/ }).first().click();
+      await page.waitForURL(/\/orders\?filter=unconfirmed$/);
+      await page.waitForFunction(() => !document.body.innerText.includes("زبون مؤكد سابق"));
+      assert.equal(await page.inputValue("#f-status"), "unconfirmed");
+      await page.getByText("زبون تفاصيل").first().waitFor();
       check(page);
     } finally {
-      await Order.deleteOne({ _id: order._id });
+      await Order.deleteMany({ _id: { $in: [order._id, done._id] } });
       await Product.deleteOne({ _id: product._id });
     }
   });
