@@ -11,6 +11,7 @@ import OrderDetailsPage from "@/pages/orders/OrderDetailsPage";
 import InterestsPage from "@/pages/interests/InterestsPage";
 import ReportsPage from "@/pages/reports/ReportsPage";
 import ProductsPage from "@/pages/products/ProductsPage";
+import ProductFormPage from "@/pages/products/ProductFormPage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
@@ -31,6 +32,8 @@ export function App() {
                 <Route path="/interests" element={<InterestsPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/products" element={<ProductsPage />} />
+                <Route path="/products/new" element={<ProductFormPage />} />
+                <Route path="/products/:id/edit" element={<ProductFormPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
