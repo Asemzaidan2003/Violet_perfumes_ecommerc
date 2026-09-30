@@ -53,7 +53,7 @@ function LowList({ title, rows, unit }) {
           {rows.map((r) => (
             <li key={r.id} className="flex items-center justify-between gap-3 rounded-lg bg-st-pending-bg px-3 py-2 text-sm text-st-pending-fg">
               <span className="min-w-0">{r.name}</span>
-              <span className={cn("shrink-0 font-semibold", Number(r.quantity) < 0 && "text-st-canceled-fg")}>{bdi(`${num(r.quantity)} ${unit}`)}</span>
+              <span className="shrink-0 font-semibold">{bdi(`${num(r.quantity)} ${unit}`)}{Number(r.quantity) < 0 && <span className="ms-2 text-xs">مستحق</span>}</span>
             </li>
           ))}
         </ul>}

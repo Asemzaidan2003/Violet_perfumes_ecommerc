@@ -94,7 +94,7 @@ export default function AlcoholSection({ rows, onSaved }) {
       </div>
       {wide && error && <p role="alert" className="text-sm font-medium text-st-canceled-fg">{error}</p>}
       <Dialog open={!wide && !!editing} onOpenChange={(o) => { if (!o) cancel(); }}>
-        <DialogContent>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>تعديل الكحول</DialogTitle>
             <DialogDescription>عدّل بيانات الصنف ثم احفظ</DialogDescription>

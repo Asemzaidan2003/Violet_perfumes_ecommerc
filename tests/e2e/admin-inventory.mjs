@@ -67,7 +67,9 @@ export async function registerAdminInventoryScenarios({ scenario, openPage, chec
       const lowOils = page.getByRole("list", { name: "زيوت تحتاج إعادة تعبئة" });
       await lowOils.getByText(OIL_LOW).waitFor();
       assert.equal(await lowOils.locator("li").count(), api.low_stock_oils.length);
-      assert.ok((await lowOils.innerText()).includes(OIL_NEG));
+      const negLi = lowOils.locator("li", { hasText: OIL_NEG });
+      await negLi.waitFor();
+      assert.match(await negLi.innerText(), /مستحق/, "owed hint in the low-stock list");
       const lowBottles = page.getByRole("list", { name: "زجاجات تحتاج إعادة تعبئة" });
       await lowBottles.getByText(BOTTLE_LOW).waitFor();
       assert.equal(await lowBottles.locator("li").count(), api.low_stock_bottles.length);
@@ -154,6 +156,9 @@ export async function registerAdminInventoryScenarios({ scenario, openPage, chec
       await page.locator("li", { hasText: ALC_TYPE }).getByRole("button", { name: "تعديل" }).click();
       const dlg = page.getByRole("dialog");
       await dlg.waitFor();
+      await dlg.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished))); // measure after the zoom-in settles
+      const tiny = await dlg.locator("button, input").evaluateAll((els) => els.map((e) => [e, e.getBoundingClientRect()]).filter(([, r]) => r.height < 44 || r.width < 44).map(([e]) => e.textContent.trim() || e.id));
+      assert.deepEqual(tiny, [], "dialog controls are at least 44px");
       assert.equal(await dlg.getByLabel("الاسم").inputValue(), ALC);
       await dlg.getByLabel("إضافة").fill("2.5");
       await dlg.getByRole("button", { name: "حفظ" }).click();
