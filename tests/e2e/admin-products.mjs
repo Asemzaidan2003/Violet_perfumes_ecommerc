@@ -182,7 +182,7 @@ export async function registerAdminProductsScenarios({ scenario, openPage, check
     assert.equal(await page.getByRole("alert").count(), 0);
     await page.getByRole("link", { name: "أضف أول منتج" }).click();
     await page.waitForURL(/\/admin\/products\/new$/);
-    await page.getByText("الصفحة غير موجودة").waitFor(); // not-found page until the form route lands
+    await page.locator('[data-ready="true"]').waitFor();
     assert.deepEqual(page.errors.filter((e) => !NET_NOISE.test(e)), []);
   });
 

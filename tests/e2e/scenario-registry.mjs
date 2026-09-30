@@ -8,6 +8,8 @@ import { registerAdminDashboardScenarios } from "./admin-dashboard.mjs";
 import { registerAdminInsightsScenarios } from "./admin-insights.mjs";
 import { registerAdminInventoryScenarios } from "./admin-inventory.mjs";
 import { registerAdminProductsScenarios } from "./admin-products.mjs";
+import { registerAdminProductFormScenarios } from "./admin-product-form.mjs";
+import { registerAdminProductFormEditScenarios } from "./admin-product-form-edit.mjs";
 import { registerCheckoutScenarios } from "./checkout.mjs";
 import { registerPromotionScenarios } from "./promotions.mjs";
 import { registerFxScenarios } from "./fx.mjs";
@@ -39,6 +41,8 @@ export async function registerAllScenarios(ctx) {
   await registerAdminInsightsScenarios(base);
   await registerAdminInventoryScenarios(base);
   await registerAdminProductsScenarios(base);
+  await registerAdminProductFormScenarios(base);
+  await registerAdminProductFormEditScenarios(base);
   await registerPromotionScenarios(shot);
   await registerProductVisibilityScenarios({ ...base, admin: undefined });
   await registerColorScenarios(base);
