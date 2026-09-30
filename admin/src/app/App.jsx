@@ -21,6 +21,7 @@ import BrandsPage from "@/pages/brands/BrandsPage";
 import CategoriesPage from "@/pages/categories/CategoriesPage";
 import CatalogPage from "@/pages/catalog/CatalogPage";
 import PagesPage from "@/pages/pages/PagesPage";
+import PromotionsPage from "@/pages/promotions/PromotionsPage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
@@ -54,6 +55,7 @@ export function App() {
                 <Route path="/categories" element={<CategoriesPage />} />
                 <Route path="/catalog" element={<CatalogPage />} />
                 <Route path="/pages" element={<PagesPage />} />
+                <Route path="/promotions" element={<PromotionsPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
