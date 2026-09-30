@@ -194,80 +194,88 @@ export async function registerAdminOnlineScenarios({ scenario, openPage, check, 
     const PAYLOAD_C = `a & b 'q' <b>x</b>`;
     const PAYLOAD_D = `" onmouseover=window.__xss=5 x="`;
 
-    await Bottle.create({ name: PAYLOAD_C, capacity: 55, cost: 0.2, quantity: 20 });
-    const hostileProduct = await Product.create({
-      p_name: "عطر اختبار XSS", p_image: "https://example.com/xss.jpg", p_category: "Men",
-      oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80, size_list: [{ size: "55", price: 15 }],
-    });
+    let bottle, hostileProduct, order, order2, interest, customer;
+    try {
+      bottle = await Bottle.create({ name: PAYLOAD_C, capacity: 55, cost: 0.2, quantity: 20 });
+      hostileProduct = await Product.create({
+        p_name: "عطر اختبار XSS", p_image: "https://example.com/xss.jpg", p_category: "Men",
+        oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80, size_list: [{ size: "55", price: 15 }],
+      });
 
-    const order = await Order.create({
-      products: [{
-        product_id: hostileProduct._id, p_name: PAYLOAD_B, product_size: "55", quantity: 1,
-        selling_price: 15, total_revenue: 15, oil_id: "OIL1", oil_ml: 11, alcohol_ml: 44,
-      }],
-      total_items: 1, total_revenue: 15, total_cost: 0, total_profit: 0,
-      payment_method: "Cash", delivery_fee: 0, final_total: 15,
-      order_notes: PAYLOAD_D,
-      status: "pending", created_by: "online", source: "online", stock_deducted: false,
-      public_ref: crypto.randomUUID(), client_key: crypto.randomUUID(),
-      delivery: { name: PAYLOAD_A, phone: "0781234567", city: "إربد", address: PAYLOAD_B, notes: PAYLOAD_C },
-    });
+      order = await Order.create({
+        products: [{
+          product_id: hostileProduct._id, p_name: PAYLOAD_B, product_size: "55", quantity: 1,
+          selling_price: 15, total_revenue: 15, oil_id: "OIL1", oil_ml: 11, alcohol_ml: 44,
+        }],
+        total_items: 1, total_revenue: 15, total_cost: 0, total_profit: 0,
+        payment_method: "Cash", delivery_fee: 0, final_total: 15,
+        order_notes: PAYLOAD_D,
+        status: "pending", created_by: "online", source: "online", stock_deducted: false,
+        public_ref: crypto.randomUUID(), client_key: crypto.randomUUID(),
+        delivery: { name: PAYLOAD_A, phone: "0781234567", city: "إربد", address: PAYLOAD_B, notes: PAYLOAD_C },
+      });
 
-    await Interest.create({
-      product_id: hostileProduct._id, product_name: PAYLOAD_B, size: "55",
-      name: PAYLOAD_D, phone: "0782223334", note: PAYLOAD_C, status: "new",
-    });
+      interest = await Interest.create({
+        product_id: hostileProduct._id, product_name: PAYLOAD_B, size: "55",
+        name: PAYLOAD_D, phone: "0782223334", note: PAYLOAD_C, status: "new",
+      });
 
-    // Reports' customers tab reads from Customer + a completed, linked order — not from Interest
-    // or the delivery snapshot, so it needs its own hostile record.
-    const customer = await Customer.create({ name: PAYLOAD_A, phone: "0793334445", type: "individual" });
-    await Order.create({
-      products: [{
-        product_id: hostileProduct._id, p_name: "عطر عادي", product_size: "55", quantity: 1,
-        selling_price: 15, total_revenue: 15, oil_id: "OIL1", oil_ml: 11, alcohol_ml: 44,
-      }],
-      total_items: 1, total_revenue: 15, total_cost: 0, total_profit: 0,
-      payment_method: "Cash", delivery_fee: 0, final_total: 15,
-      status: "completed", created_by: "pos", source: "pos", stock_deducted: true, customer_id: customer._id,
-    });
+      // Reports' customers tab reads from Customer + a completed, linked order — not from Interest
+      // or the delivery snapshot, so it needs its own hostile record.
+      customer = await Customer.create({ name: PAYLOAD_A, phone: "0793334445", type: "individual" });
+      order2 = await Order.create({
+        products: [{
+          product_id: hostileProduct._id, p_name: "عطر عادي", product_size: "55", quantity: 1,
+          selling_price: 15, total_revenue: 15, oil_id: "OIL1", oil_ml: 11, alcohol_ml: 44,
+        }],
+        total_items: 1, total_revenue: 15, total_cost: 0, total_profit: 0,
+        payment_method: "Cash", delivery_fee: 0, final_total: 15,
+        status: "completed", created_by: "pos", source: "pos", stock_deducted: true, customer_id: customer._id,
+      });
 
-    const ordersPage = await openPage();
-    await ordersPage.goto(`${baseUrl}/admin/html/orders.html`);
-    await ordersPage.waitForLoadState("networkidle");
-    await assertPageIsXssSafe(ordersPage, [PAYLOAD_A]);
-    check(ordersPage);
+      const ordersPage = await openPage();
+      await ordersPage.goto(`${baseUrl}/admin/html/orders.html`);
+      await ordersPage.waitForLoadState("networkidle");
+      await assertPageIsXssSafe(ordersPage, [PAYLOAD_A]);
+      check(ordersPage);
 
-    const detailsPage = await openPage();
-    await detailsPage.goto(`${baseUrl}/admin/html/order-details.html?id=${order._id}`);
-    await detailsPage.waitForSelector("#deliveryInfo");
-    await assertPageIsXssSafe(detailsPage, [PAYLOAD_A, PAYLOAD_B, PAYLOAD_C, PAYLOAD_D]);
-    // The bottle <option> text (M1's fix) isn't part of the flowed body text everywhere, so it
-    // gets its own direct check, before confirming replaces the <select> with plain numbers.
-    const bottleOptionText = await detailsPage.locator("#bottle-0 option").last().textContent();
-    assert.ok(bottleOptionText.includes(PAYLOAD_C), "bottle name should render as literal text, not be stripped");
+      const detailsPage = await openPage();
+      await detailsPage.goto(`${baseUrl}/admin/html/order-details.html?id=${order._id}`);
+      await detailsPage.waitForSelector("#deliveryInfo");
+      await assertPageIsXssSafe(detailsPage, [PAYLOAD_A, PAYLOAD_B, PAYLOAD_C, PAYLOAD_D]);
+      // The bottle <option> text (M1's fix) isn't part of the flowed body text everywhere, so it
+      // gets its own direct check, before confirming replaces the <select> with plain numbers.
+      const bottleOptionText = await detailsPage.locator("#bottle-0 option").last().textContent();
+      assert.ok(bottleOptionText.includes(PAYLOAD_C), "bottle name should render as literal text, not be stripped");
 
-    await detailsPage.selectOption("#bottle-0", { index: 1 }); // only the hostile bottle matches this capacity
-    const confirmed = detailsPage.waitForResponse(
-      (r) => r.url().endsWith(`/orders/${order._id}/confirm`) && r.request().method() === "POST"
-    );
-    await detailsPage.click("#confirmBtn");
-    assert.equal((await confirmed).status(), 200);
-    await detailsPage.locator("text=تم الخصم").waitFor();
-    await assertPageIsXssSafe(detailsPage, [PAYLOAD_A, PAYLOAD_B, PAYLOAD_C, PAYLOAD_D]);
-    check(detailsPage);
+      await detailsPage.selectOption("#bottle-0", { index: 1 }); // only the hostile bottle matches this capacity
+      const confirmed = detailsPage.waitForResponse(
+        (r) => r.url().endsWith(`/orders/${order._id}/confirm`) && r.request().method() === "POST"
+      );
+      await detailsPage.click("#confirmBtn");
+      assert.equal((await confirmed).status(), 200);
+      await detailsPage.locator("text=تم الخصم").waitFor();
+      await assertPageIsXssSafe(detailsPage, [PAYLOAD_A, PAYLOAD_B, PAYLOAD_C, PAYLOAD_D]);
+      check(detailsPage);
 
-    const interestsPage = await openPage();
-    await interestsPage.goto(`${baseUrl}/admin/html/interests.html`);
-    await interestsPage.waitForLoadState("networkidle");
-    await assertPageIsXssSafe(interestsPage, [PAYLOAD_D, PAYLOAD_C, PAYLOAD_B]);
-    check(interestsPage);
+      const interestsPage = await openPage();
+      await interestsPage.goto(`${baseUrl}/admin/html/interests.html`);
+      await interestsPage.waitForLoadState("networkidle");
+      await assertPageIsXssSafe(interestsPage, [PAYLOAD_D, PAYLOAD_C, PAYLOAD_B]);
+      check(interestsPage);
 
-    const reportsPage = await openPage();
-    await reportsPage.goto(`${baseUrl}/admin/html/reports.html`);
-    await reportsPage.waitForLoadState("networkidle");
-    await reportsPage.locator('.tab-btn[data-tab="customers"]').click();
-    await reportsPage.waitForLoadState("networkidle");
-    await assertPageIsXssSafe(reportsPage, [PAYLOAD_A]);
-    check(reportsPage);
+      const reportsPage = await openPage();
+      await reportsPage.goto(`${baseUrl}/admin/reports?tab=customers`);
+      await reportsPage.waitForFunction((t) => document.body.innerText.includes(t), PAYLOAD_A, { timeout: 10000 });
+      await assertPageIsXssSafe(reportsPage, [PAYLOAD_A]);
+      check(reportsPage);
+    } finally {
+      await Order.deleteMany({ _id: { $in: [order, order2].filter(Boolean).map((d) => d._id) } });
+      if (interest) await Interest.deleteOne({ _id: interest._id });
+      if (customer) await Customer.deleteOne({ _id: customer._id });
+      await Customer.deleteMany({ phone: "0781234567" }); // linked by the online-order confirm above
+      if (bottle) await Bottle.deleteOne({ _id: bottle._id });
+      if (hostileProduct) await Product.deleteOne({ _id: hostileProduct._id });
+    }
   });
 }
