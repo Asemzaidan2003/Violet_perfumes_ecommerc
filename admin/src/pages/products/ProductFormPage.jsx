@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
-import { emptyValues, IMAGE_ERROR, productSchema, toFormValues, toPayload } from "@/lib/productForm";
+import { emptyValues, IMAGE_ERROR, IMAGE_URL, productSchema, toFormValues, toPayload } from "@/lib/productForm";
 import { ErrorState } from "@/components/page";
 import { NativeSelect } from "@/components/native-select";
 import { Field, NumberField, SwitchField } from "@/components/form/fields";
@@ -112,7 +112,7 @@ function ProductForm({ mode, id, initial, lookups }) {
       </Section>
 
       <Section title="الصورة">
-        <ImageUpload id="p_image_file" value={v.p_image} onChange={(url) => set("p_image", url)} />
+        <ImageUpload id="p_image_file" value={IMAGE_URL.test(v.p_image.trim()) ? v.p_image.trim() : ""} onChange={(url) => set("p_image", url)} />
         <Field label="رابط الصورة" htmlFor="p_image" hint="اتركه فارغًا بلا صورة. يُقبل رابط https:// أو صورة مرفوعة فقط (لا يُقبل http://)." error={errors.p_image ? IMAGE_ERROR : undefined}>
           <Input id="p_image" className="h-11 text-start" dir="ltr" value={v.p_image} aria-invalid={bad("p_image")} onChange={(e) => set("p_image", e.target.value)} />
         </Field>
