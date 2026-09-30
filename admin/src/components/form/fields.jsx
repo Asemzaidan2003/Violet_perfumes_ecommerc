@@ -63,7 +63,7 @@ export function SwitchField({ id, label, checked, onChange, disabled }) {
 }
 
 // options: [{ value, label }]; selected: value[]
-export function ChipGroup({ options, selected, onChange, label }) {
+export function ChipGroup({ options = [], selected = [], onChange, label }) {
   const toggle = (v) => onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-2">

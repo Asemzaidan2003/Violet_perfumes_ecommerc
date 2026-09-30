@@ -17,9 +17,9 @@ export function SizesEditor({ value, onChange, idPrefix = "size" }) {
           <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-start gap-2">
             <div className="space-y-1">
               <Label htmlFor={`${idPrefix}-${i}`}>الحجم (مل)</Label>
-              <Input id={`${idPrefix}-${i}`} className="h-11" dir="ltr" inputMode="decimal" value={row.size}
+              <Input id={`${idPrefix}-${i}`} className="h-11" dir="ltr" inputMode="decimal" value={row.size ?? ""}
                 onChange={(e) => set(i, { size: e.target.value })} />
-              {row.size.trim() !== "" && norm !== row.size && (
+              {String(row.size ?? "").trim() !== "" && norm !== row.size && (
                 <p className="text-sm text-muted-foreground">سيُحفظ: <bdi dir="ltr">{norm}</bdi></p>
               )}
             </div>

@@ -28,10 +28,11 @@ test("uploadImage rejects wrong type and oversized files before any request", as
 
 test("uploadImage posts the full image then the thumb, with the blob content type", async () => {
   const calls = [];
+  const edges = [];
   const close = vi.fn();
   const deps = {
     bitmap: async () => ({ width: 3000, height: 2000, close }),
-    encode: async (_b, maxEdge) => blob(maxEdge === 480 ? "image/jpeg" : "image/webp"),
+    encode: async (_b, maxEdge) => { edges.push(maxEdge); return blob(maxEdge === 480 ? "image/jpeg" : "image/webp"); },
     fetchImpl: async (url, init) => {
       calls.push([url, init.method, init.headers["Content-Type"], init.body.type]);
       return ok({ id: "abc", url: "/img/abc.webp", thumb: "/img/abc-480.webp" });
@@ -44,6 +45,10 @@ test("uploadImage posts the full image then the thumb, with the blob content typ
     ["/api/uploads/abc/thumb", "POST", "image/jpeg", "image/jpeg"],
   ]);
   expect(close).toHaveBeenCalled();
+  expect(edges).toEqual([2400, 480]);
+  edges.length = 0;
+  await uploadImage(file("image/png"), { deps });
+  expect(edges).toEqual([1400, 480]);
 });
 
 test("uploadImage surfaces the server message or the Arabic fallback", async () => {
