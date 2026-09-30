@@ -6,6 +6,8 @@ import { EmptyState, PageHeader } from "@/components/page";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportFilters } from "./ReportFilters";
 import SalesTab from "./SalesTab";
+import ProductsTab from "./ProductsTab";
+import CustomersTab from "./CustomersTab";
 
 const TABS = [
   { value: "sales", label: "المبيعات" },
@@ -34,9 +36,9 @@ export default function ReportsPage() {
             onPreset={(key, r) => { setFilters((f) => ({ ...f, ...r })); setPreset(key); }} />
         )}
         <TabsContent value="sales"><SalesTab filters={filters} /></TabsContent>
-        {TABS.slice(1).map((t) => (
-          <TabsContent key={t.value} value={t.value}><EmptyState icon={Hourglass} title="قريبًا" /></TabsContent>
-        ))}
+        <TabsContent value="products"><ProductsTab filters={filters} /></TabsContent>
+        <TabsContent value="customers"><CustomersTab filters={filters} /></TabsContent>
+        <TabsContent value="inventory"><EmptyState icon={Hourglass} title="قريبًا" /></TabsContent>
       </Tabs>
     </div>
   );
