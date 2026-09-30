@@ -4,7 +4,7 @@ import { Download, Package } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Legend, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
-import { CHART_COLORS, money, num } from "@/lib/format";
+import { CHART_PAIRS, money, num } from "@/lib/format";
 import { reportQuery } from "@/lib/dates";
 import { ChartCard, EmptyState, ErrorState } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
@@ -46,7 +46,7 @@ function CategoryChart({ items }) {
   const rows = items.map((c, i) => ({ key: `c${i}`, category: c?.category ?? "-", revenue: n2(c?.revenue) })).filter((r) => r.revenue > 0);
   const config = {};
   const data = rows.map((r, i) => {
-    config[r.key] = { label: r.category, theme: { light: CHART_COLORS.palette[i % CHART_COLORS.palette.length], dark: CHART_COLORS.palette[i % CHART_COLORS.palette.length] } };
+    config[r.key] = { label: r.category, theme: CHART_PAIRS[i % CHART_PAIRS.length] };
     return { key: r.key, name: r.category, revenue: r.revenue, fill: `var(--color-${r.key})` };
   });
   const summary = `الإيرادات حسب الفئة: ${data.map((d) => `${d.name} ${money(d.revenue)}`).join("، ")}`;
@@ -139,11 +139,11 @@ export default function ProductsTab({ filters }) {
               <h2 className="font-semibold">تفاصيل المنتجات</h2>
               <Button type="button" variant="outline" className="h-11" onClick={exportCsv}><Download aria-hidden />تصدير CSV</Button>
             </div>
-            <ResponsiveTable columns={PRODUCT_COLUMNS} rows={topProducts} rowKey={(r) => r.product_id ?? r.name} />
+            <ResponsiveTable columns={PRODUCT_COLUMNS} rows={topProducts} rowKey={(r) => `${r.product_id}|${r.name}`} />
           </section>
           <section className="space-y-3">
             <h2 className="font-semibold">حسب الحجم</h2>
-            {bySize.length === 0 ? <EmptyState title="لا توجد بيانات" /> : <ResponsiveTable columns={SIZE_COLUMNS} rows={bySize} rowKey={(r) => r.size} />}
+            {bySize.length === 0 ? <EmptyState title="لا توجد بيانات" /> : <ResponsiveTable columns={SIZE_COLUMNS} rows={bySize} rowKey={(r) => `${r.size}`} />}
           </section>
         </>}
     </div>

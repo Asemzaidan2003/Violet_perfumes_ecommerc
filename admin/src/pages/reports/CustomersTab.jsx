@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Pie, PieChart, Tooltip, XAxis, YA
 import { api } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
 import { reportQuery } from "@/lib/dates";
-import { fmtDate, money, num } from "@/lib/format";
+import { CHART_PAIRS, fmtDate, money, num } from "@/lib/format";
 import { ChartCard, EmptyState, ErrorState, StatCard } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { Button } from "@/components/ui/button";
@@ -45,9 +45,9 @@ const TYPE_LABEL = { individual: "أفراد", store: "محلات" };
 function CustomerTypeChart({ breakdown }) {
   const rows = breakdown.map((b, i) => ({ key: `t${i}`, type: b?.type, count: n2(b?.count) })).filter((r) => r.count > 0);
   const config = {};
-  const data = rows.map((r) => {
+  const data = rows.map((r, i) => {
     const label = TYPE_LABEL[r.type] ?? (r.type == null ? "-" : String(r.type));
-    config[r.key] = { label, theme: { light: "#0c6e63", dark: "#2bb5a4" } };
+    config[r.key] = { label, theme: CHART_PAIRS[i % CHART_PAIRS.length] };
     return { key: r.key, name: label, count: r.count, fill: `var(--color-${r.key})` };
   });
   const summary = `نوع الزبائن: ${data.map((d) => `${d.name} ${num(d.count)}`).join("، ")}`;

@@ -29,6 +29,12 @@ export const paymentLabel = (m) => ({ Cash: "كاش", Credit: "بطاقة" })[m]
 export const waNational = (phone) => String(phone ?? "").replace(/\D/g, "").replace(/^(00)?962/, "").replace(/^0/, "");
 export const waLink = (phone) => `https://wa.me/962${waNational(phone)}`;
 
+// Categorical slice colours as light/dark pairs (dark variants stay readable on a dark card).
+export const CHART_PAIRS = [
+  { light: "#0c6e63", dark: "#2bb5a4" }, { light: "#2b52a3", dark: "#7ea2f0" }, { light: "#b7791f", dark: "#f0b94a" }, { light: "#1c7f8c", dark: "#5cc3d1" },
+  { light: "#dc3545", dark: "#f07a86" }, { light: "#935b00", dark: "#e09a4a" }, { light: "#52585f", dark: "#a7b0ba" }, { light: "#5b8f89", dark: "#9fd3cc" },
+];
+
 export const CHART_COLORS = {
   brand: "#0c6e63", brandDark: "#0a564d", brandSoft: "#7fbdb5", amber: "#e0a530", blue: "#2b52a3",
   teal: "#1c7f8c", red: "#dc3545", slate: "#9aa3ae",

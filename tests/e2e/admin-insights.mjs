@@ -384,6 +384,7 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
       assert.equal(api.top_products[0].category, PROD_CAT, "category resolves to the (hostile) Arabic label");
       assert.equal(api.top_products[1].category, "رجالي", "Men -> its Arabic label");
 
+      await page.locator("tbody tr", { hasText: PROD_NAME }).waitFor();
       const rowsBefore = await page.locator("tbody tr").allInnerTexts();
       assert.ok(rowsBefore[0].includes(PROD_NAME) && rowsBefore[1].includes("منتج عادي"), "revenue order");
       assert.match(rowsBefore[0], /5/);
@@ -397,6 +398,7 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
       const qtyResp = productsResp(page, "sortBy=quantity");
       await page.getByLabel("الترتيب حسب").selectOption("quantity");
       await qtyResp;
+      await page.locator("tbody tr").first().filter({ hasText: "منتج عادي" }).waitFor();
       const rowsAfter = await page.locator("tbody tr").allInnerTexts();
       assert.ok(rowsAfter[0].includes("منتج عادي") && rowsAfter[1].includes(PROD_NAME), "quantity sort reorders the table");
 
@@ -459,6 +461,7 @@ export async function registerAdminInsightsScenarios({ scenario, openPage, check
       assert.match(topStat, new RegExp(esc(money(200))));
       assert.ok(topStat.includes(CUST_NAME), "top-spender sub-label shows the hostile name literally");
 
+      await page.locator("tbody tr", { hasText: "30.00 JOD" }).waitFor();
       const rows = await page.locator("tbody tr").allInnerTexts();
       assert.equal(rows.length, 3);
       assert.ok(rows[0].includes(CUST_NAME) && /فرد/.test(rows[0]) && /0791112223/.test(rows[0]) && /200\.00 JOD/.test(rows[0]));
