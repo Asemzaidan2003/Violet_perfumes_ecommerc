@@ -1,6 +1,5 @@
 // Registers the file-per-area scenarios (in order) and holds the E2E_ONLY name filter.
 import os from "node:os";
-import { registerAdminOnlineScenarios } from "./admin-online.mjs";
 import { registerAdminPosScenarios } from "./admin-pos.mjs";
 import { registerAdminOrdersScenarios } from "./admin-orders.mjs";
 import { registerAdminInterestsScenarios } from "./admin-interests.mjs";
@@ -20,14 +19,10 @@ import { registerAdminContentStorefrontScenarios } from "./admin-content-storefr
 import { registerCheckoutScenarios } from "./checkout.mjs";
 import { registerPromotionScenarios } from "./promotions.mjs";
 import { registerFxScenarios } from "./fx.mjs";
-import { registerProductVisibilityScenarios } from "./product-visibility.mjs";
-import { registerColorScenarios } from "./colors.mjs";
 import { registerBrandScenarios } from "./brands.mjs";
 import { registerNavScenarios } from "./nav.mjs";
-import { registerIdentityScenarios } from "./identity.mjs";
 import { registerPageScenarios } from "./pages.mjs";
 import { registerCategoryScenarios } from "./categories.mjs";
-import { registerStorefrontCmsScenarios } from "./storefront-cms.mjs";
 
 // E2E_ONLY=<regex> runs only matching scenario names; the rest print SKIP and count as neither pass nor fail.
 const only = process.env.E2E_ONLY ? new RegExp(process.env.E2E_ONLY) : null;
@@ -40,7 +35,6 @@ export async function registerAllScenarios(ctx) {
   // Task 6 (cart drawer, checkout, confirmation) — see checkout.mjs.
   await registerCheckoutScenarios({ ...base, png });
   // Admin pages (interests/settings/online orders, POS, orders, dashboard, reports, inventory).
-  await registerAdminOnlineScenarios({ ...base, admin: undefined });
   await registerAdminPosScenarios(base);
   await registerAdminOrdersScenarios(base);
   await registerAdminInterestsScenarios(base);
@@ -58,14 +52,10 @@ export async function registerAllScenarios(ctx) {
   await registerAdminContentSettingsScenarios({ ...base, pngPath });
   await registerAdminContentStorefrontScenarios(base);
   await registerPromotionScenarios(shot);
-  await registerProductVisibilityScenarios({ ...base, admin: undefined });
-  await registerColorScenarios(base);
   await registerBrandScenarios({ ...shot, productId });
   await registerNavScenarios(base);
-  await registerIdentityScenarios({ ...shot, pngPath });
   await registerPageScenarios(shot);
   await registerCategoryScenarios({ ...shot, productId });
-  await registerStorefrontCmsScenarios(shot);
   // Task 1 (immersive layer) — see fx.mjs. Runs last: use3d() swaps the shared browser context to a fresh one with no admin login.
   await registerFxScenarios({ ...base, admin: undefined, use3d, productId: fxProductId });
 }

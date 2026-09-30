@@ -111,16 +111,14 @@ export async function registerAdminContentPromosScenarios({ scenario, openPage, 
       const page = await openPage();
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAdmin(page, baseUrl, admin, "/promotions");
-      const placementsTab = page.locator('[data-tab="placements"]');
-      const couponsTab = page.locator('[data-tab="coupons"]');
-      await placementsTab.focus();
+      await page.locator('[data-tab="placements"]').focus();
       await page.keyboard.press("ArrowLeft");
-      assert.equal(await couponsTab.getAttribute("aria-selected"), "true");
-      assert.match(page.url(), /tab=coupons/);
+      await page.locator('[data-tab="coupons"][aria-selected="true"]').waitFor();
+      await page.waitForURL(/tab=coupons/);
       await page.keyboard.press("Home");
-      assert.equal(await placementsTab.getAttribute("aria-selected"), "true");
+      await page.locator('[data-tab="placements"][aria-selected="true"]').waitFor();
       await page.keyboard.press("End");
-      assert.equal(await couponsTab.getAttribute("aria-selected"), "true");
+      await page.locator('[data-tab="coupons"][aria-selected="true"]').waitFor();
 
       let posts = 0;
       page.on("request", (r) => { if (r.method() === "POST" && r.url().endsWith("/api/coupons")) posts += 1; });

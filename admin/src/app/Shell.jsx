@@ -90,7 +90,7 @@ export default function Shell() {
           </div>
           <div className="flex items-center gap-2"><AddMenu /><UserActions /></div>
         </header>
-        <main className="flex-1 pb-20 lg:pb-0"><Outlet key={location.pathname + (location.pathname === "/orders" ? location.search : "")} /></main>
+        <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0"><Outlet key={location.pathname + (location.pathname === "/orders" ? location.search : "")} /></main>
       </div>
 
       <nav aria-label="التنقل السريع" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">

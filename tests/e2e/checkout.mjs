@@ -46,7 +46,7 @@ export async function registerCheckoutScenarios({ scenario, openPage, check, bas
   // The admin orders API, through the logged-in desktop context (logs in if it isn't).
   const adminOrders = async () => {
     const page = await openPage();
-    await page.goto(`${baseUrl}/admin/html/login.html`);
+    await page.goto(`${baseUrl}/admin/login`);
     return page.evaluate(async ({ username, password }) => {
       let res = await fetch("/api/orders");
       if (res.status === 401) {

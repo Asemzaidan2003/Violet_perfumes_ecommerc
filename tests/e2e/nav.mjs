@@ -1,64 +1,9 @@
-// Nav-fix e2e scenarios: theme coverage on real surfaces, header hide-on-scroll, mobile header
-// at 375px, and the /brands designers index. Registered from run.mjs.
+// Nav e2e scenarios: header hide-on-scroll, mobile header at 375px, and the /brands designers index. Registered from run.mjs.
 //
-// registerNavScenarios({ scenario, openPage, check, baseUrl, admin })
+// registerNavScenarios({ scenario, openPage, check, baseUrl })
 import assert from "node:assert/strict";
 
-const LIGHT_THEME = { bg: "#ffffff", surface: "#ebebeb", text: "#000000", accent: "#a27b44" };
-
-async function loginAdmin(openPage, baseUrl, admin) {
-  const page = await openPage();
-  await page.goto(`${baseUrl}/admin/html/login.html`);
-  await page.fill("#username", admin.username);
-  await page.fill("#password", admin.password);
-  await Promise.all([page.waitForURL(/index\.html/), page.click("#loginForm button[type=submit]")]);
-  return page;
-}
-
-// WCAG relative luminance from a computed rgb()/rgba() string.
-function luminance(rgbStr) {
-  const [r, g, b] = rgbStr.match(/[\d.]+/g).slice(0, 3).map(Number);
-  const lin = (c) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
-
-const bgOf = (page, sel) => page.locator(sel).evaluate((el) => getComputedStyle(el).backgroundColor);
-const colorOf = (page, sel) => page.locator(sel).evaluate((el) => getComputedStyle(el).color);
-
-export async function registerNavScenarios({ scenario, openPage, check, baseUrl, admin }) {
-  await scenario("Theme: the owner's light theme makes the header, bottom bar and footer light", async () => {
-    const admin1 = await loginAdmin(openPage, baseUrl, admin);
-    await admin1.goto(`${baseUrl}/admin/html/settings.html`);
-    await admin1.waitForSelector("#saveBtn:not([disabled])");
-    await admin1.fill("#theme_bg", LIGHT_THEME.bg);
-    await admin1.fill("#theme_surface", LIGHT_THEME.surface);
-    await admin1.fill("#theme_text", LIGHT_THEME.text);
-    await admin1.fill("#theme_accent", LIGHT_THEME.accent);
-    await Promise.all([
-      admin1.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PUT"),
-      admin1.click("#saveBtn"),
-    ]);
-    check(admin1);
-
-    const store = await openPage({ mobile: true });
-    await store.setViewportSize({ width: 375, height: 812 });
-    await store.goto(`${baseUrl}/`);
-    assert.ok(luminance(await bgOf(store, ".site-header")) > 0.8, "header background should be light");
-    assert.ok(luminance(await colorOf(store, ".site-header")) < 0.2, "header text should be dark");
-    assert.ok(luminance(await bgOf(store, ".bottom-bar")) > 0.8, "bottom bar background should be light");
-    assert.ok(luminance(await bgOf(store, ".site-footer")) > 0.8, "footer background should be light");
-    check(store);
-
-    // Reset so later scenarios (colors.mjs, screenshots) see the default dark theme again.
-    await admin1.goto(`${baseUrl}/admin/html/settings.html`);
-    await admin1.waitForSelector("#saveBtn:not([disabled])");
-    await Promise.all([
-      admin1.waitForResponse((r) => r.url().endsWith("/api/settings") && r.request().method() === "PUT"),
-      admin1.click("#resetThemeBtn"),
-    ]);
-    check(admin1);
-  });
-
+export async function registerNavScenarios({ scenario, openPage, check, baseUrl }) {
   await scenario("Header: hides on scroll down past the threshold, reappears on scroll up", async () => {
     const page = await openPage();
     // Reduced motion snaps the header instantly (no transition), so the assertions below don't

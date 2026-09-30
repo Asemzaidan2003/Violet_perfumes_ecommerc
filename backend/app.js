@@ -22,6 +22,7 @@ import uploadRouter from "./routes/upload.Routs.js";
 import imageRouter from "./routes/image.Routs.js";
 import storeRouter from "./routes/store.Routs.js";
 import adminRouter from "./routes/admin.Routs.js";
+import adminLegacyRouter from "./routes/adminLegacy.Routs.js";
 import promotionsRouter from "./routes/promotions.Routs.js";
 import brandsRouter from "./routes/brands.Routs.js";
 import pagesRouter from "./routes/pages.Routs.js";
@@ -33,7 +34,6 @@ import { errorHandler } from "./middleware/error.js";
 // Update queries (findByIdAndUpdate etc.) validate against the schema too.
 mongoose.set("runValidators", true);
 
-const frontendDir = fileURLToPath(new URL("../frontend", import.meta.url));
 const storefrontDir = fileURLToPath(new URL("../storefront", import.meta.url));
 
 const defaultAdminDist = fileURLToPath(new URL("../admin/dist", import.meta.url));
@@ -92,20 +92,18 @@ export function createApp({ limits = {}, adminDist = defaultAdminDist } = {}) {
   app.use("/api", categoriesRouter); // defines /categories
   app.use("/api", (req, res) => res.status(404).json({ success: false, message: "Not found" }));
 
-  // New React admin (built by `npm run build:admin`). The legacy pages under /admin/html|css|js
-  // are still served below until every page has been rebuilt.
+  // React admin (built by `npm run build:admin`). Old /admin/html/*.html URLs redirect to the matching route.
   const adminIndex = path.join(adminDist, "index.html");
-  // redirect:false — otherwise express.static 301s "/admin" to "/admin/" and breaks the legacy 302 below.
+  app.use(adminLegacyRouter);
   app.use("/admin", express.static(adminDist, {
     index: false,
     redirect: false,
     cacheControl: false,
     setHeaders: (res, file) => res.set("Cache-Control", file.endsWith(".html") ? "no-cache" : "public, max-age=31536000, immutable"),
   }));
-  app.use("/admin", express.static(frontendDir, { redirect: false }));
   app.get(["/admin", "/admin/*splat"], (req, res, next) => {
-    if (!fs.existsSync(adminIndex)) return req.path === "/admin" || req.path === "/admin/" ? res.redirect("/admin/html/index.html") : next();
     if (path.extname(req.path)) return next();
+    if (!fs.existsSync(adminIndex)) return res.status(503).type("text/plain; charset=utf-8").send("لوحة الإدارة غير مبنية بعد — شغّل: npm run build:admin");
     res.set("Cache-Control", "no-cache").sendFile(adminIndex);
   });
   // Cache headers only on a hit: a missing file must never be cached immutable.

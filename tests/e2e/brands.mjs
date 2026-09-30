@@ -1,48 +1,22 @@
 // Designers (brands) e2e scenario. Registered from run.mjs after the server is listening, before
-// fx.mjs (which swaps the shared browser context) — see the brief in .superpowers/sdd/brands-report.md.
+// fx.mjs (which swaps the shared browser context).
 //
 // registerBrandScenarios({ scenario, openPage, check, baseUrl, shotDir, admin, productId })
 import assert from "node:assert/strict";
 import path from "node:path";
+import { apiCall, apiLogin } from "./admin-helpers.mjs";
 import Product from "../../backend/models/product.model.js";
 import { CATEGORIES } from "../../storefront/js/shared/vocab.js";
 
-async function loginAdmin(openPage, baseUrl, admin) {
-  const page = await openPage();
-  await page.goto(`${baseUrl}/admin/html/login.html`);
-  await page.fill("#username", admin.username);
-  await page.fill("#password", admin.password);
-  await Promise.all([page.waitForURL(/index\.html/), page.click("#loginForm button[type=submit]")]);
-  return page;
-}
-
 export async function registerBrandScenarios({ scenario, openPage, check, baseUrl, shotDir, admin, productId }) {
   await scenario("Designers: create a brand, assign it, and find it on the store", async () => {
-    // 1. Create "Dior" / "ديور" in brands.html.
-    const admin1 = await loginAdmin(openPage, baseUrl, admin);
-    await admin1.goto(`${baseUrl}/admin/html/brands.html`);
-    await admin1.waitForSelector("#brandsBody");
-    await admin1.click("#addBrandBtn");
-    await admin1.fill("#bf-name-ar", "ديور");
-    await admin1.fill("#bf-name-en", "Dior");
-    await Promise.all([
-      admin1.waitForResponse((r) => r.url().endsWith("/api/brands") && r.request().method() === "POST"),
-      admin1.click("#brandSave"),
-    ]);
-    await admin1.locator("#brandsBody", { hasText: "ديور" }).waitFor();
-    await admin1.screenshot({ path: path.join(shotDir, "brands-admin-1440.png"), fullPage: true });
-    check(admin1);
-
-    // 2. Assign it to a product in the edit form.
-    await admin1.goto(`${baseUrl}/admin/html/edit_product.html?id=${productId}`);
-    // <option> elements report as not-visible to Playwright's default waitForSelector (they only
-    // render inside an open dropdown) — wait for the count in the DOM instead.
-    await admin1.waitForFunction(() => document.querySelectorAll("#p_brand option").length > 1);
-    await admin1.selectOption("#p_brand", { label: "ديور / Dior" });
-    const put = admin1.waitForResponse((r) => r.url().endsWith(`/api/products/${productId}`) && r.request().method() === "PUT");
-    await admin1.click("#editProductForm button[type=submit]");
-    assert.equal((await put).status(), 200);
-    check(admin1);
+    // 1-2. Create "Dior" / "ديور" and assign it to the seeded product through the API (the admin UI has its own scenarios).
+    const admin1 = await openPage();
+    await apiLogin(admin1, baseUrl, admin);
+    const made = await apiCall(admin1, baseUrl, "POST", "/brands", { name_ar: "ديور", name_en: "Dior" });
+    assert.equal(made.status, 201);
+    const assigned = await apiCall(admin1, baseUrl, "PUT", `/products/${productId}`, { brand: made.body.data._id });
+    assert.equal(assigned.status, 200);
 
     // 3. /brand/dior lists it.
     const brandPage = await openPage({ mobile: true });

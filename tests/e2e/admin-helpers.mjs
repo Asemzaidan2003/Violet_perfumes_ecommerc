@@ -29,3 +29,13 @@ export const small = (page) => page.evaluate(() => [...document.querySelectorAll
   .map((el) => [el, el.getBoundingClientRect()]).filter(([, r]) => r.width > 0 && r.height > 0 && r.height < 44)
   .map(([el]) => `${el.tagName} ${el.getAttribute("aria-label") || el.textContent.trim().slice(0, 20)}`));
 export const card = (page, label) => page.locator("main div.rounded-xl", { has: page.getByText(label, { exact: true }) }).first();
+
+// API-only admin session for scenarios that only need admin data changes (the cookie lands in the shared context).
+export async function apiLogin(page, baseUrl, admin) {
+  const res = await page.request.post(`${baseUrl}/api/auth/login`, { data: { username: admin.username, password: admin.password } });
+  assert.equal(res.status(), 200);
+}
+export async function apiCall(page, baseUrl, method, path, data) {
+  const res = await page.request.fetch(`${baseUrl}/api${path}`, { method, data });
+  return { status: res.status(), body: await res.json().catch(() => null) };
+}

@@ -25,14 +25,14 @@ test("limiter counts synchronously and expires buckets", async () => {
   assert.equal(l.hit(req).ok, true, "a new window starts after expiry");
 });
 
-test("assets are versioned-immutable and admin redirects", async () => {
+test("assets are versioned-immutable and an unbuilt admin answers 503", async () => {
   const v = await fetch(`${t.url}/assets/js/shared/vocab.js?v=1`);
   assert.match(v.headers.get("cache-control"), /immutable/);
   const nv = await fetch(`${t.url}/assets/js/shared/vocab.js`);
   assert.equal(nv.headers.get("cache-control"), "no-cache");
   const r = await fetch(`${t.url}/admin`, { redirect: "manual" });
-  assert.equal(r.status, 302);
-  assert.equal(r.headers.get("location"), "/admin/html/index.html");
+  assert.equal(r.status, 503, "an unbuilt admin says how to build it instead of serving anything");
+  assert.match(await r.text(), /build:admin/);
 });
 
 test("responses are compressed when the client accepts gzip", async () => {

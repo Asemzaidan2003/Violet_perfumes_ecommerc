@@ -1,34 +1,19 @@
 // Content pages (terms, privacy, about, ...) e2e scenario. registerPageScenarios({ scenario,
 // openPage, check, baseUrl, shotDir, admin })
+import assert from "node:assert/strict";
 import path from "node:path";
-
-async function loginAdmin(openPage, baseUrl, admin) {
-  const page = await openPage();
-  await page.goto(`${baseUrl}/admin/html/login.html`);
-  await page.fill("#username", admin.username);
-  await page.fill("#password", admin.password);
-  await Promise.all([page.waitForURL(/index\.html/), page.click("#loginForm button[type=submit]")]);
-  return page;
-}
+import { apiCall, apiLogin } from "./admin-helpers.mjs";
 
 export async function registerPageScenarios({ scenario, openPage, check, baseUrl, shotDir, admin }) {
   await scenario("Content pages: create, publish, footer link and rendered page", async () => {
-    // 1. Create and publish a page with a heading and a bullet list, in pages.html.
-    const admin1 = await loginAdmin(openPage, baseUrl, admin);
-    await admin1.goto(`${baseUrl}/admin/html/pages.html`);
-    await admin1.waitForSelector("#pagesBody");
-    await admin1.click("#addPageBtn");
-    await admin1.fill("#pf-title", "سياسة الشحن");
-    await admin1.fill("#pf-slug", "e2e-shipping");
-    await admin1.fill("#pf-body", "# سياسة الشحن\n\n- نوصل لكل الأردن\n- الدفع عند الاستلام");
-    await admin1.locator("#pf-preview h2").waitFor();
-    await Promise.all([
-      admin1.waitForResponse((r) => r.url().endsWith("/api/pages") && r.request().method() === "POST"),
-      admin1.click("#pageSave"),
-    ]);
-    await admin1.locator("#pagesBody", { hasText: "سياسة الشحن" }).waitFor();
-    await admin1.screenshot({ path: path.join(shotDir, "cms-b-admin-1440.png"), fullPage: true });
-    check(admin1);
+    // 1. Create and publish a page with a heading and a bullet list through the API (the admin UI has its own scenarios).
+    const admin1 = await openPage();
+    await apiLogin(admin1, baseUrl, admin);
+    const made = await apiCall(admin1, baseUrl, "POST", "/pages", { title: "سياسة الشحن", slug: "e2e-shipping", body: "# سياسة الشحن
+
+- نوصل لكل الأردن
+- الدفع عند الاستلام", published: true });
+    assert.equal(made.status, 201);
 
     // 2. The footer on the storefront home links to it.
     const home = await openPage();

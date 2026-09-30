@@ -26,9 +26,9 @@ test("malformed JSON is 400 without internals", async () => {
   assert.deepEqual(await res.json(), { success: false, message: "Invalid JSON" });
 });
 
-test("admin UI served at /admin with security headers", async () => {
-  const res = await fetch(`${t.url}/admin/html/index.html`);
-  assert.equal(res.status, 200);
+test("admin URLs carry security headers (legacy pages redirect to the SPA)", async () => {
+  const res = await fetch(`${t.url}/admin/html/index.html`, { redirect: "manual" });
+  assert.equal(res.status, 302);
   assert.ok(res.headers.get("content-security-policy"));
   assert.equal(res.headers.get("x-powered-by"), null);
 });

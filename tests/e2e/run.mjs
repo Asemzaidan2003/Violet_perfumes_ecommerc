@@ -67,40 +67,6 @@ function check(page) {
   assert.deepEqual(page.errors, [], `console/pageerror/CSP noise on ${page.url()}: ${JSON.stringify(page.errors)}`);
 }
 
-// Playwright's own response.json()/.text() (CDP Network.getResponseBody) hangs
-// indefinitely on this msedge/headless setup when read for a fetch() response
-// on a page that shortly after shows a blocking alert() and reloads — confirmed
-// by isolated repro (see task-5-report.md). Workaround: capture bodies in-page
-// via a wrapped window.fetch, persisted to sessionStorage (survives the reload,
-// unlike a plain JS variable), and poll for them from Node instead.
-async function installFetchCapture(ctx) {
-  await ctx.addInitScript(() => {
-    const orig = window.fetch;
-    window.fetch = async (...args) => {
-      const res = await orig(...args);
-      res.clone().text().then((body) => {
-        try {
-          const key = `e2e:${args[1]?.method || "GET"}:${String(args[0])}`;
-          sessionStorage.setItem(key, JSON.stringify({ status: res.status, body }));
-        } catch { /* sessionStorage unavailable (opaque origin etc.) — not expected here */ }
-      }).catch(() => {});
-      return res;
-    };
-  });
-}
-
-async function readCaptured(page, method, url, { retries = 50, intervalMs = 200 } = {}) {
-  const key = `e2e:${method}:${url}`;
-  for (let i = 0; i < retries; i++) {
-    let raw = null;
-    try { raw = await page.evaluate((k) => sessionStorage.getItem(k), key); }
-    catch { /* navigation mid-poll destroyed the execution context; retry */ }
-    if (raw) return JSON.parse(raw);
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-  throw new Error(`timed out waiting for captured ${method} ${url} response`);
-}
-
 async function scenario(name, fn) {
   if (!isSelected(name)) { console.log(`SKIP: ${name}`); return; }
   try {
@@ -147,117 +113,19 @@ async function run() {
   browser = await chromium.launch({ channel: "msedge", headless: true });
   context = await offline(await browser.newContext());
   mobileContext = await offline(await browser.newContext(MOBILE));
-  await installFetchCapture(context);
-
-  let addedProductId;
 
   await scenario("Admin login", async () => {
     const page = await openPage();
-    await page.goto(`${baseUrl}/admin/html/login.html`);
+    await page.goto(`${baseUrl}/admin/login`);
     await page.fill("#username", ADMIN_USER);
     await page.fill("#password", ADMIN_PASS);
-    await Promise.all([page.waitForURL(/index\.html/), page.click("#loginForm button[type=submit]")]);
+    await Promise.all([page.waitForURL(/\/admin\/pos$/), page.click("form button[type=submit]")]);
+    // The login page's first /api/auth/me probe is an expected 401; anything else is noise.
+    assert.deepEqual(page.errors.filter((e) => !/status of 401/.test(e)), []);
+    // Legacy bookmarks land on the matching route.
+    await page.goto(`${baseUrl}/admin/html/all_products.html`);
+    await page.waitForURL(/\/admin\/products$/);
     check(page);
-  });
-
-  await scenario("Add product with an uploaded photo", async () => {
-    const page = await openPage();
-    await page.goto(`${baseUrl}/admin/html/add_product.html`);
-    await page.evaluate(() => window.productFields.ready);
-
-    await page.setInputFiles("#p_image_file", pngPath);
-    await page.waitForFunction(() => /^\/img\//.test(document.getElementById("p_image").value));
-
-    await page.fill("#p_name", "عطر اختبار الصور");
-    await page.selectOption("#p_category", "Women");
-    await page.evaluate(() => { document.getElementById("oil_id").value = "OIL1"; });
-    await page.fill("#oil_percentage", "20");
-    await page.fill("#alcohol_percentage", "80");
-
-    await page.click(".btn.btn-secondary.btn-sm"); // "+ إضافة حجم"
-    await page.fill(".size-entry input[name=size]", "30");
-    await page.fill(".size-entry input[name=price]", "25");
-
-    await page.check("input[name=families][value=oud]");
-    await page.check("input[name=families][value=amber]");
-    await page.fill("#notes_base", "عود");
-
-    await page.click("#productForm button[type=submit]");
-    const captured = await readCaptured(page, "POST", "/api/products");
-    assert.equal(captured.status, 201, `create failed: ${captured.body}`);
-    const created = JSON.parse(captured.body).data;
-    addedProductId = created._id;
-
-    const fetched = await page.evaluate(async (id) => {
-      const res = await fetch("/api/products");
-      return (await res.json()).data.find((p) => p._id === id);
-    }, addedProductId);
-
-    assert.equal(fetched.p_category, "Women");
-    assert.deepEqual(fetched.families, ["oud", "amber"]);
-    assert.match(fetched.p_image, /^\/img\//);
-    const imgStatus = await page.evaluate(async (url) => (await fetch(url)).status, fetched.p_image);
-    assert.equal(imgStatus, 200);
-    check(page);
-  });
-
-  await scenario("Edit product keeps and changes fields", async () => {
-    const page = await openPage();
-    await page.goto(`${baseUrl}/admin/html/edit_product.html?id=${addedProductId}`);
-    await page.waitForFunction(() => {
-      const checked = [...document.querySelectorAll("input[name=families]:checked")].map((i) => i.value);
-      return checked.includes("oud") && checked.includes("amber");
-    });
-
-    assert.equal(await page.inputValue("#p_category"), "Women");
-    assert.equal(await page.isChecked("input[name=families][value=oud]"), true);
-    assert.equal(await page.isChecked("input[name=families][value=amber]"), true);
-
-    await page.uncheck("input[name=families][value=amber]");
-    const responsePromise = page.waitForResponse(
-      (r) => r.url().endsWith(`/api/products/${addedProductId}`) && r.request().method() === "PUT"
-    );
-    await page.click("#editProductForm button[type=submit]");
-    await responsePromise;
-    await page.waitForURL(/all_products\.html/);
-
-    const fetched = await page.evaluate(async (id) => {
-      const res = await fetch(`/api/products/${id}`);
-      return (await res.json()).data;
-    }, addedProductId);
-    assert.deepEqual(fetched.families, ["oud"]);
-    assert.equal(fetched.p_category, "Women");
-    check(page);
-  });
-
-  await scenario("Bulk tagging on catalog page", async () => {
-    const page = await openPage();
-    await page.goto(`${baseUrl}/admin/html/catalog.html`);
-    await page.waitForSelector("#catalogBody tr:not(.loading-row)");
-
-    const row = page.locator("#catalogBody tr", { hasText: SEEDED_PRODUCT_NAME });
-    await row.locator("select").selectOption("Unisex");
-    await row.locator("input[type=checkbox][value=musk]").check();
-    await row.locator("button", { hasText: "حفظ" }).click();
-    await row.locator("text=تم الحفظ").waitFor();
-
-    const fetched = await page.evaluate(async (id) => {
-      const res = await fetch(`/api/products/${id}`);
-      return (await res.json()).data;
-    }, seeded._id.toString());
-    assert.equal(fetched.p_category, "Unisex");
-    assert.ok(fetched.families.includes("musk"));
-    check(page);
-  });
-
-  await scenario("No console/CSP errors on catalogue admin pages", async () => {
-    const pages = ["all_products.html", "add_product.html", `edit_product.html?id=${addedProductId}`, "catalog.html"];
-    for (const p of pages) {
-      const page = await openPage();
-      await page.goto(`${baseUrl}/admin/html/${p}`);
-      await page.waitForLoadState("networkidle");
-      check(page);
-    }
   });
 
   await scenario("Storefront home", async () => {

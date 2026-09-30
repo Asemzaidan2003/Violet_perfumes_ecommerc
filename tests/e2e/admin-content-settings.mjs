@@ -128,7 +128,7 @@ export async function registerAdminContentSettingsScenarios({ scenario, openPage
       await page.locator("#resetThemeBtn").click();
       await done;
       await store.goto(`${baseUrl}/`);
-      assert.equal(await cssVar(store, "--gold"), goldBefore, "reset restores the accent");
+      assert.equal((await cssVar(store, "--gold")).toLowerCase(), goldBefore.toLowerCase(), "reset restores the accent");
 
       // Near-black colours: warnings appear, Save still works.
       for (const [id, v] of [["theme_bg", "#000000"], ["theme_surface", "#010101"], ["theme_text", "#020202"], ["theme_accent", "#030303"]]) await page.locator(`#${id}`).fill(v);

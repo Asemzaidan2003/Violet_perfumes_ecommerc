@@ -1,4 +1,4 @@
-// Browser image upload (port of frontend/js/upload.js): resize, encode webp (jpeg fallback), upload full + thumb.
+// Browser image upload: resize, encode webp (jpeg fallback), upload full + thumb.
 // Never uses URL.createObjectURL: the admin CSP img-src has no blob:. Preview from the returned server URL.
 export const MAX_BYTES = 3 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
