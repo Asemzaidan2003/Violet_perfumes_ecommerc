@@ -20,6 +20,8 @@ export function useOrders() {
       const saved = (await api(`/orders/${id}`, { method: "PUT", body: { status } })).data;
       qc.setQueryData(ORDERS_KEY, (old) => (old ?? []).map((o) => (o._id === id ? { ...o, ...saved } : o)));
       qc.invalidateQueries({ queryKey: ["pending-count"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["order", id] });
       return saved;
     },
   };

@@ -25,7 +25,7 @@ function usePendingCount() {
 
 function Badge({ n }) {
   if (!n) return null;
-  return <span className="ms-auto grid min-w-6 place-items-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground" aria-label={`${n} بانتظار التأكيد`}>{n}</span>;
+  return <span role="img" className="ms-auto grid min-w-6 place-items-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground" aria-label={`${n} بانتظار التأكيد`}>{n}</span>;
 }
 
 function NavItem({ item, pending, className, onNavigate, children }) {
@@ -43,7 +43,7 @@ function NavList({ pending, onNavigate }) {
   return NAV_GROUPS.map((g) => (
     <div key={g.title} className="space-y-2">
       <p className="px-3 text-xs font-semibold text-muted-foreground">{g.title}</p>
-      {g.items.map((item) => <NavItem key={item.key} item={item} pending={pending} className={sideClass} onNavigate={onNavigate} />)}
+      {g.items.map((base) => { const item = base.badge && pending > 0 ? { ...base, to: "/orders?filter=unconfirmed" } : base; return <NavItem key={item.key} item={item} pending={pending} className={sideClass} onNavigate={onNavigate} />; })}
     </div>
   ));
 }

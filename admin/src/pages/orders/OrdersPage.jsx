@@ -7,7 +7,7 @@ import { STATUSES, fmtDate, money, paymentLabel } from "@/lib/format";
 import { filterOrders, isUnconfirmed, orderTotals, resolveCustomer } from "@/lib/orders";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { NativeSelect } from "@/components/native-select";
-import { EmptyState, ErrorState, PageHeader, StatCard } from "@/components/page";
+import { bdi, EmptyState, ErrorState, PageHeader, StatCard } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { Pill, StatusBadge } from "@/components/StatusBadge";
 import { WhatsAppLink } from "@/components/WhatsAppLink";
@@ -21,7 +21,6 @@ const BLANK = { status: "", payment: "", from: "", to: "", query: "" };
 const STATUS_OPTIONS = [{ value: "", label: "الكل" }, { value: "unconfirmed", label: "بانتظار التأكيد" }, ...STATUSES];
 const KNOWN = new Set(STATUS_OPTIONS.map((o) => o.value));
 const countActive = (f) => Object.values(f).filter(Boolean).length;
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
 
 function Field({ id, label, children }) {
   return <div className="space-y-1.5"><Label htmlFor={id}>{label}</Label>{children}</div>;
@@ -149,10 +148,12 @@ export default function OrdersPage() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <StatCard label="مجموع المبيعات" value={money(sales)} />
-        <StatCard label="مجموع الأرباح" value={money(profit)} />
-      </div>
+      {!loading && !error && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <StatCard label="مجموع المبيعات" value={money(sales)} />
+          <StatCard label="مجموع الأرباح" value={money(profit)} />
+        </div>
+      )}
 
       {error ? <ErrorState onRetry={refetch} hint="تحقق من الاتصال ثم أعد المحاولة" />
         : loading ? <div className="space-y-3" role="status" aria-label="جارٍ التحميل">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}</div>

@@ -7,7 +7,7 @@ import { ApiError, api, listOf } from "@/lib/api";
 import { bottlesFor, normalizeNumberInput } from "@/lib/cart";
 import { fmtDate, money, paymentLabel } from "@/lib/format";
 import { NativeSelect } from "@/components/native-select";
-import { ErrorState, PageHeader } from "@/components/page";
+import { bdi, ErrorState, PageHeader } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { WhatsAppLink } from "@/components/WhatsAppLink";
@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
 const orNone = (v) => (v == null || v === "" ? "-" : String(v));
 const stockLabel = (o) => (o.status === "canceled" ? "ملغي (أُعيد المخزون)" : o.stock_deducted === false ? "بانتظار التأكيد" : "تم الخصم");
 const isConfirmMode = (o) => o.source === "online" && o.stock_deducted === false && o.status !== "canceled";
@@ -184,6 +183,8 @@ export default function OrderDetailsPage() {
 
   async function confirmed(list) {
     setShortages(list);
+    // The POST succeeded: drop the confirm form now, even if the refetch below fails.
+    qc.setQueryData(["order", id], (o) => o && { ...o, stock_deducted: true });
     qc.invalidateQueries({ queryKey: ["orders"] });
     qc.invalidateQueries({ queryKey: ["pending-count"] });
     qc.invalidateQueries({ queryKey: ["order-bottles"] });
