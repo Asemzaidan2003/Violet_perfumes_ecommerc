@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
 import { money, num } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { EmptyState, ErrorState, StatCard } from "@/components/page";
+import { bdi, EmptyState, ErrorState, StatCard } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { Pill } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import AlcoholSection from "./AlcoholSection";
 
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
 const OIL_DEFAULT = 100;
 const BOTTLE_DEFAULT = 20;
 const OIL_STATUS = { available: ["متوفر", "completed"], "out of stock": ["نفد", "canceled"], discontinued: ["متوقف", "default"] };

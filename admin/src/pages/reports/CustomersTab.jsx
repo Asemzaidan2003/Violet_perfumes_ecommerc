@@ -4,15 +4,13 @@ import { Bar, BarChart, CartesianGrid, Legend, Pie, PieChart, Tooltip, XAxis, YA
 import { api } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
 import { reportQuery } from "@/lib/dates";
-import { CHART_PAIRS, fmtDate, money, num } from "@/lib/format";
-import { ChartCard, EmptyState, ErrorState, StatCard } from "@/components/page";
+import { CHART_PAIRS, fmtDate, money, n2, num } from "@/lib/format";
+import { bdi, ChartCard, EmptyState, ErrorState, StatCard } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartLegendContent, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
-const n2 = (v) => Number(v) || 0;
 const CUSTOMER_TYPE_LABEL = { individual: "فرد", store: "محل" };
 const typeLabel = (t) => CUSTOMER_TYPE_LABEL[t] ?? (t == null ? "-" : String(t));
 
@@ -98,7 +96,7 @@ export default function CustomersTab({ filters }) {
   const breakdown = d?.customer_type_breakdown ?? [];
   const top = topCustomers[0];
   const exportCsv = () => downloadCsv("customers-report.csv", ["Name", "Phone", "Type", "Orders", "Total Spent", "Avg Order", "Last Order"],
-    topCustomers.map((c) => [c.name ?? "-", c.phone ?? "-", c.type ?? "-", c.orders_count, c.total_spent, c.avg_order_value, c.last_order_at]));
+    topCustomers.map((c) => [c.name ?? "", c.phone ?? "", c.type ?? "", c.orders_count, c.total_spent, c.avg_order_value, c.last_order_at]));
 
   return (
     <div className="space-y-4">

@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { trendArrow, trendClass } from "@/lib/format";
 
+export const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
+
 export function PageHeader({ eyebrow, title, description, actions }) {
   return (
     <header className="flex flex-wrap items-end justify-between gap-3">

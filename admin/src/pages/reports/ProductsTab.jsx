@@ -4,9 +4,9 @@ import { Download, Package } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Legend, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
-import { CHART_PAIRS, money, num } from "@/lib/format";
+import { CHART_PAIRS, money, n2, num, PAIR } from "@/lib/format";
 import { reportQuery } from "@/lib/dates";
-import { ChartCard, EmptyState, ErrorState } from "@/components/page";
+import { bdi, ChartCard, EmptyState, ErrorState } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,8 @@ import { ChartContainer, ChartLegendContent, ChartTooltipContent } from "@/compo
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
-const n2 = (v) => Number(v) || 0;
 
-const REVENUE_SERIES = { revenue: { label: "الإيرادات", theme: { light: "#0c6e63", dark: "#2bb5a4" } } };
+const REVENUE_SERIES = { revenue: { label: "الإيرادات", theme: PAIR.teal } };
 const revTip = (value, name, item) => (
   <>
     <span className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: item?.color }} aria-hidden />

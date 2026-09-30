@@ -3,14 +3,13 @@ import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { money, num } from "@/lib/format";
-import { EmptyState } from "@/components/page";
+import { bdi, EmptyState } from "@/components/page";
 import { ResponsiveTable, useWide } from "@/components/ResponsiveTable";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
 const INVALID = "يرجى تعبئة جميع الحقول بشكل صحيح";
 const FIELDS = [
   { key: "name", label: "الاسم", type: "text" },

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { api, ApiError, unwrap } from "@/lib/api";
 import { fmtDate } from "@/lib/format";
 import { NativeSelect } from "@/components/native-select";
-import { EmptyState, ErrorState, PageHeader } from "@/components/page";
+import { bdi, EmptyState, ErrorState, PageHeader } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { Pill } from "@/components/StatusBadge";
 import { WhatsAppLink } from "@/components/WhatsAppLink";
@@ -17,7 +17,6 @@ const LIMIT = 500; // server cap on GET /interests
 const OPTIONS = [{ value: "", label: "الكل" }, { value: "new", label: "جديد" }, { value: "contacted", label: "تم التواصل" }, { value: "closed", label: "مغلق" }];
 const LABEL = Object.fromEntries(OPTIONS.map((o) => [o.value, o.label]));
 const TONE = { new: "pending", contacted: "completed", closed: "default" };
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
 const dash = (v) => (v == null || v === "" ? "-" : String(v));
 
 export default function InterestsPage() {

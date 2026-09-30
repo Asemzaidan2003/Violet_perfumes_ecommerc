@@ -1,8 +1,8 @@
+import { dash } from "./format.js";
 
 const DASH = "-";
 // Arabic-Indic / Persian digits -> ASCII; punctuation is left alone (names may contain commas).
 const asciiDigits = (s) => s.replace(/[٠-٩]/g, (d) => d.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, (d) => d.charCodeAt(0) - 0x6f0);
-const day = (d) => { const t = d ? new Date(d) : null; return t && !Number.isNaN(t.getTime()) ? t : null; };
 const startOfDay = (t) => new Date(t.getFullYear(), t.getMonth(), t.getDate());
 // "YYYY-MM-DD" (date input) -> local midnight; null when blank or malformed.
 const dateInput = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s ?? ""); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
@@ -18,7 +18,7 @@ export function resolveCustomer(order, customersById) {
 export const isUnconfirmed = (o) => o?.stock_deducted === false && o?.status !== "canceled";
 
 export function isToday(order, now = new Date()) {
-  const t = day(order?.createdAt);
+  const t = dash(order?.createdAt);
   return !!t && startOfDay(t).getTime() === startOfDay(now).getTime();
 }
 
@@ -33,7 +33,7 @@ export function filterOrders(orders, { status, payment, from, to, query, today }
     if (status === "unconfirmed" ? !isUnconfirmed(o) : status && o.status !== status) return false;
     if (payment && o.payment_method !== payment) return false;
     if (lo || hi) {
-      const t = day(o.createdAt);
+      const t = dash(o.createdAt);
       if (!t || (lo && t < lo) || (hiEnd && t >= hiEnd)) return false;
     }
     if (q) {

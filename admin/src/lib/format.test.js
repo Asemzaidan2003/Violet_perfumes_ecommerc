@@ -12,7 +12,7 @@ test("shortId is the last six characters, uppercased", () => {
   expect(shortId("")).toBe("");
 });
 
-import { waNational, num, pct, trendClass, trendArrow, fmtDate, fmtDateShort, fmtDateTime, toDateInputValue, arabicStatus, paymentLabel, waLink, STATUSES, CHART_COLORS } from "./format.js";
+import { waNational, num, pct, trendClass, trendArrow, fmtDate, fmtDateShort, fmtDateTime, toDateInputValue, arabicStatus, paymentLabel, waLink, STATUSES } from "./format.js";
 
 test("num groups thousands and never throws", () => {
   expect(num(1234.5)).toBe("1,234.5");
@@ -53,7 +53,6 @@ test("status and payment labels", () => {
   expect(paymentLabel("Credit")).toBe("بطاقة");
   expect(STATUSES.map((s) => s.value)).toEqual(["pending", "completed", "canceled", "ready for delivery", "in delivery", "uncollected payment"]);
   expect(STATUSES[0].label).toBe("قيد الانتظار");
-  expect(CHART_COLORS.palette).toHaveLength(8);
 });
 
 test("waLink strips non-digits and one leading zero", () => {

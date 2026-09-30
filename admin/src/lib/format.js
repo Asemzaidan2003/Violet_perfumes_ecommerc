@@ -1,7 +1,7 @@
 export const money = (n) => `${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} JOD`;
 export const shortId = (id) => String(id ?? "").slice(-6).toUpperCase();
 
-const dash = (d) => { const t = d ? new Date(d) : null; return t && !Number.isNaN(t.getTime()) ? t : null; };
+export const dash = (d) => { const t = d ? new Date(d) : null; return t && !Number.isNaN(t.getTime()) ? t : null; };
 const p2 = (n) => String(n).padStart(2, "0");
 
 export const num = (n) => (Number(n) || 0).toLocaleString("en-US");
@@ -29,14 +29,10 @@ export const paymentLabel = (m) => ({ Cash: "كاش", Credit: "بطاقة" })[m]
 export const waNational = (phone) => String(phone ?? "").replace(/\D/g, "").replace(/^(00)?962/, "").replace(/^0/, "");
 export const waLink = (phone) => `https://wa.me/962${waNational(phone)}`;
 
-// Categorical slice colours as light/dark pairs (dark variants stay readable on a dark card).
-export const CHART_PAIRS = [
-  { light: "#0c6e63", dark: "#2bb5a4" }, { light: "#2b52a3", dark: "#7ea2f0" }, { light: "#b7791f", dark: "#f0b94a" }, { light: "#1c7f8c", dark: "#5cc3d1" },
-  { light: "#dc3545", dark: "#f07a86" }, { light: "#935b00", dark: "#e09a4a" }, { light: "#52585f", dark: "#a7b0ba" }, { light: "#5b8f89", dark: "#9fd3cc" },
-];
-
-export const CHART_COLORS = {
-  brand: "#0c6e63", brandDark: "#0a564d", brandSoft: "#7fbdb5", amber: "#e0a530", blue: "#2b52a3",
-  teal: "#1c7f8c", red: "#dc3545", slate: "#9aa3ae",
-  palette: ["#0c6e63", "#2b52a3", "#e0a530", "#1c7f8c", "#dc3545", "#935b00", "#52585f", "#7fbdb5"],
+// Chart colours as light/dark pairs (dark variants stay readable on a dark card). CHART_PAIRS is the categorical order.
+export const PAIR = {
+  teal: { light: "#0c6e63", dark: "#2bb5a4" }, blue: { light: "#2b52a3", dark: "#7ea2f0" }, amber: { light: "#b7791f", dark: "#f0b94a" }, cyan: { light: "#1c7f8c", dark: "#5cc3d1" },
+  red: { light: "#dc3545", dark: "#f07a86" }, brown: { light: "#935b00", dark: "#e09a4a" }, slate: { light: "#52585f", dark: "#a7b0ba" }, mint: { light: "#5b8f89", dark: "#9fd3cc" },
 };
+export const CHART_PAIRS = Object.values(PAIR);
+export const n2 = (v) => Number(v) || 0;

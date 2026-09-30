@@ -4,32 +4,25 @@ import { BarChart3, PackageCheck, RefreshCw, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { CartesianGrid, Legend, Line, LineChart, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
-import { arabicStatus, fmtDate, fmtDateShort, money, num, paymentLabel, pct } from "@/lib/format";
-import { ChartCard, EmptyState, ErrorState, PageHeader, StatCard } from "@/components/page";
+import { arabicStatus, fmtDate, fmtDateShort, money, num, PAIR, paymentLabel, pct } from "@/lib/format";
+import { bdi, ChartCard, EmptyState, ErrorState, PageHeader, StatCard } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartLegendContent, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
 const arr = (v) => (Array.isArray(v) ? v : []);
 const linkCls = "inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-primary underline-offset-4 hover:underline";
 
-// Chart colours as light/dark pairs (>= 3:1 against the card in both themes; see the task report).
 const LINES = {
-  revenue: { label: "المبيعات", theme: { light: "#0c6e63", dark: "#2bb5a4" } },
-  profit: { label: "الأرباح", theme: { light: "#b7791f", dark: "#f0b94a" } },
+  revenue: { label: "المبيعات", theme: PAIR.teal },
+  profit: { label: "الأرباح", theme: PAIR.amber },
 };
 const STATUS_COLORS = {
-  pending: { light: "#b7791f", dark: "#f0b94a" },
-  completed: { light: "#0c6e63", dark: "#2bb5a4" },
-  canceled: { light: "#dc3545", dark: "#f07a86" },
-  "ready for delivery": { light: "#2b52a3", dark: "#7ea2f0" },
-  "in delivery": { light: "#1c7f8c", dark: "#5cc3d1" },
-  "uncollected payment": { light: "#935b00", dark: "#e09a4a" },
+  pending: PAIR.amber, completed: PAIR.teal, canceled: PAIR.red, "ready for delivery": PAIR.blue, "in delivery": PAIR.cyan, "uncollected payment": PAIR.brown,
 };
-const FALLBACK = { light: "#52585f", dark: "#a7b0ba" };
+const FALLBACK = PAIR.slate;
 
 const tipRow = (fmt) => (value, name, item) => (
   <>

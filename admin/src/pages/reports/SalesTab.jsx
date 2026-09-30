@@ -5,8 +5,8 @@ import { Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, Tooltip
 import { api } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
 import { reportQuery } from "@/lib/dates";
-import { money, num } from "@/lib/format";
-import { ChartCard, EmptyState, ErrorState, StatCard } from "@/components/page";
+import { money, n2, num, PAIR } from "@/lib/format";
+import { bdi, ChartCard, EmptyState, ErrorState, StatCard } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { NativeSelect } from "@/components/native-select";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,11 @@ import { ChartContainer, ChartLegendContent, ChartTooltipContent } from "@/compo
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const bdi = (v) => <bdi dir="ltr">{v}</bdi>;
-const n2 = (v) => Number(v) || 0;
 
-// Light/dark pairs shared with the dashboard chart palette.
 const SERIES = {
-  revenue: { label: "المبيعات", theme: { light: "#0c6e63", dark: "#2bb5a4" } },
-  cost: { label: "التكلفة", theme: { light: "#52585f", dark: "#a7b0ba" } },
-  profit: { label: "الربح", theme: { light: "#b7791f", dark: "#f0b94a" } },
+  revenue: { label: "المبيعات", theme: PAIR.teal },
+  cost: { label: "التكلفة", theme: PAIR.slate },
+  profit: { label: "الربح", theme: PAIR.amber },
 };
 const tip = (value, name, item) => (
   <>
