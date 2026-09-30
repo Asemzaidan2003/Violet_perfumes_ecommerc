@@ -12,6 +12,11 @@ import InterestsPage from "@/pages/interests/InterestsPage";
 import ReportsPage from "@/pages/reports/ReportsPage";
 import ProductsPage from "@/pages/products/ProductsPage";
 import ProductFormPage from "@/pages/products/ProductFormPage";
+import OilsPage from "@/pages/oils/OilsPage";
+import OilFormPage from "@/pages/oils/OilFormPage";
+import BottlesPage from "@/pages/bottles/BottlesPage";
+import BottleFormPage from "@/pages/bottles/BottleFormPage";
+import AlcoholPage from "@/pages/alcohol/AlcoholPage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
@@ -34,6 +39,13 @@ export function App() {
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/products/new" element={<ProductFormPage />} />
                 <Route path="/products/:id/edit" element={<ProductFormPage />} />
+                <Route path="/oils" element={<OilsPage />} />
+                <Route path="/oils/new" element={<OilFormPage />} />
+                <Route path="/oils/:id/edit" element={<OilFormPage />} />
+                <Route path="/bottles" element={<BottlesPage />} />
+                <Route path="/bottles/new" element={<BottleFormPage />} />
+                <Route path="/bottles/:id/edit" element={<BottleFormPage />} />
+                <Route path="/alcohol" element={<AlcoholPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>

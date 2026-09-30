@@ -1,5 +1,5 @@
 import {
-  ShoppingCart, ClipboardList, Inbox, Package, Droplets, FlaskConical, ListChecks, Tag,
+  ShoppingCart, ClipboardList, Inbox, Package, Droplets, FlaskConical, ListChecks, Tag, Wine,
   LayoutDashboard, BarChart3, Store, FileText, Megaphone, Settings, Layers,
 } from "lucide-react";
 
@@ -13,8 +13,9 @@ export const NAV_GROUPS = [
   ] },
   { title: "الكتالوج", items: [
     { key: "products", label: "المنتجات", to: "/products", icon: Package },
-    { key: "oils", label: "الزيوت", legacy: `${L}all_oils.html`, icon: Droplets },
-    { key: "bottles", label: "الزجاجات", legacy: `${L}all_bottles.html`, icon: FlaskConical },
+    { key: "oils", label: "الزيوت", to: "/oils", icon: Droplets },
+    { key: "bottles", label: "الزجاجات", to: "/bottles", icon: FlaskConical },
+    { key: "alcohol", label: "الكحول", to: "/alcohol", icon: Wine },
     { key: "tagging", label: "تصنيف المنتجات", legacy: `${L}catalog.html`, icon: ListChecks },
     { key: "categories", label: "الأقسام", legacy: `${L}categories.html`, icon: Layers },
     { key: "brands", label: "المصممون", legacy: `${L}brands.html`, icon: Tag },
@@ -32,5 +33,4 @@ export const NAV_GROUPS = [
 ];
 
 const byKey = Object.fromEntries(NAV_GROUPS.flatMap((g) => g.items).map((i) => [i.key, i]));
-// The phone Products tab stays on the legacy page until phase 4 task 9 reworks the tab set.
-export const MOBILE_TABS = ["pos", "orders", "reports", "products"].map((k) => (k === "products" ? { ...byKey[k], to: undefined, legacy: `${L}all_products.html` } : byKey[k]));
+export const MOBILE_TABS = ["pos", "orders", "products", "reports"].map((k) => byKey[k]);

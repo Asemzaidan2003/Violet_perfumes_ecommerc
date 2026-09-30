@@ -208,7 +208,7 @@ export async function registerAdminProductsScenarios({ scenario, openPage, check
       }
       await page.getByRole("menuitem", { name: "أضف زيت جديد" }).click();
       await page.waitForURL(/\/admin\/oils\/new$/);
-      await page.getByText("الصفحة غير موجودة").waitFor();
+      await page.locator("#oil_id").waitFor();
       await page.goBack();
       await card.waitFor();
       // Switch on the phone: 44px hit area and it works.
