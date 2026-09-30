@@ -5,6 +5,7 @@ import { Package, Pencil, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError, listOf } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ownImage } from "@/lib/format";
 import { bdi, EmptyState, ErrorState, PageHeader } from "@/components/page";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { Pill } from "@/components/StatusBadge";
@@ -15,13 +16,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const STATUS = { available: ["completed", "متوفر"], discontinued: ["default", "متوقف"] };
 const statusOf = (s) => STATUS[s] ?? ["canceled", "غير متوفر"];
-const hasOwnImage = (p) => String(p.p_image ?? "").startsWith("/img/");
+const hasOwnImage = (p) => ownImage(p.p_image);
 const isShown = (p) => p.visible !== false;
 const norm = (v) => String(v ?? "").toLowerCase();
 
 function Thumb({ src }) {
-  const ok = typeof src === "string" && (src.startsWith("/") || src.startsWith("https://"));
-  return ok
+  return ownImage(src)
     ? <img src={src} alt="" loading="lazy" className="size-12 shrink-0 rounded-md border object-cover" />
     : <span className="grid size-12 shrink-0 place-items-center rounded-md border bg-muted text-muted-foreground"><Package className="size-6" aria-hidden /></span>;
 }

@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { money, shortId } from "./format.js";
+import { money, shortId, ownImage } from "./format.js";
 
 test("money always shows two decimals and the currency", () => {
   expect(money(12.5)).toBe("12.50 JOD");
@@ -79,4 +79,9 @@ test("waLink normalises international prefixes", () => {
 test("waNational is the 9-digit number or empty", () => {
   expect(waNational("+962 79 123 4567")).toBe("791234567");
   expect(waNational("12345")).toBe("12345");
+});
+
+test("ownImage accepts local paths and https only", () => {
+  for (const ok of ["/img/a.webp", "/uploads/x.png", "https://cdn.example/x.jpg"]) expect(ownImage(ok)).toBe(true);
+  for (const bad of [".", "", null, undefined, "//evil.example/x.png", "http://x/y.png", "javascript:alert(1)", 5]) expect(ownImage(bad)).toBe(false);
 });

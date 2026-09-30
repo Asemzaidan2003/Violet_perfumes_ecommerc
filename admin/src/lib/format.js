@@ -36,3 +36,5 @@ export const PAIR = {
 };
 export const CHART_PAIRS = Object.values(PAIR);
 export const n2 = (v) => Number(v) || 0;
+// A usable product image: same-origin absolute path (not protocol-relative) or https. "." / empty mean none.
+export const ownImage = (src) => typeof src === "string" && (/^\/(?!\/)/.test(src) || src.startsWith("https://"));

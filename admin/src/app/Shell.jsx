@@ -89,7 +89,7 @@ export default function Shell() {
               <Link to="/orders?filter=unconfirmed" className="inline-flex min-h-11 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground">الطلبات ({pending})</Link>
             )}
           </div>
-          <div className="flex items-center gap-1"><AddMenu /><UserActions /></div>
+          <div className="flex items-center gap-2"><AddMenu /><UserActions /></div>
         </header>
         <main className="flex-1 pb-20 lg:pb-0"><Outlet key={location.pathname + (location.pathname === "/orders" ? location.search : "")} /></main>
       </div>

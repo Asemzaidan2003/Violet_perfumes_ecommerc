@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import Brand from "../../backend/models/brand.model.js";
 import Category from "../../backend/models/category.model.js";
+import Order from "../../backend/models/order.model.js";
 import Product from "../../backend/models/product.model.js";
 import { invalidateCategories } from "../../backend/services/categories.service.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
@@ -29,11 +30,12 @@ export async function registerAdminProductsScenarios({ scenario, openPage, check
     invalidateCategories();
     const base = { oil_id: `OIL-${stamp}`, oil_percentage: 20, alcohol_percentage: 80, p_image: "." };
     seed.p1 = await Product.create({ ...base, p_name: NAME, p_category: seed.cat.key, brand: seed.brand._id, size_list: [{ size: "30", price: 15.5 }, { size: "50", price: 24 }] });
+    seed.p3 = await Product.create({ ...base, p_image: "https://img.example.test/a.png", p_name: `عطر صورة خارجية ${stamp}`, p_category: seed.cat.key, size_list: [{ size: "30", price: 5 }] });
     seed.p2 = await Product.create({ ...base, p_name: HOSTILE, p_category: seed.cat2.key, status: "out of stock", size_list: [{ size: "30", price: 9 }] });
     invalidateCatalog();
   }
   async function cleanup() {
-    await Product.deleteMany({ _id: { $in: [seed.p1, seed.p2].filter(Boolean).map((d) => d._id) } });
+    await Product.deleteMany({ _id: { $in: [seed.p1, seed.p2, seed.p3].filter(Boolean).map((d) => d._id) } });
     if (seed.brand) await Brand.deleteOne({ _id: seed.brand._id });
     await Category.deleteMany({ _id: { $in: [seed.cat, seed.cat2].filter(Boolean).map((d) => d._id) } });
     invalidateCategories();
@@ -52,6 +54,7 @@ export async function registerAdminProductsScenarios({ scenario, openPage, check
       await seedAll();
       const page = await openPage();
       await page.setViewportSize({ width: 1440, height: 900 });
+      await page.route("https://img.example.test/**", (rt) => rt.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64") }));
       await openAdmin(page, baseUrl, admin, "/products");
       const row = page.locator("tr", { hasText: NAME });
       await row.waitFor();
@@ -63,8 +66,31 @@ export async function registerAdminProductsScenarios({ scenario, openPage, check
       assert.ok(!text.includes("مخفي"), "not hidden yet");
       assert.ok((await page.locator("tr", { hasText: HOSTILE }).innerText()).includes("غير متوفر"));
       assert.equal(await row.locator("img").count(), 0, "placeholder icon for '.'");
+      const ext = page.locator("tr", { hasText: `عطر صورة خارجية ${stamp}` });
+      await ext.waitFor();
+      assert.equal(await ext.locator("img").count(), 1, "thumbnail for a non-/img/ image");
+      assert.equal(await ext.getByText("بدون صورة خاصة").count(), 0, "no badge when a thumbnail shows");
       assert.equal(await row.locator(`a[href="/admin/products/${seed.p1._id}/edit"]`).count(), 1);
       await assertPageIsXssSafe(page, [HOSTILE, BRAND, CAT_LABEL]);
+
+      // Desktop sidebar: the add menu and the Products nav link.
+      const side = page.locator("aside");
+      await side.getByRole("button", { name: "إضافة جديد" }).click();
+      for (const [label, href] of [["أضف عطر جديد", "/admin/products/new"], ["أضف زيت جديد", "/admin/oils/new"], ["أضف زجاجة جديدة", "/admin/bottles/new"]]) {
+        const item = page.getByRole("menuitem", { name: label });
+        await item.waitFor();
+        assert.equal(await item.getAttribute("href"), href);
+        await expect(async () => (await item.boundingBox()).height >= 44, `${label} >= 44px`);
+      }
+      assert.equal(await page.getByRole("menuitem").count(), 3);
+      await page.keyboard.press("Escape");
+      await page.getByRole("menuitem").first().waitFor({ state: "detached" });
+      await side.getByRole("button", { name: "إضافة جديد" }).click();
+      await page.getByRole("menuitem", { name: "أضف زجاجة جديدة" }).click();
+      await page.waitForURL(/\/admin\/bottles\/new$/);
+      await side.getByRole("link", { name: "المنتجات", exact: true }).click();
+      await page.waitForURL(/\/admin\/products$/);
+      await row.waitFor();
 
       // Search: Arabic category label, key, brand, name.
       const search = page.getByLabel("ابحث بالاسم أو المصمم أو الفئة");
@@ -198,6 +224,35 @@ export async function registerAdminProductsScenarios({ scenario, openPage, check
       await assertPageIsXssSafe(page, [HOSTILE, BRAND]);
       check(page);
     } finally {
+      await cleanup();
+    }
+  });
+
+  await scenario("Products list (new admin): phone header with pending-orders pill keeps targets apart", async () => {
+    let order;
+    try {
+      const p = await Product.create({ p_name: `عطر ترويسة ${stamp}`, p_image: ".", p_category: "Men", oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80, size_list: [{ size: "30", price: 22 }] });
+      seed.p1 = p;
+      order = await Order.create({
+        products: [{ product_id: p._id, p_name: p.p_name, product_size: "30", quantity: 1, selling_price: 22, total_revenue: 22, oil_id: "OIL1", oil_ml: 6, alcohol_ml: 24 }],
+        total_items: 1, total_revenue: 22, total_cost: 5, total_profit: 17, payment_method: "Cash", delivery_fee: 0, final_total: 22, status: "pending", source: "online", stock_deducted: false,
+      });
+      const page = await openPage({ mobile: true });
+      await openAdmin(page, baseUrl, admin, "/products");
+      const pill = page.locator("header a", { hasText: /^الطلبات \(/ });
+      await pill.waitFor();
+      assert.equal(await noSideScroll(page), true);
+      const boxes = await page.evaluate(() => [...document.querySelectorAll("header a, header button")].map((el) => { const r = el.getBoundingClientRect(); return { n: el.getAttribute("aria-label") || el.textContent.trim(), l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height }; }).filter((x) => x.w > 0));
+      assert.ok(boxes.length >= 4, "pill, add, theme and logout are in the header");
+      for (const x of boxes) { assert.ok(x.h >= 44 && x.w >= 44, `${x.n} is at least 44px`); assert.ok(x.l >= 0 && x.r <= 375, `${x.n} inside the viewport`); }
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i], b = boxes[j];
+        const gapX = Math.max(a.l - b.r, b.l - a.r), gapY = Math.max(a.t - b.b, b.t - a.b);
+        assert.ok(Math.max(gapX, gapY) >= 8 - 0.5, `${a.n} / ${b.n} are 8px apart`);
+      }
+      check(page);
+    } finally {
+      if (order) await Order.deleteOne({ _id: order._id });
       await cleanup();
     }
   });
