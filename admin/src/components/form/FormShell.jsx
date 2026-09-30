@@ -57,12 +57,12 @@ function useLeaveGuard(active) {
   };
 }
 
-export function FormShell({ title, backTo, onSubmit, dirty, submitting, submitLabel = "حفظ", extraActions, children }) {
+export function FormShell({ title, backTo, onSubmit, dirty, submitting, submitLabel = "حفظ", submitId, disabled, extraActions, children }) {
   const guard = useLeaveGuard(!!dirty && !submitting);
   const sending = useRef(false);
   async function submit(e) {
     e.preventDefault();
-    if (sending.current || submitting) return;
+    if (sending.current || submitting || disabled) return;
     sending.current = true;
     try { await onSubmit?.(e); } finally { sending.current = false; }
   }
@@ -75,7 +75,7 @@ export function FormShell({ title, backTo, onSubmit, dirty, submitting, submitLa
         <div className="space-y-4 rounded-xl border bg-card p-4 text-card-foreground">{children}</div>
         {/* Phones: pinned just above the tab bar (4rem + safe-area inset); in flow, so the last field is never hidden. */}
         <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3 lg:static lg:border-0 lg:bg-transparent lg:p-0">
-          <Button type="submit" className="h-11 min-w-28" disabled={submitting}>
+          <Button id={submitId} type="submit" className="h-11 min-w-28" disabled={submitting || disabled}>
             {submitting && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}
             {submitLabel}
           </Button>
