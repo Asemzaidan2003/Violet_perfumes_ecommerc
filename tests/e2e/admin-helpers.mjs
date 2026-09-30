@@ -21,3 +21,11 @@ export async function assertPageIsXssSafe(page, payloads) {
   const hrefs = await page.$$eval('a[href^="https://wa.me/"]', (as) => as.map((a) => a.getAttribute("href")));
   for (const h of hrefs) assert.match(h, /^https:\/\/wa\.me\/962\d{9}$/);
 }
+
+export const money = (n) => `${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} JOD`;
+export const esc = (s) => s.replace(/[.+*?^${}()|[\]\\]/g, "\\$&");
+// Interactive controls under 44px tall inside <main> (touch-target sweep).
+export const small = (page) => page.evaluate(() => [...document.querySelectorAll("main a, main button, main select, main input")]
+  .map((el) => [el, el.getBoundingClientRect()]).filter(([, r]) => r.width > 0 && r.height > 0 && r.height < 44)
+  .map(([el]) => `${el.tagName} ${el.getAttribute("aria-label") || el.textContent.trim().slice(0, 20)}`));
+export const card = (page, label) => page.locator("main div.rounded-xl", { has: page.getByText(label, { exact: true }) }).first();

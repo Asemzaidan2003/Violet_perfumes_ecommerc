@@ -5,13 +5,8 @@ import fs from "node:fs/promises";
 import Alcohol from "../../backend/models/alcohol.model.js";
 import Bottle from "../../backend/models/bottle.model.js";
 import Oil from "../../backend/models/oil.model.js";
-import { assertPageIsXssSafe, noSideScroll, openAdmin } from "./admin-helpers.mjs";
+import { assertPageIsXssSafe, money, noSideScroll, openAdmin, small } from "./admin-helpers.mjs";
 import { toCsv } from "../../admin/src/lib/csv.js";
-
-const money = (n) => `${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} JOD`;
-const small = (page) => page.evaluate(() => [...document.querySelectorAll("main a, main button, main select, main input")]
-  .map((el) => [el, el.getBoundingClientRect()]).filter(([, r]) => r.width > 0 && r.height > 0 && r.height < 44)
-  .map(([el]) => `${el.tagName} ${el.getAttribute("aria-label") || el.textContent.trim().slice(0, 20)}`));
 
 export async function registerAdminInventoryScenarios({ scenario, openPage, check, baseUrl, admin }) {
   const stamp = crypto.randomUUID().slice(0, 8);
@@ -153,6 +148,7 @@ export async function registerAdminInventoryScenarios({ scenario, openPage, chec
       assert.equal(await page.locator("table").count(), 0, "cards, not tables, on a phone");
       assert.equal(await noSideScroll(page), true);
       assert.deepEqual(await small(page), [], "every control is at least 44px tall");
+      await assertPageIsXssSafe(page, [ALC, OIL_NEG]);
       await page.locator("li", { hasText: ALC_TYPE }).getByRole("button", { name: "تعديل" }).click();
       const dlg = page.getByRole("dialog");
       await dlg.waitFor();
@@ -164,6 +160,7 @@ export async function registerAdminInventoryScenarios({ scenario, openPage, chec
       await dlg.getByRole("button", { name: "حفظ" }).click();
       await dlg.waitFor({ state: "detached" });
       assert.equal((await Alcohol.findById(seed.alcohol._id)).quantity, 42.5);
+      await assertPageIsXssSafe(page, [ALC]);
       check(page);
     } finally { await cleanup(); }
   });

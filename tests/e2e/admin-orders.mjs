@@ -1,14 +1,12 @@
 // New React admin orders list. registerAdminOrdersScenarios({ scenario, openPage, check, baseUrl, admin })
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import mongoose from "mongoose";
 import Bottle from "../../backend/models/bottle.model.js";
 import Customer from "../../backend/models/customer.model.js";
-import Interest from "../../backend/models/interest.model.js";
 import Order from "../../backend/models/order.model.js";
 import Product from "../../backend/models/product.model.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
-import { assertPageIsXssSafe, noSideScroll, openAdmin } from "./admin-helpers.mjs";
+import { assertPageIsXssSafe, noSideScroll, openAdmin, small } from "./admin-helpers.mjs";
 
 const line = (productId, name) => ({
   product_id: productId, p_name: name, product_size: "30", quantity: 1,
@@ -43,12 +41,13 @@ const posOrder = (product, customer) => Order.create({
 
 export async function registerAdminOrdersScenarios({ scenario, openPage, check, baseUrl, admin }) {
   await scenario("Orders page (new admin): today's default, filters, status change", async () => {
-    const product = await seedProduct("عطر اختبار الطلبات");
-    invalidateCatalog();
-    const customer = await Customer.create({ name: "زبون طلبات كاشير", phone: "0797770001", type: "individual" });
-    const seeded = await posOrder(product, customer);
-    const online = await placeOnlineOrder(baseUrl, { productId: String(product._id), name: "زبون طلبات أونلاين", phone: "0797770002" });
+    let product, customer, seeded, online;
     try {
+      product = await seedProduct("عطر اختبار الطلبات");
+      invalidateCatalog();
+      customer = await Customer.create({ name: "زبون طلبات كاشير", phone: "0797770001", type: "individual" });
+      seeded = await posOrder(product, customer);
+      online = await placeOnlineOrder(baseUrl, { productId: String(product._id), name: "زبون طلبات أونلاين", phone: "0797770002" });
       const page = await openPage();
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAdmin(page, baseUrl, admin, "/orders");
@@ -105,30 +104,29 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       // The browser logs the deliberate 409 above; anything else is noise.
       assert.deepEqual(page.errors.filter((e) => !/status of 409/.test(e)), []);
     } finally {
-      await Order.deleteMany({ $or: [{ _id: seeded._id }, { public_ref: online.ref }] });
+      if (seeded) await Order.deleteOne({ _id: seeded._id });
+      if (online) await Order.deleteOne({ public_ref: online.ref });
       await Customer.deleteMany({ phone: { $in: ["0797770001", "0797770002"] } });
-      await Product.deleteOne({ _id: product._id });
+      if (product) await Product.deleteOne({ _id: product._id });
       invalidateCatalog();
     }
   });
 
   await scenario("Orders page (new admin): phone layout", async () => {
-    const product = await seedProduct("عطر طلبات الهاتف");
-    invalidateCatalog();
-    const customer = await Customer.create({ name: "زبون طلبات الهاتف", phone: "0797770003", type: "individual" });
-    const seeded = await posOrder(product, customer);
-    const online = await placeOnlineOrder(baseUrl, { productId: String(product._id), name: "زبون هاتف أونلاين", phone: "0797770004" });
+    let product, customer, seeded, online;
     try {
+      product = await seedProduct("عطر طلبات الهاتف");
+      invalidateCatalog();
+      customer = await Customer.create({ name: "زبون طلبات الهاتف", phone: "0797770003", type: "individual" });
+      seeded = await posOrder(product, customer);
+      online = await placeOnlineOrder(baseUrl, { productId: String(product._id), name: "زبون هاتف أونلاين", phone: "0797770004" });
       const page = await openPage({ mobile: true });
       await openAdmin(page, baseUrl, admin, "/orders");
       const card = page.locator("li", { hasText: "زبون طلبات الهاتف" });
       await card.waitFor();
       assert.equal(await page.locator("table").count(), 0, "cards, not a table, on a phone");
       assert.equal(await noSideScroll(page), true, "no sideways scroll");
-      const small = await page.evaluate(() => [...document.querySelectorAll("main a, main button, main select, main input")]
-        .map((el) => [el, el.getBoundingClientRect()]).filter(([, r]) => r.width > 0 && r.height > 0 && r.height < 44)
-        .map(([el]) => `${el.tagName} ${el.getAttribute("aria-label") || el.textContent.trim().slice(0, 20)}`));
-      assert.deepEqual(small, [], "every control is at least 44px tall");
+      assert.deepEqual(await small(page), [], "every control is at least 44px tall");
 
       // The filter panel is collapsed behind a button; the deep link preselects and applies it.
       assert.equal(await page.locator("#f-status").isVisible(), false);
@@ -141,28 +139,32 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       assert.match(await toggle.innerText(), /1/, "active-filter count is shown");
       await toggle.click();
       assert.equal(await page.inputValue("#f-status"), "unconfirmed");
+      assert.equal(await page.locator("#f-status").isVisible(), true, "panel open");
+      assert.deepEqual(await small(page), [], "filter panel controls (dates, selects, buttons) are at least 44px tall");
       assert.equal(await noSideScroll(page), true);
       check(page);
     } finally {
-      await Order.deleteMany({ $or: [{ _id: seeded._id }, { public_ref: online.ref }] });
+      if (seeded) await Order.deleteOne({ _id: seeded._id });
+      if (online) await Order.deleteOne({ public_ref: online.ref });
       await Customer.deleteMany({ phone: { $in: ["0797770003", "0797770004"] } });
-      await Product.deleteOne({ _id: product._id });
+      if (product) await Product.deleteOne({ _id: product._id });
       invalidateCatalog();
     }
   });
 
   await scenario("Orders page (new admin): hostile names are inert", async () => {
     const PAYLOAD = `"><img src=x onerror=window.__xss=1>`;
-    const product = await seedProduct("عطر طلبات XSS");
-    invalidateCatalog();
     // Straight into the DB: the public API strips < and >, but the admin must not rely on that.
-    const order = await Order.create({
-      products: [line(product._id, product.p_name)], total_items: 1, total_revenue: 22, total_cost: 0, total_profit: 0,
-      payment_method: "Cash", delivery_fee: 0, final_total: 22, status: "pending", created_by: "online", source: "online",
-      stock_deducted: false, public_ref: crypto.randomUUID(), client_key: crypto.randomUUID(),
-      delivery: { name: PAYLOAD, phone: "0781234567", city: "إربد", address: "x", notes: "" },
-    });
+    let product, order;
     try {
+      product = await seedProduct("عطر طلبات XSS");
+      invalidateCatalog();
+      order = await Order.create({
+        products: [line(product._id, product.p_name)], total_items: 1, total_revenue: 22, total_cost: 0, total_profit: 0,
+        payment_method: "Cash", delivery_fee: 0, final_total: 22, status: "pending", created_by: "online", source: "online",
+        stock_deducted: false, public_ref: crypto.randomUUID(), client_key: crypto.randomUUID(),
+        delivery: { name: PAYLOAD, phone: "0781234567", city: "إربد", address: "x", notes: "" },
+      });
       const page = await openPage();
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAdmin(page, baseUrl, admin, "/orders");
@@ -170,8 +172,8 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       assert.ok(await page.locator('a[href="https://wa.me/962781234567"]').count() >= 1, "WhatsApp link points at the normalised number");
       check(page);
     } finally {
-      await Order.deleteOne({ _id: order._id });
-      await Product.deleteOne({ _id: product._id });
+      if (order) await Order.deleteOne({ _id: order._id });
+      if (product) await Product.deleteOne({ _id: product._id });
       invalidateCatalog();
     }
   });
@@ -191,10 +193,11 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
   const waitConfirm = (page, id) => page.waitForResponse((r) => r.url().endsWith(`/orders/${id}/confirm`) && r.request().method() === "POST");
 
   await scenario("Shell (mobile): pending chip deep-links to unconfirmed orders", async () => {
-    const product = await seedProductSized("عطر شارة الانتظار", "37");
-    const order = await dbOnline(product, "37");
-    const done = await dbOnline(product, "37", { status: "completed", stock_deducted: true, delivery: { name: "زبون مؤكد سابق", phone: "0781234568", city: "إربد", address: "x", notes: "" } });
+    let product, order, done;
     try {
+      product = await seedProductSized("عطر شارة الانتظار", "37");
+      order = await dbOnline(product, "37");
+      done = await dbOnline(product, "37", { status: "completed", stock_deducted: true, delivery: { name: "زبون مؤكد سابق", phone: "0781234568", city: "إربد", address: "x", notes: "" } });
       const page = await openPage();
       await page.setViewportSize({ width: 375, height: 800 });
       await openAdmin(page, baseUrl, admin, "/pos");
@@ -213,21 +216,31 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       await page.waitForFunction(() => !document.body.innerText.includes("زبون مؤكد سابق"));
       assert.equal(await page.inputValue("#f-status"), "unconfirmed");
       await page.getByText("زبون تفاصيل").first().waitFor();
+      // Desktop sidebar: the badge item deep-links to the unconfirmed filter too.
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await openAdmin(page, baseUrl, admin, "/pos");
+      const side = page.locator("aside nav").getByRole("link", { name: /^الطلبات/ });
+      await side.locator("[role=img]").waitFor(); // badge exposed as an image with a label
+      assert.equal(await side.getAttribute("href"), "/admin/orders?filter=unconfirmed");
+      await side.click();
+      await page.waitForURL(/\/orders\?filter=unconfirmed$/);
+      await page.waitForFunction(() => !document.body.innerText.includes("زبون مؤكد سابق"));
       check(page);
     } finally {
-      await Order.deleteMany({ _id: { $in: [order._id, done._id] } });
-      await Product.deleteOne({ _id: product._id });
+      await Order.deleteMany({ _id: { $in: [order, done].filter(Boolean).map((d) => d._id) } });
+      if (product) await Product.deleteOne({ _id: product._id });
     }
   });
 
   await scenario("Order details (new admin): confirm an online order", async () => {
-    const product = await seedProductSized("عطر تفاصيل الطلب", "37");
-    invalidateCatalog();
-    const bottle = await Bottle.create({ name: "زجاجة تفاصيل 37", capacity: 37, cost: 0.2, quantity: 50 });
-    const other = await Bottle.create({ name: "زجاجة غير مناسبة 41", capacity: 41, cost: 0.2, quantity: 50 });
-    const placed = await placeOnlineOrder(baseUrl, { productId: String(product._id), name: "زبون تفاصيل أونلاين", phone: "0797770011", size: "37" });
-    const order = await Order.findOne({ public_ref: placed.ref });
+    let product, bottle, other, placed, order;
     try {
+      product = await seedProductSized("عطر تفاصيل الطلب", "37");
+      invalidateCatalog();
+      bottle = await Bottle.create({ name: "زجاجة تفاصيل 37", capacity: 37, cost: 0.2, quantity: 50 });
+      other = await Bottle.create({ name: "زجاجة غير مناسبة 41", capacity: 41, cost: 0.2, quantity: 50 });
+      placed = await placeOnlineOrder(baseUrl, { productId: String(product._id), name: "زبون تفاصيل أونلاين", phone: "0797770011", size: "37" });
+      order = await Order.findOne({ public_ref: placed.ref });
       const page = await openPage();
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAdmin(page, baseUrl, admin, `/orders/${order._id}`);
@@ -255,19 +268,20 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       assert.equal(await pendingCount(page), before - 1);
       check(page);
     } finally {
-      await Order.deleteOne({ _id: order._id });
+      if (placed) await Order.deleteOne({ public_ref: placed.ref });
       await Customer.deleteMany({ phone: "0797770011" });
-      await Bottle.deleteMany({ _id: { $in: [bottle._id, other._id] } });
-      await Product.deleteOne({ _id: product._id });
+      await Bottle.deleteMany({ _id: { $in: [bottle, other].filter(Boolean).map((d) => d._id) } });
+      if (product) await Product.deleteOne({ _id: product._id });
       invalidateCatalog();
     }
   });
 
   await scenario("Order details (new admin): confirm needs a bottle and reports shortages", async () => {
-    const product = await seedProductSized("عطر نقص المخزون", "43");
-    const empty = await Bottle.create({ name: "زجاجة فارغة 43", capacity: 43, cost: 0.2, quantity: 0 });
-    const order = await dbOnline(product, "43");
+    let product, empty, order;
     try {
+      product = await seedProductSized("عطر نقص المخزون", "43");
+      empty = await Bottle.create({ name: "زجاجة فارغة 43", capacity: 43, cost: 0.2, quantity: 0 });
+      order = await dbOnline(product, "43");
       const page = await openPage();
       await page.setViewportSize({ width: 1440, height: 900 });
       let posts = 0;
@@ -278,6 +292,8 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       await page.getByText("يرجى اختيار زجاجة لكل منتج").waitFor();
       assert.equal(posts, 0, "no request without a bottle");
       await page.selectOption("#bottle-0", String(empty._id));
+      // The confirm succeeds but the follow-up refetch of the order fails: the confirm form must still go away.
+      await page.route(`**/api/orders/${order._id}`, (rt) => (rt.request().method() === "GET" ? rt.abort() : rt.continue()));
       const confirmed = waitConfirm(page, order._id);
       await page.click("#confirmBtn");
       assert.equal((await confirmed).status(), 200);
@@ -289,13 +305,14 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       assert.match(text, /المطلوب/);
       assert.match(text, /المتوفر/);
       await page.getByText("تم الخصم", { exact: true }).waitFor();
+      assert.equal(await page.locator("#confirmBtn").count(), 0, "no live confirm form after a failed refetch");
       assert.equal(posts, 1);
-      check(page);
+      assert.deepEqual(page.errors.filter((e) => !/ERR_FAILED|Failed to load resource/.test(e)), []);
     } finally {
-      await Order.deleteOne({ _id: order._id });
+      if (order) await Order.deleteOne({ _id: order._id });
       await Customer.deleteMany({ phone: "0781234567" });
-      await Bottle.deleteOne({ _id: empty._id });
-      await Product.deleteOne({ _id: product._id });
+      if (empty) await Bottle.deleteOne({ _id: empty._id });
+      if (product) await Product.deleteOne({ _id: product._id });
     }
   });
 
@@ -304,13 +321,14 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
     const B = `<svg onload=window.__xss=2>`;
     const C = `a & b 'q' <b>x</b>`;
     const D = `" onmouseover=window.__xss=5 x="`;
-    const bottle = await Bottle.create({ name: C, capacity: 55, cost: 0.2, quantity: 20 });
-    const product = await seedProductSized("عطر تفاصيل XSS", "55");
-    const order = await dbOnline(product, "55", {
-      order_notes: D, delivery: { name: A, phone: "0781234567", city: "إربد", address: B, notes: C },
-    });
-    await Order.updateOne({ _id: order._id }, { "products.0.p_name": B });
+    let bottle, product, order;
     try {
+      bottle = await Bottle.create({ name: C, capacity: 55, cost: 0.2, quantity: 20 });
+      product = await seedProductSized("عطر تفاصيل XSS", "55");
+      order = await dbOnline(product, "55", {
+        order_notes: D, delivery: { name: A, phone: "0781234567", city: "إربد", address: B, notes: C },
+      });
+      await Order.updateOne({ _id: order._id }, { "products.0.p_name": B });
       const page = await openPage();
       await page.setViewportSize({ width: 1440, height: 900 });
       await openAdmin(page, baseUrl, admin, `/orders/${order._id}`);
@@ -325,10 +343,10 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
       await assertPageIsXssSafe(page, [A, B, C, D]);
       check(page);
     } finally {
-      await Order.deleteOne({ _id: order._id });
+      if (order) await Order.deleteOne({ _id: order._id });
       await Customer.deleteMany({ phone: "0781234567" });
-      await Bottle.deleteOne({ _id: bottle._id });
-      await Product.deleteOne({ _id: product._id });
+      if (bottle) await Bottle.deleteOne({ _id: bottle._id });
+      if (product) await Product.deleteOne({ _id: product._id });
     }
   });
 
@@ -343,109 +361,22 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
   });
 
   await scenario("Order details (new admin): phone layout", async () => {
-    const product = await seedProductSized("عطر تفاصيل الهاتف", "47");
-    const bottle = await Bottle.create({ name: "زجاجة هاتف 47", capacity: 47, cost: 0.2, quantity: 9 });
-    const order = await dbOnline(product, "47");
+    let product, bottle, order;
     try {
+      product = await seedProductSized("عطر تفاصيل الهاتف", "47");
+      bottle = await Bottle.create({ name: "زجاجة هاتف 47", capacity: 47, cost: 0.2, quantity: 9 });
+      order = await dbOnline(product, "47");
       const page = await openPage({ mobile: true });
       await openAdmin(page, baseUrl, admin, `/orders/${order._id}`);
       await page.waitForSelector("#confirmBtn");
       assert.equal(await page.locator("table").count(), 0, "cards, not a table, on a phone");
       assert.equal(await noSideScroll(page), true);
-      const small = await page.evaluate(() => [...document.querySelectorAll("main a, main button, main select, main input")]
-        .map((el) => [el, el.getBoundingClientRect()]).filter(([, r]) => r.width > 0 && r.height > 0 && r.height < 44)
-        .map(([el]) => `${el.tagName} ${el.id || el.textContent.trim().slice(0, 20)}`));
-      assert.deepEqual(small, []);
+      assert.deepEqual(await small(page), []);
       check(page);
     } finally {
-      await Order.deleteOne({ _id: order._id });
-      await Bottle.deleteOne({ _id: bottle._id });
-      await Product.deleteOne({ _id: product._id });
-    }
-  });
-
-  // ---- Interest requests ----
-  const seedInterest = (name, status, extra = {}) => Interest.create({ product_id: new mongoose.Types.ObjectId(),
-    product_name: "عطر اهتمام", size: "50", name, phone: "0797770021", note: "ملاحظة", status, ...extra,
-  });
-  const interestState = (page, id) => page.evaluate(async (i) => (await (await fetch("/api/interests")).json()).data.find((x) => x._id === i)?.status, String(id));
-
-  await scenario("Interest requests (new admin): filter and status actions", async () => {
-    const [n, c, cl] = await Promise.all([seedInterest("اهتمام جديد", "new"), seedInterest("اهتمام تواصل", "contacted"), seedInterest("اهتمام مغلق", "closed")]);
-    try {
-      const page = await openPage();
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await openAdmin(page, baseUrl, admin, "/interests");
-      const row = (name) => page.locator("tr", { hasText: name });
-      await row("اهتمام جديد").waitFor();
-      await row("اهتمام تواصل").waitFor();
-      await row("اهتمام مغلق").waitFor();
-      const btn = (name, label) => row(name).getByRole("button", { name: label });
-      assert.equal(await btn("اهتمام جديد", "تم التواصل مع اهتمام جديد").count(), 1);
-      assert.equal(await btn("اهتمام جديد", "إغلاق طلب اهتمام جديد").count(), 1);
-      assert.equal(await btn("اهتمام تواصل", "تم التواصل مع اهتمام تواصل").count(), 0, "hidden when contacted");
-      assert.equal(await btn("اهتمام تواصل", "إغلاق طلب اهتمام تواصل").count(), 1);
-      assert.equal(await btn("اهتمام مغلق", "إغلاق طلب اهتمام مغلق").count(), 0, "hidden when closed");
-      assert.equal(await btn("اهتمام مغلق", "تم التواصل مع اهتمام مغلق").count(), 1);
-      assert.equal(await row("اهتمام جديد").locator('a[href="https://wa.me/962797770021"]').count(), 1);
-
-      await page.selectOption("#i-status", "closed");
-      await row("اهتمام مغلق").waitFor();
-      await row("اهتمام جديد").waitFor({ state: "detached" });
-      await page.selectOption("#i-status", "new");
-      await row("اهتمام جديد").waitFor();
-      await row("اهتمام مغلق").waitFor({ state: "detached" });
-
-      // Contacting a new row updates the API and, under the "new" filter, the row leaves the list.
-      await btn("اهتمام جديد", "تم التواصل مع اهتمام جديد").click();
-      await row("اهتمام جديد").waitFor({ state: "detached" });
-      assert.equal(await interestState(page, n._id), "contacted");
-      await page.selectOption("#i-status", "contacted");
-      await row("اهتمام جديد").waitFor();
-      await btn("اهتمام جديد", "إغلاق طلب اهتمام جديد").click();
-      await row("اهتمام جديد").waitFor({ state: "detached" });
-      assert.equal(await interestState(page, n._id), "closed");
-      assert.equal(await interestState(page, c._id), "contacted");
-      assert.equal(await interestState(page, cl._id), "closed");
-      assert.equal(await noSideScroll(page), true);
-      check(page);
-    } finally {
-      await Interest.deleteMany({ _id: { $in: [n._id, c._id, cl._id] } });
-    }
-  });
-
-  await scenario("Interest requests (new admin): hostile strings are inert", async () => {
-    const B = `<svg onload=window.__xss=2>`;
-    const C = `a & b 'q' <b>x</b>`;
-    const D = `" onmouseover=window.__xss=5 x="`;
-    const hostile = await seedInterest(D, "new", { product_name: B, note: C, phone: "0782223334" });
-    try {
-      const page = await openPage();
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await openAdmin(page, baseUrl, admin, "/interests");
-      await assertPageIsXssSafe(page, [D, C, B]);
-      assert.equal(await page.locator('a[href="https://wa.me/962782223334"]').count(), 1);
-      check(page);
-    } finally {
-      await Interest.deleteOne({ _id: hostile._id });
-    }
-  });
-
-  await scenario("Interest requests (new admin): phone layout", async () => {
-    const i = await seedInterest("اهتمام الهاتف", "new");
-    try {
-      const page = await openPage({ mobile: true });
-      await openAdmin(page, baseUrl, admin, "/interests");
-      await page.locator("li", { hasText: "اهتمام الهاتف" }).waitFor();
-      assert.equal(await page.locator("table").count(), 0, "cards, not a table, on a phone");
-      assert.equal(await noSideScroll(page), true);
-      const small = await page.evaluate(() => [...document.querySelectorAll("main a, main button, main select, main input")]
-        .map((el) => [el, el.getBoundingClientRect()]).filter(([, r]) => r.width > 0 && r.height > 0 && r.height < 44)
-        .map(([el]) => `${el.tagName} ${el.getAttribute("aria-label") || el.textContent.trim().slice(0, 20)}`));
-      assert.deepEqual(small, []);
-      check(page);
-    } finally {
-      await Interest.deleteOne({ _id: i._id });
+      if (order) await Order.deleteOne({ _id: order._id });
+      if (bottle) await Bottle.deleteOne({ _id: bottle._id });
+      if (product) await Product.deleteOne({ _id: product._id });
     }
   });
 }

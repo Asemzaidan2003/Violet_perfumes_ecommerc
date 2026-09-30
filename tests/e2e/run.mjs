@@ -21,22 +21,7 @@ import Alcohol from "../../backend/models/alcohol.model.js";
 import Product from "../../backend/models/product.model.js";
 import { invalidateCatalog } from "../../backend/store/catalog.js";
 import Interest from "../../backend/models/interest.model.js";
-import { registerAdminOnlineScenarios } from "./admin-online.mjs";
-import { registerAdminPosScenarios } from "./admin-pos.mjs";
-import { registerAdminOrdersScenarios } from "./admin-orders.mjs";
-import { registerAdminInsightsScenarios } from "./admin-insights.mjs";
-import { registerAdminInventoryScenarios } from "./admin-inventory.mjs";
-import { registerCheckoutScenarios } from "./checkout.mjs";
-import { registerPromotionScenarios } from "./promotions.mjs";
-import { registerFxScenarios } from "./fx.mjs";
-import { registerProductVisibilityScenarios } from "./product-visibility.mjs";
-import { registerColorScenarios } from "./colors.mjs";
-import { registerBrandScenarios } from "./brands.mjs";
-import { registerNavScenarios } from "./nav.mjs";
-import { registerIdentityScenarios } from "./identity.mjs";
-import { registerPageScenarios } from "./pages.mjs";
-import { registerCategoryScenarios } from "./categories.mjs";
-import { registerStorefrontCmsScenarios } from "./storefront-cms.mjs";
+import { isSelected, registerAllScenarios } from "./scenario-registry.mjs";
 
 process.env.SESSION_SECRET ||= "e2e-secret-".padEnd(48, "x");
 
@@ -116,11 +101,8 @@ async function readCaptured(page, method, url, { retries = 50, intervalMs = 200 
   throw new Error(`timed out waiting for captured ${method} ${url} response`);
 }
 
-// E2E_ONLY=<regex> runs only matching scenario names; the rest print SKIP and count as neither pass nor fail.
-const only = process.env.E2E_ONLY ? new RegExp(process.env.E2E_ONLY) : null;
-
 async function scenario(name, fn) {
-  if (only && !only.test(name)) { console.log(`SKIP: ${name}`); return; }
+  if (!isSelected(name)) { console.log(`SKIP: ${name}`); return; }
   try {
     await fn();
     console.log(`PASS: ${name}`);
@@ -490,36 +472,10 @@ async function run() {
     }
   });
 
-  // Task 6 (cart drawer, checkout, confirmation) — see checkout.mjs.
-  await registerCheckoutScenarios({ scenario, openPage, check, baseUrl, png: Buffer.from(PNG_BASE64, "base64"), admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-
-  // Task 7 (admin interests/settings/online-order pages) — see admin-online.mjs.
-  await registerAdminOnlineScenarios({ scenario, openPage, check, baseUrl });
-  await registerAdminPosScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  await registerAdminOrdersScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  await registerAdminInsightsScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  await registerAdminInventoryScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  await registerPromotionScenarios({
-    scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(),
-    admin: { username: ADMIN_USER, password: ADMIN_PASS },
+  await registerAllScenarios({
+    scenario, openPage, use3d, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS },
+    png: Buffer.from(PNG_BASE64, "base64"), pngPath, productId: String(seeded._id), fxProductId: String(ysl._id),
   });
-
-  await registerProductVisibilityScenarios({ scenario, openPage, check, baseUrl });
-
-  await registerColorScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  await registerBrandScenarios({
-    scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(),
-    admin: { username: ADMIN_USER, password: ADMIN_PASS }, productId: String(seeded._id),
-  });
-  await registerNavScenarios({ scenario, openPage, check, baseUrl, admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  await registerIdentityScenarios({ scenario, openPage, check, baseUrl, pngPath, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(), admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  await registerPageScenarios({ scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(), admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  await registerCategoryScenarios({ scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(), admin: { username: ADMIN_USER, password: ADMIN_PASS }, productId: String(seeded._id) });
-  await registerStorefrontCmsScenarios({ scenario, openPage, check, baseUrl, shotDir: process.env.E2E_SHOT_DIR || os.tmpdir(), admin: { username: ADMIN_USER, password: ADMIN_PASS } });
-  // Task 1 (immersive layer: capability gate, reveals, view transitions) — see fx.mjs.
-  // Runs last: use3d() swaps the shared browser context to a fresh one with no admin login.
-  await registerFxScenarios({ scenario, openPage, use3d, check, baseUrl, productId: String(ysl._id) });
-
 }
 
 try {
@@ -535,7 +491,7 @@ try {
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} scenarios passed`);
-if (only && results.length === 0) {
+if (process.env.E2E_ONLY && results.length === 0) {
   console.error(`E2E_ONLY=${process.env.E2E_ONLY} matched no scenario`);
   process.exit(1);
 }
