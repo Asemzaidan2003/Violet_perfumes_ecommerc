@@ -190,6 +190,24 @@ export async function registerAdminOrdersScenarios({ scenario, openPage, check, 
   });
   const waitConfirm = (page, id) => page.waitForResponse((r) => r.url().endsWith(`/orders/${id}/confirm`) && r.request().method() === "POST");
 
+  await scenario("Shell (mobile): pending chip deep-links to unconfirmed orders", async () => {
+    const product = await seedProductSized("عطر شارة الانتظار", "37");
+    const order = await dbOnline(product, "37");
+    try {
+      const page = await openPage();
+      await page.setViewportSize({ width: 375, height: 800 });
+      await openAdmin(page, baseUrl, admin, "/pos");
+      await page.getByRole("link", { name: /^الطلبات \(\d+\)$/ }).first().click();
+      await page.waitForURL(/\/orders\?filter=unconfirmed$/);
+      await page.getByText("زبون تفاصيل").first().waitFor();
+      assert.equal(await page.locator('nav[aria-label="التنقل السريع"] a[aria-current="page"]').count(), 1, "orders tab highlighted");
+      check(page);
+    } finally {
+      await Order.deleteOne({ _id: order._id });
+      await Product.deleteOne({ _id: product._id });
+    }
+  });
+
   await scenario("Order details (new admin): confirm an online order", async () => {
     const product = await seedProductSized("عطر تفاصيل الطلب", "37");
     invalidateCatalog();

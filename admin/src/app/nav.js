@@ -32,4 +32,4 @@ export const NAV_GROUPS = [
 ];
 
 const byKey = Object.fromEntries(NAV_GROUPS.flatMap((g) => g.items).map((i) => [i.key, i]));
-export const MOBILE_TABS = ["pos", "orders", "products", "reports"].map((k) => byKey[k]);
+export const MOBILE_TABS = ["pos", "orders", "reports", "products"].map((k) => byKey[k]);

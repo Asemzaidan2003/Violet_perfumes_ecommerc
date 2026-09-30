@@ -84,22 +84,22 @@ export default function Shell() {
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-base font-bold text-primary">{pageTitle}</span>
             {pending > 0 && (
-              <Link to="/orders" className="inline-flex min-h-11 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground">الطلبات ({pending})</Link>
+              <Link to="/orders?filter=unconfirmed" className="inline-flex min-h-11 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground">الطلبات ({pending})</Link>
             )}
           </div>
           <UserActions />
         </header>
-        <main className="flex-1 pb-20 lg:pb-0"><Outlet key={location.pathname} /></main>
+        <main className="flex-1 pb-20 lg:pb-0"><Outlet key={location.pathname + (location.pathname === "/orders" ? location.search : "")} /></main>
       </div>
 
       <nav aria-label="التنقل السريع" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
-        {MOBILE_TABS.map((item) => (
+        {MOBILE_TABS.map((tab) => { const item = tab.badge && pending > 0 ? { ...tab, to: "/orders?filter=unconfirmed" } : tab; return (
           <NavItem key={item.key} item={item} pending={pending}
             className={({ isActive }) => cn("relative flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium", isActive ? "text-primary" : "text-muted-foreground")}>
             <span className="relative"><item.icon className="size-6" aria-hidden />{item.badge && pending > 0 && <span className="absolute -top-1 -end-2 size-2.5 rounded-full bg-destructive" aria-label={`${pending} بانتظار التأكيد`} />}</span>
             <span>{item.label}</span>
           </NavItem>
-        ))}
+        ); })}
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
           <SheetTrigger asChild>
             <button type="button" className="flex h-16 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground"><Menu className="size-6" aria-hidden /><span>المزيد</span></button>
