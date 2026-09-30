@@ -9,10 +9,7 @@ export async function registerPageScenarios({ scenario, openPage, check, baseUrl
     // 1. Create and publish a page with a heading and a bullet list through the API (the admin UI has its own scenarios).
     const admin1 = await openPage();
     await apiLogin(admin1, baseUrl, admin);
-    const made = await apiCall(admin1, baseUrl, "POST", "/pages", { title: "سياسة الشحن", slug: "e2e-shipping", body: "# سياسة الشحن
-
-- نوصل لكل الأردن
-- الدفع عند الاستلام", published: true });
+    const made = await apiCall(admin1, baseUrl, "POST", "/pages", { title: "سياسة الشحن", slug: "e2e-shipping", body: "# سياسة الشحن\n\n- نوصل لكل الأردن\n- الدفع عند الاستلام", published: true });
     assert.equal(made.status, 201);
 
     // 2. The footer on the storefront home links to it.
