@@ -16,9 +16,9 @@ export const NAV_GROUPS = [
     { key: "oils", label: "الزيوت", to: "/oils", icon: Droplets },
     { key: "bottles", label: "الزجاجات", to: "/bottles", icon: FlaskConical },
     { key: "alcohol", label: "الكحول", to: "/alcohol", icon: Wine },
-    { key: "tagging", label: "تصنيف المنتجات", legacy: `${L}catalog.html`, icon: ListChecks },
-    { key: "categories", label: "الأقسام", legacy: `${L}categories.html`, icon: Layers },
-    { key: "brands", label: "المصممون", legacy: `${L}brands.html`, icon: Tag },
+    { key: "tagging", label: "تصنيف المنتجات", to: "/catalog", icon: ListChecks },
+    { key: "categories", label: "الأقسام", to: "/categories", icon: Layers },
+    { key: "brands", label: "المصممون", to: "/brands", icon: Tag },
   ] },
   { title: "التحليلات", items: [
     { key: "dashboard", label: "لوحة المعلومات", to: "/dashboard", icon: LayoutDashboard },
