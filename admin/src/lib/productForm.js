@@ -26,6 +26,8 @@ export const normalizeSizeText = (s) => normalizeNumberInput(normalizeSize(norma
 
 const sizeOk = (s) => { const t = normalizeSizeText(s); return /^\d+(\.\d+)?$/.test(t) && Number(t) > 0; };
 const pct = (label) => z.number({ error: `${label} مطلوبة` }).min(0, `${label} بين 0 و100`).max(100, `${label} بين 0 و100`);
+// A notes layer (top/heart/base): each entry short, and a bounded count so the field can't grow unbounded.
+const noteLayer = (label) => z.array(z.string().max(40, `${label}: كل عنصر بحد أقصى 40 حرفًا`)).max(10, `${label}: 10 عناصر كحد أقصى`);
 
 export const productSchema = z.object({
   p_name: z.string().trim().min(1, "اسم المنتج مطلوب"),
@@ -44,7 +46,7 @@ export const productSchema = z.object({
   })).min(1, "أضف حجمًا واحدًا على الأقل"),
   // Owned by Task 5's UI; carried through so an edit never drops them.
   families: z.array(z.string()),
-  notes: z.object({ top: z.array(z.string()), heart: z.array(z.string()), base: z.array(z.string()) }),
+  notes: z.object({ top: noteLayer("النوتات العليا"), heart: noteLayer("نوتات القلب"), base: noteLayer("النوتات الأساسية") }),
   description: z.string().max(2000, "الوصف طويل جدًا (2000 حرف كحد أقصى)"),
   keywords: z.string().max(300, "الكلمات طويلة جدًا (300 حرف كحد أقصى)"),
   brand: z.string(),

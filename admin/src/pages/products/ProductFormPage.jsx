@@ -5,17 +5,18 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
-import { emptyValues, IMAGE_ERROR, IMAGE_URL, productSchema, toFormValues, toPayload } from "@/lib/productForm";
+import { emptyValues, productSchema, toFormValues, toPayload } from "@/lib/productForm";
 import { waitForGuardClear } from "@/lib/backGuard";
 import { ErrorState } from "@/components/page";
 import { NativeSelect } from "@/components/native-select";
 import { Field, NumberField, SwitchField } from "@/components/form/fields";
 import { FormShell } from "@/components/form/FormShell";
-import { ImageUpload } from "@/components/form/ImageUpload";
 import { SizesEditor } from "@/components/form/SizesEditor";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MediaSection } from "./MediaSection";
 import { OilPicker } from "./OilPicker";
+import { TaxonomySection } from "./TaxonomySection";
 import { useProductLookups } from "./useProductLookups";
 
 const STATUSES = [["available", "متوفر"], ["out of stock", "غير متوفر"], ["discontinued", "متوقف"]];
@@ -109,10 +110,12 @@ function ProductForm({ mode, id, initial, lookups }) {
       </Section>
 
       <Section title="الصورة">
-        <ImageUpload id="p_image_file" value={IMAGE_URL.test(v.p_image.trim()) ? v.p_image.trim() : ""} onChange={(url) => set("p_image", url)} />
-        <Field label="رابط الصورة" htmlFor="p_image" hint="اتركه فارغًا بلا صورة. يُقبل رابط https:// أو صورة مرفوعة فقط (لا يُقبل http://)." error={errors.p_image ? IMAGE_ERROR : undefined}>
-          <Input id="p_image" className="h-11 text-start" dir="ltr" value={v.p_image} aria-invalid={bad("p_image")} onChange={(e) => set("p_image", e.target.value)} />
-        </Field>
+        <MediaSection image={v.p_image} images={v.images} onImageChange={(url) => set("p_image", url)}
+          onImagesChange={(list) => set("images", list)} error={bad("p_image")} invalid={bad("p_image")} />
+      </Section>
+
+      <Section title="التصنيف والوصف">
+        <TaxonomySection v={v} set={set} errors={errors} brands={lookups.brands} />
       </Section>
     </FormShell>
   );
