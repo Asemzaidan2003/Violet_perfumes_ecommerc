@@ -9,6 +9,7 @@ import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger 
 import { useAuth } from "@/app/auth";
 import { useTheme } from "@/app/theme";
 import { MOBILE_TABS, NAV_GROUPS } from "@/app/nav";
+import AddMenu from "@/app/AddMenu";
 
 const TITLE = "نسمات — لوحة الإدارة";
 
@@ -75,6 +76,7 @@ export default function Shell() {
     <div className="flex min-h-dvh">
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-4 overflow-y-auto border-e bg-card p-3 lg:flex">
         <div className="flex items-center gap-2 px-3 py-2 text-lg font-bold text-primary"><Store aria-hidden /> نسمات</div>
+        <div className="px-3"><AddMenu className="w-full" /></div>
         <nav aria-label="القائمة الرئيسية" className="flex flex-1 flex-col gap-4"><NavList pending={pending} /></nav>
         <div className="border-t pt-3"><UserActions /></div>
       </aside>
@@ -87,7 +89,7 @@ export default function Shell() {
               <Link to="/orders?filter=unconfirmed" className="inline-flex min-h-11 items-center rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground">الطلبات ({pending})</Link>
             )}
           </div>
-          <UserActions />
+          <div className="flex items-center gap-1"><AddMenu /><UserActions /></div>
         </header>
         <main className="flex-1 pb-20 lg:pb-0"><Outlet key={location.pathname + (location.pathname === "/orders" ? location.search : "")} /></main>
       </div>

@@ -12,7 +12,7 @@ export const NAV_GROUPS = [
     { key: "interests", label: "طلبات الاهتمام", to: "/interests", icon: Inbox },
   ] },
   { title: "الكتالوج", items: [
-    { key: "products", label: "المنتجات", legacy: `${L}all_products.html`, icon: Package },
+    { key: "products", label: "المنتجات", to: "/products", icon: Package },
     { key: "oils", label: "الزيوت", legacy: `${L}all_oils.html`, icon: Droplets },
     { key: "bottles", label: "الزجاجات", legacy: `${L}all_bottles.html`, icon: FlaskConical },
     { key: "tagging", label: "تصنيف المنتجات", legacy: `${L}catalog.html`, icon: ListChecks },
@@ -32,4 +32,5 @@ export const NAV_GROUPS = [
 ];
 
 const byKey = Object.fromEntries(NAV_GROUPS.flatMap((g) => g.items).map((i) => [i.key, i]));
-export const MOBILE_TABS = ["pos", "orders", "reports", "products"].map((k) => byKey[k]);
+// The phone Products tab stays on the legacy page until phase 4 task 9 reworks the tab set.
+export const MOBILE_TABS = ["pos", "orders", "reports", "products"].map((k) => (k === "products" ? { ...byKey[k], to: undefined, legacy: `${L}all_products.html` } : byKey[k]));
