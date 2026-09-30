@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
 import { emptyValues, IMAGE_ERROR, IMAGE_URL, productSchema, toFormValues, toPayload } from "@/lib/productForm";
+import { waitForGuardClear } from "@/lib/backGuard";
 import { ErrorState } from "@/components/page";
 import { NativeSelect } from "@/components/native-select";
 import { Field, NumberField, SwitchField } from "@/components/form/fields";
@@ -21,12 +22,6 @@ const STATUSES = [["available", "متوفر"], ["out of stock", "غير متوف
 const Section = ({ title, children }) => (
   <section className="space-y-4"><h2 className="text-lg font-semibold">{title}</h2>{children}</section>
 );
-
-// The back-guard drops its sentinel history entry asynchronously once saving starts; navigating before that lands
-// would leave the form in history. Wait (bounded) for it.
-async function settleHistory() {
-  for (let i = 0; i < 25 && window.history.state?.guard; i++) await new Promise((r) => setTimeout(r, 20));
-}
 
 function ProductForm({ mode, id, initial, lookups }) {
   const navigate = useNavigate();
@@ -52,7 +47,9 @@ function ProductForm({ mode, id, initial, lookups }) {
       toast.success(mode === "edit" ? "تم تحديث المنتج" : "تمت إضافة المنتج");
       qc.invalidateQueries({ queryKey: ["products-list"] });
       qc.removeQueries({ queryKey: ["product", id] });
-      await settleHistory();
+      // The back-guard drops its sentinel history entry asynchronously once saving starts; navigating before that
+      // lands would leave the form in history. Wait (bounded) for it.
+      await waitForGuardClear(window);
       navigate("/products", { replace: true }); // saving stays true: no guard prompt during the navigation
     } catch (e) {
       setSaving(false);

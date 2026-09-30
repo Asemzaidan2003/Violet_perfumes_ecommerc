@@ -1,5 +1,10 @@
 // Browser Back/Forward guard for BrowserRouter (no useBlocker): while active, a sentinel history entry
 // (same URL) sits on top; Back pops it, we re-push it and ask. `win` is injectable for tests.
+// Wait (bounded, ~500ms) for this module's sentinel to clear, e.g. before navigating right after dispose().
+export async function waitForGuardClear(win) {
+  for (let i = 0; i < 25 && win.history.state?.guard; i++) await new Promise((r) => setTimeout(r, 20));
+}
+
 export function installBackGuard(win, onBack) {
   const push = () => win.history.pushState({ ...win.history.state, guard: true }, "", win.location.href);
   const onPop = () => {

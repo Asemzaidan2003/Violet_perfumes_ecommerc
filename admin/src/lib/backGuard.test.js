@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { installBackGuard } from "./backGuard.js";
+import { installBackGuard, waitForGuardClear } from "./backGuard.js";
 
 // Minimal history: entries [{state}], index; back/go dispatch popstate synchronously.
 function fakeWin() {
@@ -54,4 +54,21 @@ test("dispose removes the sentinel and the listener; leaveTo drops it before nav
   let at = null;
   installBackGuard(w2, () => {}).leaveTo(() => { at = w2.index(); });
   expect(at).toBe(1);
+});
+
+test("waitForGuardClear resolves immediately when guard is already falsy", async () => {
+  const w = fakeWin();
+  installBackGuard(w, () => {}).dispose(); // clears the sentinel
+  const start = Date.now();
+  await waitForGuardClear(w);
+  expect(Date.now() - start).toBeLessThan(20);
+});
+
+test("waitForGuardClear resolves once guard clears after polling", async () => {
+  const w = fakeWin();
+  installBackGuard(w, () => {});
+  expect(w.history.state.guard).toBe(true);
+  setTimeout(() => { w.history.state.guard = false; }, 40);
+  await waitForGuardClear(w);
+  expect(w.history.state.guard).toBe(false);
 });
