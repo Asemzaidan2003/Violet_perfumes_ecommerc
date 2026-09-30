@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Wine } from "lucide-react";
 import { toast } from "sonner";
@@ -21,19 +21,22 @@ function AlcoholForm({ record, idx }) {
   const [f, setF] = useState(() => ({ name: record?.name ?? "", type: record?.type ?? "", cost: record?.cost ?? null, qty: record ? record.quantity : 0, add: null }));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
   const p = `alc${idx}`;
 
   async function submit(e) {
     e.preventDefault();
-    if (saving) return;
+    if (busy.current) return;
     const er = {};
     if (!f.name.trim()) er.name = "الاسم مطلوب";
     if (!f.type.trim()) er.type = "النوع مطلوب";
     if (!isNum(f.cost) || f.cost < 0) er.cost = "أدخل تكلفة صحيحة (0 أو أكثر)";
     if (create ? !isNum(f.qty) : !isNum(f.qty) && !(isNum(f.add) && f.add > 0)) er.qty = "أدخل كمية صحيحة";
+    if (!create && f.add !== null && !(f.add > 0)) er.qty = "كمية الإضافة يجب أن تكون موجبة";
     setErrors(er);
     if (Object.keys(er).length) return;
+    busy.current = true;
     setSaving(true);
     try {
       const base = { name: f.name.trim(), type: f.type.trim(), cost: f.cost };
@@ -46,6 +49,7 @@ function AlcoholForm({ record, idx }) {
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "تعذّر الاتصال بالخادم");
     } finally {
+      busy.current = false;
       setSaving(false);
     }
   }
