@@ -1,13 +1,14 @@
 import Oil from '../models/oil.model.js';
 import { stockUpdate } from '../utils/restock.js';
 import { invalidateCatalog } from '../store/catalog.js';
+import { isNum } from './product.Controller.js';
 
 export const createOil = async (req , res)=>{
-    const {id , oil_name , oil_cost , oil_quantity} = req.body;
+    const {id , oil_name , oil_cost , oil_quantity , status} = req.body;
 
     //Validate required fields
-    if(!id || !oil_name || !oil_cost || !oil_quantity){
-        return res.status(400).json({success:false ,message: "Please provide all required fields" });
+    if(!String(id ?? "").trim() || !String(oil_name ?? "").trim() || !isNum(oil_cost) || !isNum(oil_quantity)){
+        return res.status(400).json({success:false ,message: "يرجى تعبئة رقم الزيت واسمه وتكلفته وكميته" });
     }
 
     //Create new Oil
@@ -15,7 +16,8 @@ export const createOil = async (req , res)=>{
         id,
         oil_name,
         oil_cost,
-        oil_quantity
+        oil_quantity,
+        status
     });
 
     await newOil.save();//we insert the data here

@@ -1,6 +1,9 @@
 import Product from "../models/product.model.js";
 import { invalidateCatalog } from "../store/catalog.js";
 
+// Present and finite: rejects missing, null, "" and NaN but lets 0 through (negatives are left to the model's min).
+export const isNum = (v) => v !== null && v !== undefined && v !== "" && typeof v !== "boolean" && Number.isFinite(Number(v));
+
 // POST Product
 export const createProduct = async (req, res) => {
     const {
@@ -19,16 +22,18 @@ export const createProduct = async (req, res) => {
         notes,
         images,
         keywords,
+        brand,
+        offer_ends_at,
     } = req.body;
 
     // Validate required fields (p_offer_percentage and status are optional)
-    if (!p_name || !p_image || !size_list || !p_category || !oil_id || !oil_percentage || !alcohol_percentage) {
-        return res.status(400).json({ success: false, message: "Please provide all required fields" });
+    if (!p_name || !p_image || !size_list || !p_category || !oil_id || !isNum(oil_percentage) || !isNum(alcohol_percentage)) {
+        return res.status(400).json({ success: false, message: "يرجى تعبئة جميع الحقول المطلوبة" });
     }
 
     // Validate `size_list` structure (should be an array of objects with size & price)
-    if (!Array.isArray(size_list) || size_list.some(item => !item.size || !item.price)) {
-        return res.status(400).json({ message: "Invalid size_list format. It should be an array of objects with 'size' and 'price' fields." });
+    if (!Array.isArray(size_list) || size_list.some(item => !item?.size || !isNum(item.price))) {
+        return res.status(400).json({ success: false, message: "صيغة الأحجام غير صحيحة — لكل حجم مقاس وسعر" });
     }
     // A thing to do , don't forget to check if the oil_id is found , then save the data , otherwise it's an error !!
 
@@ -50,6 +55,8 @@ export const createProduct = async (req, res) => {
         notes,
         images,
         keywords,
+        brand,
+        offer_ends_at,
     });
 
     await newProduct.save();
