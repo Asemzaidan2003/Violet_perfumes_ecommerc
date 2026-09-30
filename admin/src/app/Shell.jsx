@@ -31,7 +31,6 @@ function Badge({ n }) {
 
 function NavItem({ item, pending, className, onNavigate, children }) {
   const inner = children ?? (<><item.icon className="size-5 shrink-0" aria-hidden /><span>{item.label}</span>{item.badge && <Badge n={pending} />}</>);
-  if (item.legacy) return <a href={item.legacy} className={className({ isActive: false })}>{inner}</a>;
   return <NavLink to={item.to} onClick={onNavigate} className={className}>{inner}</NavLink>;
 }
 

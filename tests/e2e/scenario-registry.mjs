@@ -16,6 +16,7 @@ import { registerAdminContentCatalogScenarios } from "./admin-content-catalog.mj
 import { registerAdminContentPagesScenarios } from "./admin-content-pages.mjs";
 import { registerAdminContentPromosScenarios } from "./admin-content-promos.mjs";
 import { registerAdminContentSettingsScenarios } from "./admin-content-settings.mjs";
+import { registerAdminContentStorefrontScenarios } from "./admin-content-storefront.mjs";
 import { registerCheckoutScenarios } from "./checkout.mjs";
 import { registerPromotionScenarios } from "./promotions.mjs";
 import { registerFxScenarios } from "./fx.mjs";
@@ -55,6 +56,7 @@ export async function registerAllScenarios(ctx) {
   await registerAdminContentPagesScenarios(base);
   await registerAdminContentPromosScenarios(base);
   await registerAdminContentSettingsScenarios({ ...base, pngPath });
+  await registerAdminContentStorefrontScenarios(base);
   await registerPromotionScenarios(shot);
   await registerProductVisibilityScenarios({ ...base, admin: undefined });
   await registerColorScenarios(base);

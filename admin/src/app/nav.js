@@ -3,7 +3,6 @@ import {
   LayoutDashboard, BarChart3, Store, FileText, Megaphone, Settings, Layers,
 } from "lucide-react";
 
-const L = "/admin/html/"; // legacy pages, replaced one by one in later plans
 
 export const NAV_GROUPS = [
   { title: "المبيعات", items: [
@@ -25,7 +24,7 @@ export const NAV_GROUPS = [
     { key: "reports", label: "التقارير", to: "/reports", icon: BarChart3 },
   ] },
   { title: "المتجر", items: [
-    { key: "storefront", label: "واجهة المتجر", legacy: `${L}storefront.html`, icon: Store },
+    { key: "storefront", label: "واجهة المتجر", to: "/storefront", icon: Store },
     { key: "pages", label: "الصفحات", to: "/pages", icon: FileText },
     { key: "promotions", label: "العروض والإعلانات", to: "/promotions", icon: Megaphone },
     { key: "settings", label: "إعدادات المتجر", to: "/settings", icon: Settings },
