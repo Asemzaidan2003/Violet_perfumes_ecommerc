@@ -26,7 +26,7 @@ export const NAV_GROUPS = [
   ] },
   { title: "المتجر", items: [
     { key: "storefront", label: "واجهة المتجر", legacy: `${L}storefront.html`, icon: Store },
-    { key: "pages", label: "الصفحات", legacy: `${L}pages.html`, icon: FileText },
+    { key: "pages", label: "الصفحات", to: "/pages", icon: FileText },
     { key: "promotions", label: "العروض والإعلانات", legacy: `${L}promotions.html`, icon: Megaphone },
     { key: "settings", label: "إعدادات المتجر", legacy: `${L}settings.html`, icon: Settings },
   ] },
