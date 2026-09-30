@@ -4,6 +4,7 @@ import { createApp } from "./app.js";
 import { seedAdmin } from "./controller/auth.Controller.js";
 import { seedDefaultPages } from "./services/pages.service.js";
 import { seedDefaultCategories } from "./services/categories.service.js";
+import { syncStockStatusSafe } from "./services/stockStatus.js";
 import { parseTrustProxyHops } from "./utils/trustProxy.js";
 
 for (const key of ["MONGO_URI", "SESSION_SECRET"]) {
@@ -26,6 +27,7 @@ console.log(`MongoDB connected: ${mongoose.connection.host}`);
 await seedAdmin();
 await seedDefaultPages();
 await seedDefaultCategories();
+await syncStockStatusSafe(); // bring stored oil/product statuses in line with stock at startup
 
 const port = process.env.PORT || 5000;
 const server = createApp().listen(port, () => console.log(`Server started on port ${port}`));

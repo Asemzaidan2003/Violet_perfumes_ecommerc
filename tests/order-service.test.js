@@ -193,3 +193,15 @@ test("cancel refunds oil by its stable _id even if the oil's custom id was renam
   await changeStatus(order._id, "canceled");
   assert.equal((await Oil.findOne({ id: "OIL1-RENAMED" })).oil_quantity, 100);
 });
+
+test("selling the last oil marks the oil and its product out of stock; cancelling restocks and reopens them", async () => {
+  await Oil.updateOne({ id: "OIL1" }, { oil_quantity: 12 }); // exactly two 30ml units (6 ml each)
+  const { order } = await placeOrder({ products: [line()] }, "pos");
+  assert.equal((await Oil.findOne({ id: "OIL1" })).oil_quantity, 0);
+  assert.equal((await Oil.findOne({ id: "OIL1" })).status, "out of stock");
+  assert.equal((await Product.findById(ids.product)).status, "out of stock");
+
+  await changeStatus(order._id, "canceled");
+  assert.equal((await Oil.findOne({ id: "OIL1" })).status, "available");
+  assert.equal((await Product.findById(ids.product)).status, "available");
+});

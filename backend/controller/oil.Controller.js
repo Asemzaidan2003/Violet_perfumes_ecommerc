@@ -2,6 +2,7 @@ import Oil from '../models/oil.model.js';
 import { stockUpdate } from '../utils/restock.js';
 import { invalidateCatalog } from '../store/catalog.js';
 import { isNum } from './product.Controller.js';
+import { syncStockStatusSafe } from '../services/stockStatus.js';
 
 export const createOil = async (req , res)=>{
     const {id , oil_name , oil_cost , oil_quantity , status} = req.body;
@@ -21,6 +22,7 @@ export const createOil = async (req , res)=>{
     });
 
     await newOil.save();//we insert the data here
+    await syncStockStatusSafe();
     invalidateCatalog();
     return res.status(200).json({success:true , message:"Oil data inserted successfully" , data:newOil});
 };
@@ -38,11 +40,12 @@ export const updateOil = async (req , res)=>{
             message: `No Oil found with this ID: ${req.params.id}`,
         });
     }
+    await syncStockStatusSafe();
     invalidateCatalog();
     return res.status(200).json({
         success:true,
         message:"Oil data updated successfully",
-        data:updatedOil
+        data:(await Oil.findById(updatedOil._id)) ?? updatedOil
     })
 };
 
@@ -90,6 +93,7 @@ export const deleteOil = async (req , res)=>{
             data:null
         });
     }
+    await syncStockStatusSafe();
     invalidateCatalog();
     return res.status(200).json({
         success:true,

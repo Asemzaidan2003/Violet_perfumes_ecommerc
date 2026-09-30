@@ -10,6 +10,7 @@ import { normalizeSize } from "../../storefront/js/shared/vocab.js";
 import { normalizePhone } from "../../storefront/js/shared/phone.js";
 import { effectivePrice } from "../catalog/pricing.js";
 import { fail } from "../utils/fail.js";
+import { syncStockStatusSafe } from "./stockStatus.js";
 import { normalizeCode, checkCoupon, claimCoupon, releaseCoupon, couponDiscount, INVALID_CODE } from "./coupons.service.js";
 
 // Business rule: an order is never blocked for stock. Stock is deducted only when an
@@ -38,6 +39,7 @@ async function inTransaction(fn) {
   await mongoose.connection.transaction(async (session) => {
     result = await fn(session);
   });
+  await syncStockStatusSafe(); // after the commit, so it sees the new quantities
   return result;
 }
 
