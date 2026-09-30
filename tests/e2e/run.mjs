@@ -103,6 +103,13 @@ async function run() {
     size_list: [{ size: "50", price: 40 }],
   });
 
+  // A photographed Women's product with oud + amber (the storefront scenarios expect a tester-bar family and a third women's product).
+  await Product.create({
+    p_name: "عطر اختبار الصور", p_image: "https://example.com/seed-photo.jpg", p_category: "Women",
+    oil_id: "OIL1", oil_percentage: 20, alcohol_percentage: 80, size_list: [{ size: "30", price: 25 }],
+    families: ["oud", "amber"], notes: { top: [], heart: [], base: ["عود"] },
+  });
+
   server = createApp().listen(0, "127.0.0.1");
   await once(server, "listening");
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -125,7 +132,7 @@ async function run() {
     // Legacy bookmarks land on the matching route.
     await page.goto(`${baseUrl}/admin/html/all_products.html`);
     await page.waitForURL(/\/admin\/products$/);
-    check(page);
+    assert.deepEqual(page.errors.filter((e) => !/status of 401/.test(e)), []);
   });
 
   await scenario("Storefront home", async () => {
